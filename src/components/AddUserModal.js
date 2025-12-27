@@ -1,0 +1,255 @@
+import React, { useState, useEffect } from 'react';
+
+const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [] }) => {
+  const handleClose = onClose || onHide;
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: 'Web Development',
+    role: '',
+    password: '',
+    assignedProject: ''
+  });
+
+  // Populate form when editing or reset when opening for new user
+  useEffect(() => {
+    if (show) {
+      if (editingUser) {
+        setFormData({
+          name: editingUser.name || '',
+          email: editingUser.email || '',
+          phone: editingUser.phone || '',
+          department: editingUser.department || 'Web Development',
+          role: editingUser.role || '',
+          password: '', // Always blank - don't populate password when editing
+          assignedProject: editingUser.assignedProject || ''
+        });
+      } else {
+        // Reset form completely for new user
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          department: 'Web Development',
+          role: '',
+          password: '', // Explicitly blank for new users
+          assignedProject: ''
+        });
+      }
+    }
+  }, [editingUser, show]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+
+      // Clear project assignment if role is changed to project-manager or employee
+      if (name === 'role' && (value === 'project-manager' || value === 'employee')) {
+        newData.assignedProject = '';
+      }
+
+      return newData;
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    // Validate password for new users
+    if (!editingUser && !formData.password) {
+      alert('Password is required for new users. Please enter a password.');
+      return;
+    }
+
+    // Validate password length
+    if (formData.password && formData.password.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+
+    onSave(formData);
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      department: 'Web Developer',
+      role: '',
+      password: '',
+      assignedProject: ''
+    });
+    handleClose();
+  };
+
+  if (!show) return null;
+
+  return (
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
+        <div className="modal-content">
+          <div className="modal-header bg-primary text-white">
+            <h5 className="modal-title">
+              <i className={`fas ${editingUser ? 'fa-user-edit' : 'fa-user-plus'} me-2`}></i>
+              {editingUser ? 'Edit User' : 'Add New User'}
+            </h5>
+            <button type="button" className="btn-close btn-close-white" onClick={handleClose}></button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body">
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Full Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Email Address *</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    className="form-control"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
+                  {/* Empty column for spacing */}
+                </div>
+              </div>
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Department *</label>
+                  <select
+                    className="form-select"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="Web Development">Web Development</option>
+                    <option value="Android Development">Android Development</option>
+                    <option value="iOS Development">iOS Development</option>
+                    <option value="Quality Assurance">Quality Assurance</option>
+                    <option value="Design">Design</option>
+                    <option value="DevOps">DevOps</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Finance">Finance</option>
+                  </select>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Role *</label>
+                  <select
+                    className="form-select"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="intern">Intern</option>
+                    <option value="employee">Employee</option>
+                    <option value="project-manager">Project Manager</option>
+                    <option value="team-leader">Team Leader</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Only show project assignment for interns and team leaders */}
+              {formData.role && formData.role !== 'project-manager' && formData.role !== 'employee' && (
+                <div className="row">
+                  <div className="col-md-12 mb-3">
+                    <label className="form-label">Assign to Project</label>
+                    <select
+                      className="form-select"
+                      name="assignedProject"
+                      value={formData.assignedProject}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">No project assigned</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.name}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted">
+                      Select a project to assign this user to. Leave blank for "Not Assigned" status.
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              <div className="row">
+                <div className="col-md-12 mb-3">
+                  <label className="form-label">
+                    Password {!editingUser && <span className="text-danger">*</span>}
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder={editingUser ? "Leave blank to keep current password" : "Enter password for the user"}
+                    required={!editingUser} // Required only for new users
+                    minLength="6"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                  />
+                  <small className="text-muted">
+                    {editingUser
+                      ? 'Leave blank to keep current password. Enter new password to change it.'
+                      : 'Minimum 6 characters required. This field is mandatory for new users.'}
+                  </small>
+                </div>
+              </div>
+
+
+
+
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={handleClose}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                <i className={`fas ${editingUser ? 'fa-save' : 'fa-user-plus'} me-2`}></i>
+                {editingUser ? 'Update User' : 'Add User'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AddUserModal;

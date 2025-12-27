@@ -1,0 +1,490 @@
+/* Project Manager Dashboard Styles */
+.pm-dashboard {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header - PM Theme (Purple) */
+.pm-dashboard .dashboard-header {
+    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.pm-dashboard .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pm-dashboard .header-left h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.pm-dashboard .mobile-menu-toggle {
+    display: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pm-dashboard .mobile-menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.pm-dashboard .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.pm-dashboard .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pm-dashboard .user-name {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.pm-dashboard .user-role {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+/* Sidebar */
+.pm-dashboard .dashboard-sidebar {
+    width: 260px;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding-top: 5rem;
+    z-index: 999;
+    transition: transform 0.3s ease;
+}
+
+.pm-dashboard .sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+}
+
+.pm-dashboard .sidebar-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #6f42c1;
+}
+
+.pm-dashboard .mobile-close {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+}
+
+.pm-dashboard .sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pm-dashboard .sidebar-nav li {
+    margin: 0;
+}
+
+.pm-dashboard .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    color: #666;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.pm-dashboard .sidebar-nav a:hover {
+    background-color: #f8f9fa;
+    color: #6f42c1;
+    border-left-color: #6f42c1;
+}
+
+.pm-dashboard .sidebar-nav li.active a {
+    background-color: #f0e6ff;
+    color: #6f42c1;
+    border-left-color: #6f42c1;
+    font-weight: 500;
+}
+
+.pm-dashboard .sidebar-nav i {
+    font-size: 1.125rem;
+    width: 20px;
+    text-align: center;
+}
+
+/* Main Content */
+.pm-dashboard .dashboard-content {
+    margin-left: 260px;
+    padding: 2rem;
+    flex: 1;
+}
+
+/* Dashboard Cards - PM Theme */
+.pm-dashboard .dashboard-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.pm-dashboard .dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+}
+
+.pm-dashboard .dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.pm-dashboard .card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.pm-dashboard .card-content h4 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+}
+
+.pm-dashboard .card-content p {
+    font-size: 0.875rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Quick Actions */
+.pm-dashboard .quick-actions {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.pm-dashboard .quick-actions h4 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.pm-dashboard .quick-actions .btn {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.pm-dashboard .quick-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Recent Projects */
+.pm-dashboard .recent-projects {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.pm-dashboard .recent-projects h4 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.pm-dashboard .projects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pm-dashboard .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.pm-dashboard .project-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.pm-dashboard .project-info h5 {
+    margin: 0 0 0.25rem 0;
+    color: #333;
+    font-size: 1rem;
+}
+
+.pm-dashboard .project-info p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.pm-dashboard .project-progress {
+    min-width: 150px;
+    text-align: right;
+}
+
+.pm-dashboard .project-progress span {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #6f42c1;
+}
+
+.pm-dashboard .project-progress .progress {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pm-dashboard .project-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #6f42c1 0%, #5a32a3 100%);
+    transition: width 0.3s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .pm-dashboard .dashboard-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .pm-dashboard .dashboard-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .pm-dashboard .mobile-menu-toggle,
+    .pm-dashboard .mobile-close {
+        display: block;
+    }
+
+    .pm-dashboard .dashboard-content {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .pm-dashboard .dashboard-header {
+        padding: 1rem;
+    }
+
+    .pm-dashboard .header-left h2 {
+        font-size: 1.25rem;
+    }
+
+    .pm-dashboard .user-name {
+        display: none;
+    }
+
+    .pm-dashboard .dashboard-content {
+        padding: 1rem;
+    }
+
+    .pm-dashboard .dashboard-card {
+        padding: 1rem;
+    }
+
+    .pm-dashboard .card-icon {
+        font-size: 2rem;
+    }
+
+    .pm-dashboard .card-content h4 {
+        font-size: 1.5rem;
+    }
+
+    .pm-dashboard .project-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .pm-dashboard .project-progress {
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .pm-dashboard .header-right {
+        gap: 0.5rem;
+    }
+
+    .pm-dashboard .quick-actions .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* Utility Classes */
+.pm-dashboard .text-muted {
+    color: #6c757d !important;
+}
+
+.pm-dashboard .mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.pm-dashboard .mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+.pm-dashboard .w-100 {
+    width: 100% !important;
+}
+
+.pm-dashboard .me-2 {
+    margin-right: 0.5rem !important;
+}
+
+/* Bootstrap Color Classes */
+.pm-dashboard .bg-primary {
+    background-color: #6f42c1 !important;
+}
+
+.pm-dashboard .bg-success {
+    background-color: #28a745 !important;
+}
+
+.pm-dashboard .bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.pm-dashboard .bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.pm-dashboard .bg-danger {
+    background-color: #dc3545 !important;
+}
+
+
+/* Recent Activity Styles */
+.pm-dashboard .activity-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.pm-dashboard .activity-item {
+    transition: background-color 0.2s ease;
+}
+
+.pm-dashboard .activity-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Quick Task Card Styles */
+.pm-dashboard .quick-task-card {
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+}
+
+.pm-dashboard .bg-light-primary {
+    background-color: #eef2ff !important;
+}
+
+.pm-dashboard .icon-container {
+    display: flex;
+    justify-content: center;
+}
+
+.pm-dashboard .form-label.small {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Recent Projects Card */
+.pm-dashboard .recent-projects-card {
+    overflow: hidden;
+}
+
+.pm-dashboard .recent-projects-card .table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pm-dashboard .recent-projects-card .progress {
+    background-color: #eef2ff;
+}
+
+.pm-dashboard .recent-projects-card .progress-bar {
+    background: linear-gradient(90deg, #6f42c1 0%, #a855f7 100%);
+}
+
+/* Scrollbar for activity list */
+.pm-dashboard .activity-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.pm-dashboard .activity-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.pm-dashboard .activity-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.pm-dashboard .activity-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
