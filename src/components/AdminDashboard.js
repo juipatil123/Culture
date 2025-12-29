@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminDashboard.css';
+import { AuthService } from '../firebase/authService';
 import AddProjectManagerModal from './AddProjectManagerModal';
 import AddUserModal from './AddUserModal';
 import AddTaskModal from './AddTaskModal';
@@ -533,6 +534,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
       loadDashboardStats();
     } catch (error) {
       console.error('Error saving user:', error);
+      alert(error.message || 'Failed to save user.');
     }
   };
 
@@ -550,23 +552,49 @@ const AdminDashboard = ({ userData, onLogout }) => {
       loadDashboardStats();
     } catch (error) {
       console.error('Error saving project manager:', error);
+      alert(error.message || 'Failed to save project manager.');
     }
   };
 
   // Handler for saving/updating team leaders
   const handleSaveTeamLeader = async (tlData) => {
+    console.log('🚀 handleSaveTeamLeader called with:', tlData);
+    console.log('🛠️ AuthService status:', AuthService);
+
+    if (!tlData.password && !editingTeamLeader) {
+      alert("Debug: Password is missing in tlData!");
+      return;
+    }
+
     try {
       if (editingTeamLeader) {
         await updateTeamLeader(editingTeamLeader.id || editingTeamLeader._id, tlData);
       } else {
-        await createTeamLeader(tlData);
+        // Direct save to Firebase via AuthService (bypassing api.js wrapper)
+        const result = await AuthService.registerUser({ ...tlData, role: 'team-leader' });
+        console.log('✅ Team Leader created successfully:', result);
       }
       setShowAddTeamLeaderModal(false);
       setEditingTeamLeader(null);
       loadTeamLeaders();
       loadDashboardStats();
     } catch (error) {
-      console.error('Error saving team leader:', error);
+      console.error('❌ Error saving team leader:', error);
+
+      // Detailed error extraction
+      let errorMsg = 'Failed to save team leader.';
+      if (typeof error === 'string') errorMsg = error;
+      else if (error.message) errorMsg = error.message;
+      else if (error.code) errorMsg = `Error Code: ${error.code}`;
+      else {
+        try {
+          errorMsg = 'Full Error: ' + JSON.stringify(error);
+        } catch (e) {
+          errorMsg = 'Unknown error object';
+        }
+      }
+
+      alert(errorMsg);
     }
   };
 

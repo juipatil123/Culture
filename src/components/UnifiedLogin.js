@@ -14,24 +14,39 @@ const UnifiedLogin = () => {
   const [availableRoles, setAvailableRoles] = useState(['admin', 'project-manager', 'team-leader', 'employee']);
   const [userActualRole, setUserActualRole] = useState(null);
 
-  // Clear form on component mount to prevent autofill
+  // Clear session and Firebase Auth on component mount
   useEffect(() => {
-    // Clear immediately
+    const performLogout = async () => {
+      try {
+        const { AuthService } = await import('../firebase/authService');
+        await AuthService.logout();
+      } catch (e) {
+        console.log('No active session to clear');
+      }
+
+      // Clear localStorage session items
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('pmToken');
+      localStorage.removeItem('tlToken');
+      localStorage.removeItem('userData');
+    };
+
+    performLogout();
+
+    // Clear form
     setFormData({
       identifier: '',
       password: '',
       role: ''
     });
-    
-    // Clear again after a short delay to override any browser autofill
+
     const timer = setTimeout(() => {
-      setFormData(prev => ({
-        ...prev,
-        identifier: '',
-        password: ''
-      }));
+      setFormData(prev => ({ ...prev, identifier: '', password: '' }));
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -42,7 +57,7 @@ const UnifiedLogin = () => {
       [name]: value
     }));
     setError(''); // Clear error when user types
-    
+
     // Check user's actual role when email is entered
     if (name === 'identifier' && value.includes('@')) {
       checkUserRole(value);
@@ -56,18 +71,6 @@ const UnifiedLogin = () => {
       return;
     }
 
-    // Handle common admin usernames (not email format) - suggest but don't force
-    const commonAdminUsernames = ['admin', 'administrator', 'root'];
-    if (commonAdminUsernames.includes(email.toLowerCase())) {
-      console.log('🔍 Detected admin username:', email);
-      setUserActualRole('admin');
-      setAvailableRoles(['admin', 'project-manager', 'team-leader', 'employee']);
-      // Only auto-select if no role is currently selected
-      if (!formData.role) {
-        setFormData(prev => ({ ...prev, role: 'admin' }));
-      }
-      return;
-    }
 
     // For non-email formats, don't auto-select
     if (!email.includes('@')) {
@@ -81,23 +84,23 @@ const UnifiedLogin = () => {
     const usersCurrent = JSON.parse(localStorage.getItem('users_current') || '[]');
     const employees = JSON.parse(localStorage.getItem('employees') || '[]');
     const combinedUsers = [...users, ...usersCurrent, ...employees];
-    
+
     // Find the user by email
-    const user = combinedUsers.find(u => 
+    const user = combinedUsers.find(u =>
       u.email && u.email.toLowerCase() === email.trim().toLowerCase()
     );
-    
+
     if (user) {
       const actualRole = user.role || user.userType || 'employee';
       const normalizedRole = actualRole.toLowerCase();
-      
+
       console.log(`🔍 Found user ${user.name} with role: ${actualRole}`);
       setUserActualRole(actualRole);
-      
+
       // Auto-select the user's role but allow all roles to be clickable
       // The restriction will be enforced during login validation instead
       setAvailableRoles(['admin', 'project-manager', 'team-leader', 'employee']);
-      
+
       // Auto-select the user's actual role only if no role is currently selected
       if (!formData.role) {
         if (normalizedRole === 'admin') {
@@ -122,11 +125,11 @@ const UnifiedLogin = () => {
   // MongoDB deletion test function (can be called from browser console)
   window.testMongoDBDeletion = async (userId) => {
     console.log(`🧪 Testing MongoDB deletion for user ID: ${userId}`);
-    
+
     try {
       // Import the API functions
       const { deleteUser, deleteProjectManager, deleteTeamLeader } = await import('../services/api');
-      
+
       console.log('🔄 Trying deleteUser endpoint...');
       try {
         const result1 = await deleteUser(userId);
@@ -134,7 +137,7 @@ const UnifiedLogin = () => {
         return { success: true, method: 'deleteUser', result: result1 };
       } catch (e1) {
         console.log('❌ deleteUser failed:', e1.message);
-        
+
         console.log('🔄 Trying deleteProjectManager endpoint...');
         try {
           const result2 = await deleteProjectManager(userId);
@@ -142,7 +145,7 @@ const UnifiedLogin = () => {
           return { success: true, method: 'deleteProjectManager', result: result2 };
         } catch (e2) {
           console.log('❌ deleteProjectManager failed:', e2.message);
-          
+
           console.log('🔄 Trying deleteTeamLeader endpoint...');
           try {
             const result3 = await deleteTeamLeader(userId);
@@ -168,12 +171,12 @@ const UnifiedLogin = () => {
       password: 'john123',
       role: 'project-manager'
     };
-    
+
     console.log('🧪 Testing PM login with:', testCredentials);
-    
+
     let storedPMs = JSON.parse(localStorage.getItem('projectManagers') || '[]');
     console.log('📋 Available PMs:', storedPMs);
-    
+
     if (storedPMs.length === 0) {
       console.log('⚠️ No PMs found, creating sample data...');
       // Create sample PMs for testing
@@ -188,14 +191,14 @@ const UnifiedLogin = () => {
       localStorage.setItem('projectManagers', JSON.stringify(samplePMs));
       storedPMs = samplePMs;
     }
-    
-    const matchingPM = storedPMs.find(pm => 
+
+    const matchingPM = storedPMs.find(pm =>
       pm.email && pm.email.toLowerCase() === testCredentials.identifier.toLowerCase()
     );
-    
+
     console.log('🎯 Matching PM:', matchingPM);
     console.log('🔐 Password match:', matchingPM ? matchingPM.password === testCredentials.password : false);
-    
+
     return { storedPMs, matchingPM, passwordMatch: matchingPM ? matchingPM.password === testCredentials.password : false };
   };
 
@@ -205,445 +208,69 @@ const UnifiedLogin = () => {
     setIsLoading(true);
     setError('');
 
-    console.log('🚀 Login attempt started for role:', formData.role);
-    console.log('📝 Form data:', { identifier: formData.identifier, password: formData.password ? '***' : 'empty', role: formData.role });
-
-    // Add timeout to prevent hanging
-    const loginTimeout = setTimeout(() => {
-      setIsLoading(false);
-      setError('Login timeout. Please try again.');
-    }, 5000); // 5 second timeout (reduced from 10)
+    const { identifier, password, role } = formData;
 
     // Basic validation
-    if (!formData.role) {
+    if (!role) {
       setError('Please select your role first');
       setIsLoading(false);
-      clearTimeout(loginTimeout);
-      return;
-    }
-    
-    if (!formData.identifier.trim()) {
-      setError('Please enter your email address');
-      setIsLoading(false);
-      clearTimeout(loginTimeout);
-      return;
-    }
-    
-    if (!formData.password.trim()) {
-      setError('Please enter your password');
-      setIsLoading(false);
-      clearTimeout(loginTimeout);
       return;
     }
 
-    // Skip role verification for admin to speed up login
-    if (formData.role !== 'admin') {
-      console.log('🔍 Checking user role restrictions...');
-      
-      try {
-        // Get all users from localStorage to check their actual role
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const usersCurrent = JSON.parse(localStorage.getItem('users_current') || '[]');
-        const employees = JSON.parse(localStorage.getItem('employees') || '[]');
-        const combinedUsers = [...users, ...usersCurrent, ...employees];
-        
-        // Find the user by email first (regardless of role selection)
-        const actualUser = combinedUsers.find(user => 
-          user.email && user.email.toLowerCase() === formData.identifier.trim().toLowerCase()
-        );
-        
-        if (actualUser) {
-          const actualRole = actualUser.role || actualUser.userType || 'employee';
-          const normalizedActualRole = actualRole.toLowerCase();
-          const selectedRole = formData.role.toLowerCase();
-          
-          console.log(`👤 Found user: ${actualUser.name}`);
-          console.log(`🏷️ User's actual role: ${actualRole}`);
-          console.log(`🎯 Selected role: ${formData.role}`);
-          
-          // Role matching with intern→employee mapping
-          const isValidRoleMatch = normalizedActualRole === selectedRole || 
-            // Allow interns to access employee dashboard
-            (normalizedActualRole === 'intern' && selectedRole === 'employee');
-          
-          if (!isValidRoleMatch) {
-            console.log(`❌ Role mismatch! User role: ${actualRole}, Selected: ${formData.role}`);
-            setError(`Access denied. Your account is registered as "${actualRole}" and cannot access the "${formData.role}" dashboard.`);
-            setIsLoading(false);
-            return;
-          }
-          
-          if (normalizedActualRole === 'intern' && selectedRole === 'employee') {
-            console.log('✅ Role verification passed (intern accessing employee dashboard)');
-          } else {
-            console.log('✅ Role verification passed');
-          }
-        }
-      } catch (roleCheckError) {
-        console.log('⚠️ Role check failed, proceeding with authentication');
-      }
+    if (!identifier.trim() || !password.trim()) {
+      setError('Please enter both email and password');
+      setIsLoading(false);
+      return;
     }
 
-    // Handle different authentication methods separately
-    if (formData.role === 'admin') {
-      try {
-        console.log('👑 Admin login attempt');
-        
-        // Fast admin authentication - check common admin credentials first
-        const commonAdminCredentials = [
-          { username: 'admin', password: 'admin123' },
-          { username: 'admin', password: 'admin' },
-          { email: 'admin@company.com', password: 'admin123' },
-          { email: 'admin@admin.com', password: 'admin' }
-        ];
-        
-        const isCommonAdmin = commonAdminCredentials.some(cred => 
-          (cred.username && formData.identifier.toLowerCase() === cred.username.toLowerCase() && formData.password === cred.password) ||
-          (cred.email && formData.identifier.toLowerCase() === cred.email.toLowerCase() && formData.password === cred.password)
-        );
-        
-        if (isCommonAdmin) {
-          // Fast admin login for common credentials
-          localStorage.setItem('adminToken', 'admin-token-' + Date.now());
-          localStorage.setItem('adminAuth', JSON.stringify({ 
-            token: 'admin-token-' + Date.now(), 
-            admin: { username: formData.identifier, role: 'admin' } 
-          }));
-          localStorage.setItem('userRole', 'admin');
-          localStorage.setItem('userEmail', formData.identifier);
-          localStorage.setItem('userName', 'Admin User');
-          localStorage.setItem('isAuthenticated', 'true');
-          
-          console.log('✅ Fast admin login successful');
-          clearTimeout(loginTimeout);
-          navigate('/dashboard');
-          return;
-        }
-        
-        // Fallback to API authentication for other admin credentials
-        try {
-          const { adminLogin } = await import('../services/api');
-          const response = await adminLogin({
-            username: formData.identifier,
-            password: formData.password
-          });
-          
-          localStorage.setItem('adminToken', response.token);
-          localStorage.setItem('adminAuth', JSON.stringify({ token: response.token, admin: response.admin }));
-          localStorage.setItem('userRole', 'admin');
-          localStorage.setItem('isAuthenticated', 'true');
-          
-          console.log('✅ API admin login successful');
-          clearTimeout(loginTimeout);
-          navigate('/dashboard');
-        } catch (apiError) {
-          console.error('❌ API admin login failed:', apiError);
-          setError('Invalid admin credentials');
-        }
-      } catch (adminError) {
-        console.error('❌ Admin login error:', adminError);
-        setError('Invalid admin credentials');
+    try {
+      console.log(`🚀 Attempting Login for ${identifier} as ${role}`);
+
+
+      // Import the dynamic auth service
+      const { AuthService } = await import('../firebase/authService');
+
+      // Authenticate with Firebase
+      const result = await AuthService.login(identifier, password, role);
+
+      if (result && result.user) {
+        const { user, token } = result;
+
+        // Store session data for dashboard compatibility
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('userEmail', identifier);
+        localStorage.setItem('userName', user.name || 'User');
+        localStorage.setItem('userData', JSON.stringify(user));
+        localStorage.setItem('token', token);
+
+        // Role-specific tokens for legacy components
+        if (role === 'admin') localStorage.setItem('adminToken', token);
+        if (role === 'project-manager') localStorage.setItem('pmToken', token);
+        if (role === 'team-leader') localStorage.setItem('tlToken', token);
+
+        console.log('✅ Login successful, redirecting...');
+        navigate('/dashboard');
       }
-    } else {
-      try {
-        // Handle Project Manager authentication - check dynamic user database
-        if (formData.role === 'project-manager') {
-          console.log('👨‍💼 Project Manager login attempt');
-          
-          try {
-            // Get all users from the main user database
-            const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            const usersCurrent = JSON.parse(localStorage.getItem('users_current') || '[]');
-            const projectManagers = JSON.parse(localStorage.getItem('projectManagers') || '[]');
-            
-            console.log('📊 Data sources:');
-            console.log('- allUsers:', allUsers.length, allUsers.map(u => ({name: u.name, email: u.email, role: u.role})));
-            console.log('- usersCurrent:', usersCurrent.length, usersCurrent.map(u => ({name: u.name, email: u.email, role: u.role})));
-            console.log('- projectManagers:', projectManagers.length, projectManagers.map(u => ({name: u.name, email: u.email, role: u.role})));
-            
-            // Combine all user sources
-            const combinedUsers = [...allUsers, ...usersCurrent, ...projectManagers];
-            
-            console.log('🔍 Checking all users for Project Manager role:', combinedUsers.length);
-            
-            // Check if raw@gmail.com exists, if not create it
-            const rawExists = combinedUsers.find(user => 
-              user.email && user.email.toLowerCase() === 'raw@gmail.com'
-            );
-            
-            if (!rawExists) {
-              console.log('⚠️ raw@gmail.com not found, creating Project Manager entry...');
-              const rawPM = {
-                id: 'PM_RAW_' + Date.now(),
-                name: 'Raw Manager',
-                email: 'raw@gmail.com',
-                role: 'project-manager',
-                userType: 'Project Manager',
-                password: 'raw123',
-                department: 'Operations',
-                status: 'Active',
-                phone: '9876543210',
-                experience: '4-6 years',
-                specialization: 'Project Management',
-                salary: '70000',
-                joiningDate: new Date().toISOString().split('T')[0]
-              };
-              
-              // Add to all relevant storage locations
-              const currentUsers = JSON.parse(localStorage.getItem('users') || '[]');
-              const currentPMs = JSON.parse(localStorage.getItem('projectManagers') || '[]');
-              
-              currentUsers.push(rawPM);
-              currentPMs.push(rawPM);
-              
-              localStorage.setItem('users', JSON.stringify(currentUsers));
-              localStorage.setItem('projectManagers', JSON.stringify(currentPMs));
-              
-              combinedUsers.push(rawPM);
-              console.log('✅ Created raw@gmail.com as Project Manager');
-            }
-            
-            // If no users found at all, create some sample data for testing
-            if (combinedUsers.length === 0) {
-              console.log('⚠️ No users found, creating sample Project Managers...');
-              const samplePMs = [
-                {
-                  id: 'PM001',
-                  name: 'John Doe',
-                  email: 'john@company.com',
-                  role: 'project-manager',
-                  userType: 'Project Manager',
-                  password: 'john123',
-                  department: 'Web Developer',
-                  status: 'Active'
-                },
-                {
-                  id: 'PM002', 
-                  name: 'Raw Manager',
-                  email: 'raw@gmail.com',
-                  role: 'project-manager',
-                  userType: 'Project Manager',
-                  password: 'raw123',
-                  department: 'Operations',
-                  status: 'Active'
-                }
-              ];
-              
-              // Save to localStorage
-              localStorage.setItem('users', JSON.stringify(samplePMs));
-              localStorage.setItem('projectManagers', JSON.stringify(samplePMs));
-              combinedUsers.push(...samplePMs);
-              console.log('✅ Created sample Project Managers');
-            }
-            
-            // Find users with project-manager role
-            const projectManagerUsers = combinedUsers.filter(user => {
-              const isProjectManager = 
-                user.role === 'project-manager' || 
-                user.userType === 'Project Manager' ||
-                user.role === 'Project Manager' ||
-                user.userType === 'project-manager';
-              
-              console.log(`User ${user.name}: role=${user.role}, userType=${user.userType}, isProjectManager=${isProjectManager}`);
-              return isProjectManager;
-            });
-            
-            console.log('📋 Found Project Manager users:', projectManagerUsers.length);
-            console.log('📋 PM users:', projectManagerUsers.map(pm => ({ 
-              name: pm.name, 
-              email: pm.email, 
-              role: pm.role, 
-              userType: pm.userType 
-            })));
-            
-            // Find matching Project Manager by email
-            const matchingPM = projectManagerUsers.find(pm => {
-              const emailMatch = pm.email && pm.email.toLowerCase() === formData.identifier.trim().toLowerCase();
-              const passwordMatch = pm.password === formData.password.trim();
-              
-              console.log(`Checking PM ${pm.name}:`, {
-                email: pm.email,
-                emailMatch,
-                passwordMatch,
-                storedPassword: pm.password,
-                enteredPassword: formData.password.trim()
-              });
-              
-              return emailMatch && passwordMatch;
-            });
-            
-            console.log('🎯 Matching PM found:', matchingPM ? matchingPM.name : 'None');
-            
-            if (matchingPM) {
-              // Store PM info in localStorage
-              localStorage.setItem('userRole', 'project-manager');
-              localStorage.setItem('userEmail', matchingPM.email);
-              localStorage.setItem('userName', matchingPM.name);
-              localStorage.setItem('pmToken', 'pm-token-' + (matchingPM.id || matchingPM._id || Date.now()));
-              localStorage.setItem('isAuthenticated', 'true');
-              localStorage.setItem('userData', JSON.stringify(matchingPM));
-              
-              console.log('✅ Dynamic PM login successful for:', matchingPM.name);
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-              navigate('/dashboard');
-              return;
-            } else {
-              // Check if email exists but wrong password
-              const emailExists = projectManagerUsers.find(pm => 
-                pm.email && pm.email.toLowerCase() === formData.identifier.trim().toLowerCase()
-              );
-              
-              if (emailExists) {
-                console.log('❌ Email found but wrong password');
-                setError('Incorrect password for this Project Manager account');
-              } else {
-                console.log('❌ Email not found in Project Manager database');
-                console.log('Available PM emails:', projectManagerUsers.map(pm => pm.email));
-                setError(`Email "${formData.identifier}" is not registered as a Project Manager. Please contact admin to add you as a Project Manager.`);
-              }
-              
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-              return;
-            }
-          } catch (pmError) {
-            console.error('❌ PM authentication error:', pmError);
-            setError('Error during Project Manager authentication');
-            clearTimeout(loginTimeout);
-            setIsLoading(false);
-            return;
-          }
-        } else if (formData.role === 'team-leader') {
-          // Team Leader authentication - check all users with team-leader role
-          try {
-            console.log('🔍 Attempting Team Leader login...');
-            
-            // Get all users from localStorage and filter for team leaders
-            const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            const teamLeaderUsers = allUsers.filter(user => user.role === 'team-leader');
-            
-            console.log('📋 Available Team Leader Users:', teamLeaderUsers.length);
-            
-            // Find matching team leader by email, username, or name
-            const matchingTL = teamLeaderUsers.find(user => {
-              const emailMatch = user.email && user.email.toLowerCase() === formData.identifier.trim().toLowerCase();
-              const usernameMatch = user.username && user.username.toLowerCase() === formData.identifier.trim().toLowerCase();
-              const nameMatch = user.name && user.name.toLowerCase() === formData.identifier.trim().toLowerCase();
-              
-              return emailMatch || usernameMatch || nameMatch;
-            });
-            
-            console.log('🎯 Matching Team Leader found:', matchingTL ? matchingTL.name : 'None');
-            
-            if (matchingTL && matchingTL.password === formData.password.trim()) {
-              // Store team leader info in localStorage
-              localStorage.setItem('userRole', 'team-leader');
-              localStorage.setItem('userEmail', matchingTL.email);
-              localStorage.setItem('userName', matchingTL.name);
-              localStorage.setItem('tlToken', 'tl-token-' + (matchingTL.id || matchingTL._id));
-              localStorage.setItem('isAuthenticated', 'true');
-              localStorage.setItem('userData', JSON.stringify(matchingTL));
-              
-              console.log('✅ Team leader login successful:', matchingTL.name);
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-              navigate('/dashboard');
-              return;
-            } else {
-              console.log('❌ Team leader login failed - Invalid credentials or no team leader role');
-              setError('Invalid Team Leader credentials or user does not have team leader role');
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-              return;
-            }
-          } catch (tlError) {
-            console.error('❌ Team Leader authentication error:', tlError);
-            setError('Error during Team Leader authentication');
-            clearTimeout(loginTimeout);
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // For employee role (including interns), check against actual user management system
-          console.log('👤 Employee login attempt (includes users with intern role)');
-          
-          try {
-            // Get all users from localStorage (from user management system)
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const usersCurrent = JSON.parse(localStorage.getItem('users_current') || '[]');
-            const employees = JSON.parse(localStorage.getItem('employees') || '[]');
-            
-            console.log('📋 Available users:', users.length);
-            console.log('📋 Available users_current:', usersCurrent.length);
-            console.log('📋 Available employees:', employees.length);
-            
-            // Combine all user sources (prioritize the main 'users' key)
-            const combinedUsers = [...users, ...usersCurrent, ...employees];
-            
-            // Find matching user by email and password
-            const matchingUser = combinedUsers.find(user => {
-              const emailMatch = user.email && user.email.toLowerCase() === formData.identifier.trim().toLowerCase();
-              const passwordMatch = user.password === formData.password.trim();
-              
-              // Check role matching - be flexible with role types
-              const roleMatch = 
-                user.role === formData.role || 
-                user.userType === formData.role ||
-                (user.role && user.role.toLowerCase() === formData.role.toLowerCase()) ||
-                (user.userType && user.userType.toLowerCase() === formData.role.toLowerCase()) ||
-                // IMPORTANT: Allow users with 'intern' role to login using 'Employee' button
-                // This enables interns to access the system since we removed the Intern button
-                (formData.role === 'employee' && (user.role === 'intern' || user.userType === 'intern' || user.userType === 'Intern'));
-              
-              console.log(`🔍 Checking user ${user.name}: email=${emailMatch}, password=${passwordMatch}, role=${roleMatch} (user.role=${user.role}, user.userType=${user.userType}, formData.role=${formData.role}, intern->employee: ${formData.role === 'employee' && (user.role === 'intern' || user.userType === 'intern')})`);
-              
-              return emailMatch && passwordMatch && roleMatch;
-            });
-            
-            console.log('🔍 Looking for user:', formData.identifier);
-            console.log('🔍 User found:', matchingUser ? matchingUser.name : 'No match');
-            
-            if (matchingUser) {
-              // Store user info in localStorage
-              // For interns, store role as 'employee' to ensure they get employee dashboard
-              const effectiveRole = (matchingUser.role === 'intern' || matchingUser.userType === 'intern' || matchingUser.userType === 'Intern') 
-                ? 'employee' 
-                : (matchingUser.role || matchingUser.userType || formData.role);
-              
-              localStorage.setItem('userRole', effectiveRole);
-              localStorage.setItem('userEmail', matchingUser.email);
-              localStorage.setItem('userName', matchingUser.name);
-              localStorage.setItem('userData', JSON.stringify(matchingUser));
-              localStorage.setItem('isAuthenticated', 'true');
-              
-              console.log('✅ Employee login successful:', matchingUser.name, 
-                `(Original role: ${matchingUser.role || matchingUser.userType}, Effective role: ${effectiveRole})`);
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-              navigate('/dashboard');
-            } else {
-              console.log('❌ Employee login failed - Invalid credentials');
-              setError('Invalid credentials for the selected role');
-              clearTimeout(loginTimeout);
-              setIsLoading(false);
-            }
-          } catch (employeeError) {
-            console.error('❌ Employee authentication error:', employeeError);
-            setError('Error during authentication');
-            clearTimeout(loginTimeout);
-            setIsLoading(false);
-          }
-        }
-      } catch (otherRoleError) {
-        console.error('❌ Other role login error:', otherRoleError);
-        setError('Login failed. Please check your credentials.');
+    } catch (err) {
+      console.error('❌ Detailed Login error:', err);
+      console.error('❌ Error Code:', err.code);
+      console.error('❌ Error Message:', err.message);
+
+      let friendlyMessage = 'Login failed. Please check your credentials and role.';
+
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        friendlyMessage = 'Invalid email or password. Please verify your credentials in Firebase Auth.';
+      } else if (err.code === 'ROLE_MISMATCH' || err.message.includes('Access Denied')) {
+        friendlyMessage = err.message;
+      } else if (err.code === 'auth/too-many-requests') {
+        friendlyMessage = 'Too many failed login attempts. Please try again later.';
       }
+
+      setError(friendlyMessage);
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Clear timeout and reset loading state
-    clearTimeout(loginTimeout);
-    setIsLoading(false);
   };
 
   return (
@@ -659,32 +286,32 @@ const UnifiedLogin = () => {
 
         {/* Role Selection Buttons */}
         <div className="role-buttons">
-          
-          <button 
-            type="button" 
+
+          <button
+            type="button"
             className={`role-btn ${formData.role === 'admin' ? 'active' : ''}`}
-            onClick={() => setFormData(prev => ({...prev, role: 'admin'}))}
+            onClick={() => setFormData(prev => ({ ...prev, role: 'admin' }))}
           >
             <i className="bx bx-crown"></i> Admin
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`role-btn ${formData.role === 'project-manager' ? 'active' : ''}`}
-            onClick={() => setFormData(prev => ({...prev, role: 'project-manager'}))}
+            onClick={() => setFormData(prev => ({ ...prev, role: 'project-manager' }))}
           >
             <i className="bx bx-briefcase"></i> Project Manager
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`role-btn ${formData.role === 'team-leader' ? 'active' : ''}`}
-            onClick={() => setFormData(prev => ({...prev, role: 'team-leader'}))}
+            onClick={() => setFormData(prev => ({ ...prev, role: 'team-leader' }))}
           >
             <i className="bx bx-group"></i> Team Leader
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`role-btn ${formData.role === 'employee' ? 'active' : ''}`}
-            onClick={() => setFormData(prev => ({...prev, role: 'employee'}))}
+            onClick={() => setFormData(prev => ({ ...prev, role: 'employee' }))}
           >
             <i className="bx bx-user"></i> Employee
           </button>
@@ -693,9 +320,9 @@ const UnifiedLogin = () => {
 
         <form onSubmit={handleSubmit} className="login-form" autoComplete="off">
           {/* Hidden dummy fields to prevent autofill */}
-          <input type="text" style={{display: 'none'}} />
-          <input type="password" style={{display: 'none'}} />
-          
+          <input type="text" style={{ display: 'none' }} />
+          <input type="password" style={{ display: 'none' }} />
+
           <div className="form-group">
             <label htmlFor="identifier" className="form-label">Email address</label>
             <input
@@ -758,6 +385,53 @@ const UnifiedLogin = () => {
               'Sign in'
             )}
           </button>
+
+          {/* Connection Test Section */}
+          <div style={{ marginTop: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                const { testFirestoreConnection } = await import('../firebase/testFirestore');
+                const result = await testFirestoreConnection();
+                alert(result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid #ddd',
+                padding: '8px 15px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                color: '#666',
+                width: 'fit-content'
+              }}
+            >
+              <i className='bx bx-signal-5'></i> Test Firestore Connection
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                const confirmSeed = window.confirm("This will populate your Firestore with sample data. Continue?");
+                if (!confirmSeed) return;
+                const { seedFirestore } = await import('../firebase/seedFirestore');
+                const result = await seedFirestore();
+                alert(result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid #e3f2fd',
+                padding: '8px 15px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                color: '#1976d2',
+                width: 'fit-content'
+              }}
+            >
+              <i className='bx bx-cloud-upload'></i> Seed Mock Data to Firestore
+            </button>
+          </div>
 
           <div className="signup-link">
             <p>Don't have an account? <a href="#" className="link">Sign up</a></p>

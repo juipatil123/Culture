@@ -4,6 +4,7 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     department: '',
     teamSize: 0,
     projectsManaged: 0,
@@ -17,6 +18,7 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
       setFormData({
         name: editingLeader.name || '',
         email: editingLeader.email || '',
+        password: '', // Don't pre-fill password
         department: editingLeader.department || '',
         teamSize: editingLeader.teamSize || 0,
         projectsManaged: editingLeader.projectsManaged || 0,
@@ -28,6 +30,7 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
       setFormData({
         name: '',
         email: '',
+        password: '',
         department: '',
         teamSize: 0,
         projectsManaged: 0,
@@ -40,14 +43,25 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
+    // Validate password for new user
+    if (!editingLeader && (!formData.password || formData.password.length < 6)) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+
     const leaderData = {
       ...formData,
       teamSize: parseInt(formData.teamSize) || 0,
       projectsManaged: parseInt(formData.projectsManaged) || 0,
       skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill)
     };
-    
+
+    // Remove empty password if editing (so it doesn't overwrite with empty)
+    if (editingLeader && !leaderData.password) {
+      delete leaderData.password;
+    }
+
     onSave(leaderData);
     onHide();
   };
@@ -63,7 +77,7 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
@@ -104,6 +118,35 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
 
               <div className="row">
                 <div className="col-md-6 mb-3">
+                  <label className="form-label">
+                    {editingLeader ? 'New Password (leave blank to keep current)' : 'Password *'}
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder={editingLeader ? "Enter new password" : "Enter password"}
+                    required={!editingLeader}
+                    minLength={6}
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    className="form-control"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-12 mb-3">
                   <label className="form-label">Department *</label>
                   <select
                     className="form-select"
@@ -124,17 +167,6 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
                     <option value="Human Resources">Human Resources</option>
                     <option value="Finance">Finance</option>
                   </select>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <label className="form-label">Phone Number</label>
-                  <input
-                    type="tel"
-                    className="form-control"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="Enter phone number"
-                  />
                 </div>
               </div>
 

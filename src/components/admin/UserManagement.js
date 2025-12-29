@@ -107,7 +107,7 @@ const UserManagement = () => {
       if (error.response) {
         console.error('📡 Server responded with:', error.response.status, error.response.data);
       }
-      alert('Failed to save user. Please try again.');
+      alert(error.message || 'Failed to save user. Please try again.');
     }
   };
 
