@@ -19,53 +19,16 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
   const currentUserRole = localStorage.getItem('userRole') || '';
   const currentUserEmail = localStorage.getItem('userEmail') || '';
 
-  // Get projects managed by current PM
+  // Get projects
   const getAvailableProjects = () => {
-    if (currentUserRole === 'project-manager') {
-      return projects.filter(project =>
-        project.projectManager === currentUserName ||
-        project.projectManager === currentUserEmail
-      );
-    }
-    // For other roles, show all projects
-    return projects;
+    // Return all projects for everyone to ensure visibility
+    return Array.isArray(projects) ? projects : [];
   };
 
-  // Get employees assigned to current PM's projects
+  // Get all employees/users
   const getAvailableEmployees = () => {
-    if (currentUserRole === 'project-manager') {
-      // Get projects managed by current PM
-      const pmProjects = projects.filter(project =>
-        project.projectManager === currentUserName ||
-        project.projectManager === currentUserEmail
-      );
-
-      // Get all employees assigned to these projects
-      const employeesInProjects = new Set();
-      pmProjects.forEach(project => {
-        if (project.assigned && Array.isArray(project.assigned)) {
-          project.assigned.forEach(member => {
-            if (typeof member === 'object' && member.name) {
-              employeesInProjects.add(member.name);
-            } else if (typeof member === 'string') {
-              employeesInProjects.add(member);
-            }
-          });
-        }
-      });
-
-      // Filter users to only show employees in PM's projects
-      return allUsers.filter(user =>
-        (user.role === 'employee' || user.role === 'intern' || user.userType === 'Employee' || user.userType === 'Intern') &&
-        (employeesInProjects.has(user.name) || employeesInProjects.has(user.email))
-      );
-    }
-
-    // For other roles, show all employees
-    return allUsers.filter(user =>
-      user.role === 'employee' || user.role === 'intern' ||
-      user.userType === 'Employee' || user.userType === 'Intern'
-    );
+    // Show all users as requested
+    return Array.isArray(allUsers) ? allUsers : [];
   };
 
   // Populate form when editing or opening
@@ -90,7 +53,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           status: 'assigned', // Default status for new tasks
           priority: 'medium',
           dueDate: '',
-          assignedBy: currentUserName, // Auto-fill with current user's name
+          assignedBy: currentUserName, // Auto-fill with current user's name but allow editing
           project: '',
           assignedTo: ''
         });
@@ -169,13 +132,35 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                   </select>
                   <div className="form-text">
                     <i className="fas fa-info-circle me-1"></i>
-                    {currentUserRole === 'project-manager'
-                      ? 'Showing your managed projects'
-                      : 'Select a project for this task'}
+                    Select a project for this task
                   </div>
                 </div>
               </div>
+
+              {/* Row 2: Assigned To & Priority */}
               <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Assigned To *</label>
+                  <select
+                    className="form-select"
+                    name="assignedTo"
+                    value={formData.assignedTo}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select an employee</option>
+                    {getAvailableEmployees().map((employee, index) => (
+                      <option key={employee.id || employee._id || index} value={employee.email || employee.name}>
+                        {employee.name} {employee.email ? `(${employee.email})` : ''}
+                        {employee.role ? ` - ${employee.role}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="form-text">
+                    <i className="fas fa-info-circle me-1"></i>
+                    Select an employee to assign this task
+                  </div>
+                </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Priority</label>
                   <select
@@ -189,6 +174,20 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     <option value="high">High</option>
                     <option value="urgent">Urgent</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Row 3: Due Date & Status */}
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Due Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Status</label>
@@ -214,17 +213,9 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                   </div>
                 </div>
               </div>
+
+              {/* Row 4: Assigned By */}
               <div className="row">
-                <div className="col-md-6 mb-3">
-                  <label className="form-label">Due Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    name="dueDate"
-                    value={formData.dueDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Assigned By</label>
                   <input
@@ -234,39 +225,14 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     value={formData.assignedBy}
                     onChange={handleInputChange}
                     placeholder="Enter assigner name"
-                    readOnly
-                    style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed' }}
                   />
                   <div className="form-text">
                     <i className="fas fa-info-circle me-1"></i>
-                    Auto-filled with your name
+                    Can be edited if needed
                   </div>
                 </div>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Assigned To</label>
-                <select
-                  className="form-select"
-                  name="assignedTo"
-                  value={formData.assignedTo}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select an employee</option>
-                  {getAvailableEmployees().map((employee, index) => (
-                    <option key={employee.id || employee._id || index} value={employee.email || employee.name}>
-                      {employee.name} {employee.email ? `(${employee.email})` : ''}
-                      {employee.assignedProject ? ` - ${employee.assignedProject}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <div className="form-text">
-                  <i className="fas fa-info-circle me-1"></i>
-                  {currentUserRole === 'project-manager'
-                    ? 'Showing employees assigned to your projects'
-                    : 'Select an employee to assign this task'}
-                </div>
-              </div>
+
               <div className="mb-3">
                 <label className="form-label">Task Description</label>
                 <textarea

@@ -149,7 +149,7 @@ const ProjectManagement = () => {
   return (
     <div className="project-management">
       <div className="page-header">
-        <h2>Project Management</h2>
+        <h2>Project Management ({projects.length})</h2>
         <button className="btn btn-primary" onClick={handleAddProject}>
           <i className="fas fa-plus me-2"></i>
           Add Project

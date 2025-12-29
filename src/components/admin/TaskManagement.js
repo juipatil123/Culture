@@ -3,7 +3,7 @@ import { getAllTasks, createTask, updateTask, deleteTask } from '../../services/
 import AddTaskModal from '../AddTaskModal';
 import './AdminComponents.css';
 
-const TaskManagement = () => {
+const TaskManagement = ({ projects = [], allUsers = [] }) => {
   const [assignedTasks, setAssignedTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -282,6 +282,8 @@ const TaskManagement = () => {
           }}
           onSave={handleSaveTask}
           editingTask={editingTask}
+          projects={projects}
+          allUsers={allUsers}
         />
       )}
     </div>
