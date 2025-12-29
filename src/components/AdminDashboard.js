@@ -13,7 +13,9 @@ import ProjectManagement from './admin/ProjectManagement';
 import TaskManagement from './admin/TaskManagement';
 import RoleManagement from './admin/RoleManagement';
 import PointsScheme from './admin/PointsScheme';
+
 import AdminOverview from './admin/AdminOverview';
+import Reports from './admin/Reports';
 
 import {
   getAllUsers,
@@ -644,6 +646,8 @@ const AdminDashboard = ({ userData, onLogout }) => {
       setActiveView('projects');
     } else if (menuItem === 'Task Assignment') {
       setActiveView('assigned-tasks');
+    } else if (menuItem === 'Reports') {
+      setActiveView('reports');
     }
     setIsMobileSidebarOpen(false);
   };
@@ -729,24 +733,19 @@ const AdminDashboard = ({ userData, onLogout }) => {
           >
             <i className="fas fa-bars"></i>
           </button>
-          <h2>Admin Dashboard</h2>
         </div>
         <div className="header-right">
           <div className="user-info">
-            <span className="user-name">{userName}</span>
+
             <span className="user-role badge bg-danger">Admin</span>
           </div>
-          <button className="btn btn-outline-danger" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt me-2"></i>
-            Logout
-          </button>
         </div>
       </div>
 
       {/* Sidebar */}
       <div className={`dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-          <h3>Admin Panel</h3>
+          <h3 className="text-primary fw-bold mb-0">Admin Dashboard</h3>
           <button
             className="mobile-close"
             onClick={() => setIsMobileSidebarOpen(false)}
@@ -805,8 +804,20 @@ const AdminDashboard = ({ userData, onLogout }) => {
                 <span>Points Scheme</span>
               </a>
             </li>
+            <li className={activeView === 'reports' ? 'active' : ''}>
+              <a onClick={() => handleMenuClick('Reports')}>
+                <i className="fas fa-file-alt"></i>
+                <span>Reports</span>
+              </a>
+            </li>
           </ul>
         </nav>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            <i className="fas fa-sign-out-alt me-2"></i>
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -874,7 +885,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         )}
 
         {activeView === 'assigned-tasks' && (
-          <TaskManagement />
+          <TaskManagement
+            projects={projects}
+            allUsers={allUsers}
+          />
         )}
 
         {activeView === 'role-management' && (
@@ -883,6 +897,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
 
         {activeView === 'points-scheme' && (
           <PointsScheme />
+        )}
+
+        {activeView === 'reports' && (
+          <Reports />
         )}
       </div>
 
