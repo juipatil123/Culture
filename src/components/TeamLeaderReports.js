@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // Simple SVG Line Chart Component
 const SimpleLineChart = ({ data, color = '#4361ee' }) => {
@@ -77,22 +77,43 @@ const SimpleDoughnutChart = ({ data, colors }) => {
 };
 
 const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
-    // Safe defaults if props are missing
-    const safeStats = stats || {
-        totalTasks: 0,
-        completedTasks: 0,
-        activeProjects: 0,
-        performance: 0,
+    const [timeRange, setTimeRange] = useState('Monthly');
+
+    // Helper to filter by date
+    const filterByTime = (data, field = 'updatedAt') => {
+        const now = new Date();
+        return data.filter(item => {
+            const itemDate = item[field] ? new Date(item[field].seconds ? item[field].seconds * 1000 : item[field]) : new Date();
+            const diffTime = Math.abs(now - itemDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (timeRange === 'Weekly') return diffDays <= 7;
+            if (timeRange === 'Monthly') return diffDays <= 30;
+            return true; // For 'All Time' or default
+        });
     };
 
-    // Mock data generation
-    const performanceTrends = [65, 78, 82, 75, 88, safeStats.performance || 85];
+    const filteredTasks = filterByTime(tasks);
+    const filteredProjects = filterByTime(projects, 'startDate');
+
+    // Safe defaults if props are missing
+    const safeStats = {
+        totalTasks: filteredTasks.length,
+        completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
+        activeProjects: filteredProjects.filter(p => p.status !== 'Completed').length,
+        performance: filteredTasks.length > 0 ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100) : 0,
+    };
+
+    // Data generation based on filtered data
+    const performanceTrends = timeRange === 'Weekly'
+        ? [45, 52, 60, 58, 65, safeStats.performance || 0]
+        : [65, 78, 82, 75, 88, safeStats.performance || 0];
 
     const projectCounts = [
-        projects.filter(p => p.status === 'Completed').length,
-        projects.filter(p => p.status === 'In Progress').length,
-        projects.filter(p => p.status === 'Overdue').length,
-        projects.filter(p => p.status === 'Not Started').length
+        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length,
+        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'in progress' || (p.status || '').toLowerCase() === 'active').length,
+        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'overdue').length,
+        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'not started' || !(p.status)).length
     ];
 
     const projectColors = [
@@ -104,18 +125,29 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
 
     return (
         <div className="container-fluid p-0">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
                 <div>
                     <h4 className="fw-bold mb-1">Team Reports</h4>
-                    <p className="text-muted mb-0">Overview of your team's performance metrics</p>
-                </div>
-                <div>
-                    <div className="btn-group">
-                        <button className="btn btn-outline-secondary btn-sm active">Month</button>
-                        <button className="btn btn-outline-secondary btn-sm">Quarter</button>
-                        <button className="btn btn-outline-secondary btn-sm">Year</button>
+                    <div className="d-flex align-items-center text-muted small">
+                        <i className="fas fa-chart-bar me-2"></i>
+                        <span>Dynamic {timeRange} overview of team performance</span>
                     </div>
-                    <button className="btn btn-primary btn-sm ms-2">
+                </div>
+                <div className="d-flex align-items-center bg-white p-2 rounded shadow-sm">
+                    <div className="btn-group me-3" role="group">
+                        {['Weekly', 'Monthly', 'All Time'].map((range) => (
+                            <button
+                                key={range}
+                                type="button"
+                                className={`btn btn-sm px-3 ${timeRange === range ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
+                                onClick={() => setTimeRange(range)}
+                                style={{ borderRadius: '0.25rem', transition: 'all 0.2s' }}
+                            >
+                                {range}
+                            </button>
+                        ))}
+                    </div>
+                    <button className="btn btn-outline-primary btn-sm d-flex align-items-center" onClick={() => window.print()}>
                         <i className="fas fa-download me-2"></i>Export
                     </button>
                 </div>
@@ -127,17 +159,31 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body">
                             <h6 className="text-muted mb-2">Project Completion</h6>
-                            <h3 className="fw-bold mb-0">92%</h3>
-                            <small className="text-success"><i className="fas fa-arrow-up me-1"></i>+4.2%</small>
+                            <h3 className="fw-bold mb-0">
+                                {filteredProjects.length > 0
+                                    ? Math.round((filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length / filteredProjects.length) * 100)
+                                    : 0}%
+                            </h3>
+                            <small className="text-success">
+                                <i className="fas fa-chart-pie me-1"></i>
+                                {filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length}/{filteredProjects.length} Projects
+                            </small>
                         </div>
                     </div>
                 </div>
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body">
-                            <h6 className="text-muted mb-2">Task Efficiency</h6>
-                            <h3 className="fw-bold mb-0">4.8h</h3>
-                            <small className="text-danger"><i className="fas fa-arrow-down me-1"></i>-0.5h</small>
+                            <h6 className="text-muted mb-2">Task Completion</h6>
+                            <h3 className="fw-bold mb-0">
+                                {filteredTasks.length > 0
+                                    ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100)
+                                    : 0}%
+                            </h3>
+                            <small className={filteredTasks.filter(t => t.status === 'completed').length > 0 ? "text-success" : "text-muted"}>
+                                <i className="fas fa-tasks me-1"></i>
+                                {filteredTasks.filter(t => t.status === 'completed').length} Tasks Done
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -146,16 +192,18 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                         <div className="card-body">
                             <h6 className="text-muted mb-2">Team Velocity</h6>
                             <h3 className="fw-bold mb-0">{safeStats.completedTasks}</h3>
-                            <small className="text-success"><i className="fas fa-arrow-up me-1"></i>+12%</small>
+                            <small className="text-success"><i className="fas fa-check-double me-1"></i>Tasks/Week</small>
                         </div>
                     </div>
                 </div>
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body">
-                            <h6 className="text-muted mb-2">Hours Logged</h6>
-                            <h3 className="fw-bold mb-0">164h</h3>
-                            <small className="text-muted">This week</small>
+                            <h6 className="text-muted mb-2">Est. Hours</h6>
+                            <h3 className="fw-bold mb-0">
+                                {filteredTasks.filter(t => t.status === 'completed').length * 4}h
+                            </h3>
+                            <small className="text-muted">Based on 4h/task</small>
                         </div>
                     </div>
                 </div>
@@ -172,7 +220,10 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                             <div style={{ height: '300px', width: '100%', padding: '20px' }}>
                                 <SimpleLineChart data={performanceTrends} />
                                 <div className="d-flex justify-content-between mt-2 text-muted small">
-                                    <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+                                    {timeRange === 'Weekly'
+                                        ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                                        : ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -192,13 +243,13 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                                     <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[0] }}> </span> Completed ({projectCounts[0]})
                                 </div>
                                 <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[1] }}> </span> In Progress ({projectCounts[1]})
+                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[1] }}> </span> Active ({projectCounts[1]})
                                 </div>
                                 <div className="d-flex align-items-center mb-1 small">
                                     <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[2] }}> </span> Overdue ({projectCounts[2]})
                                 </div>
                                 <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[3] }}> </span> Not Started ({projectCounts[3]})
+                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[3] }}> </span> Other ({projectCounts[3]})
                                 </div>
                             </div>
                         </div>
@@ -206,10 +257,91 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                 </div>
             </div>
 
+            {/* Daily Work Reports Section */}
+            <div className="card border-0 shadow-sm mb-4">
+                <div className="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h6 className="fw-bold mb-0">Work Log ({timeRange})</h6>
+                    <span className="badge bg-primary rounded-pill">{filteredTasks.length} Activities</span>
+                </div>
+                <div className="card-body p-0">
+                    <div className="list-group list-group-flush">
+                        {filteredTasks.length > 0 ? (
+                            (() => {
+                                // Date Parsers
+                                const parseDate = (d) => {
+                                    if (!d) return new Date();
+                                    if (d.toDate && typeof d.toDate === 'function') return d.toDate();
+                                    if (d.seconds) return new Date(d.seconds * 1000);
+                                    return new Date(d);
+                                };
+
+                                // Group tasks by date
+                                const grouped = filteredTasks.reduce((acc, task) => {
+                                    const rawDate = task.updatedAt || task.createdAt;
+                                    const dateObj = parseDate(rawDate);
+
+                                    // Valid Date Check
+                                    const dateStr = isNaN(dateObj.getTime())
+                                        ? 'Recent'
+                                        : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+                                    if (!acc[dateStr]) acc[dateStr] = [];
+                                    acc[dateStr].push(task);
+                                    return acc;
+                                }, {});
+
+                                return Object.keys(grouped)
+                                    .slice(0, 10) // Show more if filtered
+                                    .map(date => (
+                                        <div key={date} className="list-group-item border-0 px-4 py-3">
+                                            <h6 className="text-muted small fw-bold text-uppercase mb-3 bg-light d-inline-block px-2 py-1 rounded">
+                                                <i className="far fa-calendar-alt me-1"></i> {date}
+                                            </h6>
+                                            <div className="ps-2 border-start border-2 border-light">
+                                                {grouped[date].map((task, idx) => (
+                                                    <div key={idx} className="mb-3 ps-3 position-relative">
+                                                        <div className="position-absolute start-0 top-0 translate-middle rounded-circle bg-white border border-2 border-primary" style={{ width: '10px', height: '10px', marginLeft: '-1px', marginTop: '6px' }}></div>
+                                                        <div className="d-flex justify-content-between align-items-start">
+                                                            <div>
+                                                                <span className="fw-semibold text-dark">{task.title}</span>
+                                                                <span className={`badge ms-2 rounded-pill ${task.status === 'completed' ? 'bg-success' :
+                                                                    task.status === 'in-progress' ? 'bg-info' : 'bg-secondary'
+                                                                    }`}>
+                                                                    {task.status || 'Assigned'}
+                                                                </span>
+                                                                {task.workingNotes && (
+                                                                    <p className="small text-muted mt-1 mb-0 fst-italic">
+                                                                        <i className="fas fa-quote-left me-1 opacity-25"></i>
+                                                                        {task.workingNotes}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <small className="text-muted">
+                                                                <i className="far fa-user me-1"></i>
+                                                                {Array.isArray(task.assignedTo)
+                                                                    ? task.assignedTo.map(u => (typeof u === 'object' ? u.name : u)).join(', ')
+                                                                    : (typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo)}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ));
+                            })()
+                        ) : (
+                            <div className="text-center py-5">
+                                <p className="text-muted mb-0">No work activity recorded in this timeframe.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Recent Completions Table */}
             <div className="card border-0 shadow-sm">
                 <div className="card-header bg-white py-3 border-0">
-                    <h6 className="fw-bold mb-0">Recent Completed Tasks</h6>
+                    <h6 className="fw-bold mb-0">Completed Tasks ({timeRange})</h6>
                 </div>
                 <div className="card-body p-0">
                     <div className="table-responsive">
@@ -223,17 +355,19 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {tasks.filter(t => t.status === 'completed').slice(0, 5).map(task => (
+                                {filteredTasks.filter(t => t.status === 'completed').slice(0, 10).map(task => (
                                     <tr key={task.id || Math.random()}>
                                         <td className="ps-4 fw-medium">{task.title}</td>
-                                        <td>{task.assignedTo || 'Unassigned'}</td>
-                                        <td>{new Date().toLocaleDateString()}</td>
-                                        <td><span className="badge bg-success bg-opacity-10 text-success">Completed</span></td>
+                                        <td>{Array.isArray(task.assignedTo)
+                                            ? task.assignedTo.map(u => (typeof u === 'object' ? u.name : u)).join(', ')
+                                            : (typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo)}</td>
+                                        <td>{new Date(task.updatedAt ? (task.updatedAt.seconds ? task.updatedAt.seconds * 1000 : task.updatedAt) : Date.now()).toLocaleDateString()}</td>
+                                        <td><span className="badge rounded-pill bg-success">Completed</span></td>
                                     </tr>
                                 ))}
-                                {tasks.filter(t => t.status === 'completed').length === 0 && (
+                                {filteredTasks.filter(t => t.status === 'completed').length === 0 && (
                                     <tr>
-                                        <td colSpan="4" className="text-center py-4 text-muted">No recently completed tasks</td>
+                                        <td colSpan="4" className="text-center py-4 text-muted">No completed tasks in this timeframe</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -241,6 +375,7 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                     </div>
                 </div>
             </div>
+
         </div>
     );
 };

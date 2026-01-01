@@ -127,8 +127,14 @@ const RoleManagement = () => {
             <p>Standard employee access</p>
             <span className="badge bg-success">System Role</span>
           </div>
-
-
+          <div className="role-card default-role">
+            <div className="role-icon">
+              <i className="fas fa-user-graduate"></i>
+            </div>
+            <h5>Intern</h5>
+            <p>Limited access for interns</p>
+            <span className="badge bg-warning">System Role</span>
+          </div>
         </div>
       </div>
 

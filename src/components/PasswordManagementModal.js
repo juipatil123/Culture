@@ -162,16 +162,17 @@ const PasswordManagementModal = ({
       return;
     }
 
-    onResetPassword(user.id, newPassword);
+    onResetPassword(user.id || user._id, newPassword);
     setNewPassword('');
     setConfirmPassword('');
     setResetMode(false);
     onHide();
+    alert('✅ Password reset successfully!');
   };
 
   const handleDeleteUser = () => {
     if (window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
-      onDeleteUser(user.id, user.name);
+      onDeleteUser(user.id || user._id, user.name);
       onHide();
     }
   };
@@ -183,22 +184,18 @@ const PasswordManagementModal = ({
   if (!show) return null;
 
   return (
-    <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg">
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">
-            <h5 className="modal-title mb-0">
+            <h5 className="modal-title">
               <i className="fas fa-cog me-2"></i>
               {user ? `User Management - ${user.name}` : 'Password Management - All Users'}
             </h5>
-            <button
-              type="button"
-              className="btn-close btn-close-white"
-              onClick={onHide}
-            ></button>
+            <button type="button" className="btn-close btn-close-white" onClick={onHide}></button>
           </div>
 
-          <div className="modal-body" style={{ padding: '2rem' }}>
+          <div className="modal-body">
             {user ? (
               // Single user management view
               <>
@@ -356,11 +353,7 @@ const PasswordManagementModal = ({
               </>
             ) : (
               // All users table view
-              <div className="all-users-section" style={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
+              <div className="all-users-section">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h6 className="mb-0">
                     <i className="fas fa-users me-2"></i>
@@ -368,25 +361,19 @@ const PasswordManagementModal = ({
                   </h6>
                   <small className="text-muted">
                     <i className="fas fa-sync-alt me-1"></i>
-                    Updates automatically when new users are added
+                    Updates automatically
                   </small>
                 </div>
 
-                <div className="table-responsive" style={{
-                  flex: '1',
-                  overflowY: 'auto',
-                  maxHeight: 'calc(100vh - 250px)',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px'
-                }}>
+                <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   <table className="table table-hover table-lg" style={{ fontSize: '14px' }}>
-                    <thead className="table-light sticky-top" style={{ fontSize: '15px', fontWeight: '600' }}>
+                    <thead className="table-light sticky-top">
                       <tr>
-                        <th style={{ padding: '15px 20px', minWidth: '200px' }}>User</th>
-                        <th style={{ padding: '15px 20px', minWidth: '250px' }}>Email</th>
-                        <th style={{ padding: '15px 20px', minWidth: '120px' }}>Role</th>
-                        <th style={{ padding: '15px 20px', minWidth: '180px' }}>Password</th>
-                        <th style={{ padding: '15px 20px', minWidth: '150px' }}>Actions</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Password</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -413,25 +400,13 @@ const PasswordManagementModal = ({
             )}
           </div>
 
-          <div className="modal-footer bg-light" style={{
-            padding: '1.5rem 2rem',
-            borderTop: '2px solid #dee2e6',
-            justifyContent: 'space-between'
-          }}>
-            <div className="d-flex align-items-center text-muted">
-              <i className="fas fa-info-circle me-2"></i>
-              <small>
-                {user ? 'Managing individual user account' : `Showing ${allUsers.length} registered users`}
-              </small>
-            </div>
+          <div className="modal-footer">
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-secondary"
               onClick={onHide}
-              style={{ padding: '10px 24px' }}
             >
-              <i className="fas fa-check me-2"></i>
-              Done
+              Close
             </button>
           </div>
         </div>

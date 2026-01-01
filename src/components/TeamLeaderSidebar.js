@@ -1,15 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import '../App.css'; // Ensure app-wide styles are available
+import { subscribeToNotices } from '../firebase/firestoreService';
 
-const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOpen, onLogout }) => {
+const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOpen, onLogout, userData }) => {
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!userData) return;
+        const unsubscribe = subscribeToNotices(userData.id || userData._id, userData.role, (notices) => {
+            const count = notices.filter(n => !n.read).length;
+            setUnreadCount(count);
+        });
+        return () => unsubscribe();
+    }, [userData]);
+
     const menuItems = [
         { id: 'dashboard', icon: 'fas fa-home', label: 'Dashboard' },
         { id: 'my-team', icon: 'fas fa-users', label: 'My Team' },
         { id: 'projects', icon: 'fas fa-project-diagram', label: 'Projects' },
         { id: 'tasks', icon: 'fas fa-tasks', label: 'Tasks' },
         { id: 'reports', icon: 'fas fa-chart-bar', label: 'Reports' },
-        { id: 'profile', icon: 'fas fa-user-circle', label: 'Profile' }
+        { id: 'profile', icon: 'fas fa-user-circle', label: 'Profile' },
+        { id: 'help', icon: 'fas fa-question-circle', label: 'Support & Help' },
+        { id: 'notice', icon: 'fas fa-bell', label: 'Notice', badge: unreadCount }
     ];
+
+    const gender = (userData?.gender || '').toLowerCase();
 
     return (
         <>
@@ -43,14 +59,15 @@ const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobil
                     transition: 'transform 0.3s ease-in-out',
                     transform: window.innerWidth <= 768 && !isMobileOpen ? 'translateX(-100%)' : 'translateX(0)',
                     background: 'linear-gradient(180deg, #212529 0%, #343a40 100%)', // Gradient background
-                    borderRight: '1px solid rgba(255,255,255,0.1)'
+                    borderRight: '1px solid rgba(255,255,255,0.1)',
+                    overflowY: 'auto'
                 }}
             >
                 {/* Header */}
                 <div className="d-flex align-items-center mb-4 mb-md-0 me-md-auto text-white text-decoration-none pb-3 border-bottom border-secondary">
                     <div className="d-flex align-items-center gap-3 w-100 px-2">
-                        <div className="bg-primary bg-gradient rounded-3 p-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                            <i className="fas fa-user-tie fa-lg text-white"></i>
+                        <div className={`bg-gradient rounded-3 p-2 shadow-sm d-flex justify-content-center align-items-center ${gender === 'female' ? 'bg-danger' : 'bg-primary'}`} style={{ width: '40px', height: '40px' }}>
+                            <i className={`${gender === 'female' ? 'fas fa-user' : 'fas fa-user-tie'} fa-lg text-white`}></i>
                         </div>
                         <div className="d-flex flex-column">
                             <span className="fs-5 fw-bold text-white">Team Leader</span>
@@ -86,10 +103,7 @@ const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobil
                                     borderRadius: '10px', // More modern rounded corners
                                     fontWeight: activeView === item.id ? '600' : '400',
                                     border: '1px solid transparent',
-                                    ':hover': {
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
-                                        color: '#fff'
-                                    }
+                                    position: 'relative'
                                 }}
                                 onMouseOver={(e) => {
                                     if (activeView !== item.id) {
@@ -108,7 +122,12 @@ const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobil
                             >
                                 <i className={`${item.icon} fa-fw`} style={{ width: '20px', textAlign: 'center' }}></i>
                                 <span>{item.label}</span>
-                                {activeView === item.id && (
+                                {item.badge > 0 && (
+                                    <span className="badge bg-danger rounded-pill ms-auto animate__animated animate__pulse animate__infinite" style={{ fontSize: '0.7rem' }}>
+                                        {item.badge}
+                                    </span>
+                                )}
+                                {activeView === item.id && !item.badge && (
                                     <i className="fas fa-chevron-right ms-auto small opacity-75"></i>
                                 )}
                             </button>
@@ -119,7 +138,7 @@ const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobil
                 <hr style={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
                 {/* Footer / Logout */}
-                <div className="mt-auto">
+                <div className="mt-auto pt-3 pb-2">
                     <button
                         className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2"
                         onClick={onLogout}

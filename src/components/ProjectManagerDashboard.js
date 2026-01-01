@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import './ProjectManagerDashboard.css';
 import AddTaskModal from './AddTaskModal';
 import AddProjectModal from './AddProjectModal';
+import AddUserModal from './AddUserModal';
 
 // Import modular PM components
 import PMProjects from './pm/PMProjects';
 import PMTasks from './pm/PMTasks';
 import PMTeam from './pm/PMTeam';
 import PMReports from './pm/PMReports';
+import TeamLeaderNotice from './TeamLeaderNotice'; // Reusing TeamLeaderNotice component
+import TeamLeaderSupport from './TeamLeaderSupport'; // Reusing TeamLeaderSupport component
+import { subscribeToNotices } from '../firebase/firestoreService';
 
 import {
   getAllProjects,
@@ -15,7 +19,17 @@ import {
   getAllUsers,
   createTask,
   updateTask,
+  createProject,
   updateProject,
+  deleteProject,
+  createUser,
+  updateUser,
+  createTeamLeader,
+  updateTeamLeader,
+  createProjectManager,
+  updateProjectManager,
+  getAllTeamLeaders,
+  getAllProjectManagers,
   getDashboardStats
 } from '../services/api';
 
@@ -33,8 +47,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
     totalProjects: 0,
@@ -42,6 +58,25 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     teamSize: 0,
     completionRate: 0
   });
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    if (!safeUserData.id && !safeUserData._id) return;
+    let isFirstLoad = true;
+    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, safeUserData.role, (notices) => {
+      const count = notices.filter(n => !n.read).length;
+
+      if (!isFirstLoad && count > unreadCount) {
+        const newest = notices[0];
+        setNotification(`New Message from ${newest.senderName}: ${newest.subject}`);
+        setTimeout(() => setNotification(null), 5000);
+      }
+      setUnreadCount(count);
+      isFirstLoad = false;
+    });
+    return () => unsubscribe();
+  }, [safeUserData, unreadCount]);
 
   // State for Quick Task Assignment (Ported from MultiRoleDashboard/PMDashboardSidebar)
   const [selectedEmployeeForTask, setSelectedEmployeeForTask] = useState('');
@@ -68,12 +103,29 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       // Filter projects managed by this PM
       const myProjects = projectsData.filter(project => {
         const pmRaw = project.projectManager;
-        const pm = (typeof pmRaw === 'object' ? (pmRaw.name || pmRaw.email || '') : (pmRaw || '')).toString().trim().toLowerCase();
-        return pm === meName || pm === meEmail;
+        const pm = (typeof pmRaw === 'object' ? (pmRaw.name || pmRaw.email || pmRaw.id || pmRaw._id || '') : (pmRaw || '')).toString().trim().toLowerCase();
+
+        // Match against current user's name, email, or potential ID
+        const meId = (safeUserData?.id || safeUserData?._id || localStorage.getItem('userId') || '').toString().toLowerCase().trim();
+
+        const isMatch = pm === meName || pm === meEmail || (meId && pm === meId);
+        return isMatch;
       });
 
-      const transformedProjects = myProjects.map(project => ({
-        id: project._id,
+      // Special fallback: if absolutely no projects found but they exist in projectsData, 
+      // maybe the PM name doesn't match exactly. Let's look for fuzzy matches.
+      let finalProjects = myProjects;
+      if (myProjects.length === 0 && projectsData.length > 0) {
+        console.warn('⚠️ No exact PM match found for', { meName, meEmail, projectsFound: projectsData.length });
+        finalProjects = projectsData.filter(project => {
+          const pmRaw = (project.projectManager || '').toString().toLowerCase();
+          return pmRaw.includes(meName) || pmRaw.includes(meEmail) || (meName && meName.includes(pmRaw));
+        });
+      }
+
+      const transformedProjects = (finalProjects.length > 0 ? finalProjects : myProjects).map(project => ({
+        id: project._id || project.id,
+        _id: project._id || project.id,
         name: project.name,
         date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
         progress: project.progress || 0,
@@ -82,13 +134,13 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
             project.projectStatus === 'at-risk' ? 'At Risk' :
               project.projectStatus === 'delayed' ? 'Delayed' :
                 project.projectStatus === 'completed' ? 'Completed' : 'On Track',
-        assigned: project.assignedMembers && project.assignedMembers.length > 0
-          ? project.assignedMembers.map((member, index) => ({
+        assigned: (project.assignedMembers || project.assigned) && (project.assignedMembers || project.assigned).length > 0
+          ? (project.assignedMembers || project.assigned).map((member, index) => ({
             name: typeof member === 'object' ? (member.name || member.email) : member,
             color: ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-secondary'][index % 5]
           }))
           : [],
-        extra: project.assignedMembers && project.assignedMembers.length > 3 ? project.assignedMembers.length - 3 : 0,
+        extra: (project.assignedMembers || project.assigned) && (project.assignedMembers || project.assigned).length > 3 ? (project.assignedMembers || project.assigned).length - 3 : 0,
         clientName: project.clientName,
         startDate: project.startDate,
         endDate: project.endDate,
@@ -99,6 +151,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       }));
 
       setProjects(transformedProjects);
+      console.log(`✅ Loaded ${transformedProjects.length} projects for ${meName || meEmail}`);
       return transformedProjects;
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -144,8 +197,29 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   // Load team members and all users
   const loadTeamMembers = async (currentProjects = projects, currentTasks = assignedTasks) => {
     try {
-      const allUsers = await getAllUsers();
-      setAllUsersList(allUsers);
+      // Fetch from all sources to ensure we have TLs, PMs and Employees
+      const [users, leaders, managers] = await Promise.all([
+        getAllUsers(),
+        getAllTeamLeaders(),
+        getAllProjectManagers()
+      ]);
+
+      // Tag them with roles if missing
+      const processedUsers = users.map(u => ({ ...u, role: u.role || 'employee' }));
+      const processedLeaders = leaders.map(u => ({ ...u, role: 'team-leader' }));
+      const processedManagers = managers.map(u => ({ ...u, role: 'project-manager' }));
+
+      // Merge avoiding duplicates by email/id
+      const allUsersMap = new Map();
+      [...processedUsers, ...processedLeaders, ...processedManagers].forEach(u => {
+        const key = u._id || u.id || u.email;
+        if (key && !allUsersMap.has(key)) {
+          allUsersMap.set(key, u);
+        }
+      });
+
+      const allCombinedUsers = Array.from(allUsersMap.values());
+      setAllUsersList(allCombinedUsers);
 
       // Get unique team members from all projects
       const memberNames = new Set();
@@ -160,7 +234,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         });
       });
 
-      const members = allUsers.filter(user => {
+      const members = allCombinedUsers.filter(user => {
         const uName = user.name?.toString().toLowerCase().trim();
         const uEmail = user.email?.toString().toLowerCase().trim();
 
@@ -212,20 +286,76 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     }
   };
 
+  // Handle save/update user
+  const handleSaveUser = async (userData) => {
+    try {
+      const isEditing = !!editingUser;
+      const targetId = isEditing ? (editingUser.id || editingUser._id) : null;
+      const role = userData.role?.toLowerCase();
+
+      if (isEditing) {
+        if (role === 'team-leader') {
+          await updateTeamLeader(targetId, userData);
+        } else if (role === 'project-manager') {
+          await updateProjectManager(targetId, userData);
+        } else {
+          await updateUser(targetId, userData);
+        }
+      } else {
+        if (role === 'team-leader') {
+          await createTeamLeader(userData);
+        } else if (role === 'project-manager') {
+          await createProjectManager(userData);
+        } else {
+          await createUser(userData);
+        }
+      }
+
+      setShowAddUserModal(false);
+      setEditingUser(null);
+      reloadAll();
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert('Failed to save user: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setShowAddUserModal(true);
+  };
+
   // Handle save/update project
   const handleSaveProject = async (projectData) => {
     try {
       if (editingProject) {
         await updateProject(editingProject.id || editingProject._id, projectData);
       } else {
-        // Implementation for creating projects from PM dashboard if needed
-        // Assuming updateProject is what's imported
+        // Ensure project manager is set to this PM correctly
+        const projectWithPM = {
+          ...projectData,
+          projectManager: userEmail || userName || localStorage.getItem('userEmail') || localStorage.getItem('userName')
+        };
+        await createProject(projectWithPM);
       }
       setShowAddProjectModal(false);
       setEditingProject(null);
       reloadAll();
     } catch (error) {
       console.error('Error saving project:', error);
+    }
+  };
+
+  // Handle delete project
+  const handleDeleteProject = async (projectId) => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        await deleteProject(projectId);
+        reloadAll();
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        alert('Failed to delete project');
+      }
     }
   };
 
@@ -320,6 +450,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       setActiveView('team');
     } else if (menuItem === 'Reports') {
       setActiveView('reports');
+    } else if (menuItem === 'Notice') {
+      setActiveView('notice');
+    } else if (menuItem === 'Support & Help') {
+      setActiveView('support-help');
     }
     setIsMobileSidebarOpen(false);
   };
@@ -370,24 +504,56 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           >
             <i className="fas fa-bars"></i>
           </button>
-          <h2>Project Manager Dashboard</h2>
         </div>
         <div className="header-right">
           <div className="user-info">
-            <span className="user-name">{userName}</span>
-            <span className="user-role badge bg-primary">Project Manager</span>
+            <span className="user-name">Welcome, {userName}</span>
+            <div className="user-avatar" title={userName}>
+              {userName?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
           </div>
-          <button className="btn btn-outline-danger" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt me-2"></i>
-            Logout
-          </button>
         </div>
       </div>
+
+      {notification && (
+        <div className="notification-pop animate__animated animate__fadeInDown" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          padding: '15px 25px',
+          borderRadius: '10px',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          borderLeft: '5px solid #0056b3'
+        }}>
+          <i className="fas fa-bell fa-lg"></i>
+          <div>
+            <strong style={{ display: 'block', fontSize: '0.9rem' }}>New Message</strong>
+            <span style={{ fontSize: '0.85rem' }}>{notification}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{ background: 'none', border: 'none', color: 'white', padding: '0 0 0 10px', cursor: 'pointer' }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`mobile-overlay ${isMobileSidebarOpen ? 'show' : ''}`}
+        onClick={() => setIsMobileSidebarOpen(false)}
+      ></div>
 
       {/* Sidebar */}
       <div className={`dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-          <h3>PM Panel</h3>
+          <h3>Project Manager Dashboard</h3>
           <button
             className="mobile-close"
             onClick={() => setIsMobileSidebarOpen(false)}
@@ -428,8 +594,31 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                 <span>Reports</span>
               </a>
             </li>
+            <li className={activeView === 'notice' ? 'active' : ''}>
+              <a onClick={() => handleMenuClick('Notice')}>
+                <i className="fas fa-bell"></i>
+                <span>Notice</span>
+                {unreadCount > 0 && (
+                  <span className="badge bg-danger rounded-pill ms-2 animate__animated animate__pulse animate__infinite" style={{ fontSize: '0.65rem' }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </a>
+            </li>
+            <li className={activeView === 'support-help' ? 'active' : ''}>
+              <a onClick={() => handleMenuClick('Support & Help')}>
+                <i className="fas fa-headset"></i>
+                <span>Support & Help</span>
+              </a>
+            </li>
           </ul>
         </nav>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            <i className="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -512,7 +701,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                         <p className="text-muted">Add a new task and assign it to team members</p>
                         <button
                           className="btn btn-primary w-100 py-3 mt-3 fw-bold"
-                          onClick={() => setSelectedEmployeeForTask('select')}
+                          onClick={() => {
+                            setEditingTask(null);
+                            setShowAddTaskModal(true);
+                          }}
                         >
                           <i className="fas fa-plus me-2"></i>Create Task
                         </button>
@@ -676,6 +868,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
               setEditingProject(project);
               setShowAddProjectModal(true);
             }}
+            onDeleteProject={handleDeleteProject}
             userName={userName}
             userEmail={userEmail}
           />
@@ -686,7 +879,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
             tasks={assignedTasks}
             projects={projects}
             onRefresh={reloadAll}
-            onAddTask={() => setShowAddTaskModal(true)}
+            onAddTask={() => {
+              setEditingTask(null);
+              setShowAddTaskModal(true);
+            }}
             onEditTask={(task) => {
               setEditingTask(task);
               setShowAddTaskModal(true);
@@ -699,8 +895,14 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         {activeView === 'team' && (
           <PMTeam
             teamMembers={teamMembers}
+            allUsers={allUsersList}
             projects={projects}
             onRefresh={reloadAll}
+            onAddMember={() => {
+              setEditingUser(null);
+              setShowAddUserModal(true);
+            }}
+            onEditMember={handleEditUser}
           />
         )}
 
@@ -710,6 +912,14 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
             tasks={assignedTasks}
             teamMembers={teamMembers}
           />
+        )}
+
+        {activeView === 'notice' && (
+          <TeamLeaderNotice userData={safeUserData} />
+        )}
+
+        {activeView === 'support-help' && (
+          <TeamLeaderSupport allUsers={allUsersList} userData={safeUserData} />
         )}
       </div>
 
@@ -738,6 +948,20 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           onSave={handleSaveProject}
           editingProject={editingProject}
           availableEmployees={allUsersList}
+        />
+      )}
+
+      {showAddUserModal && (
+        <AddUserModal
+          show={showAddUserModal}
+          onHide={() => {
+            setShowAddUserModal(false);
+            setEditingUser(null);
+          }}
+          onSave={handleSaveUser}
+          editingUser={editingUser}
+          projects={projects}
+          teamLeaders={allUsersList.filter(u => u.role === 'team-leader' || u.userType === 'team-leader')}
         />
       )}
     </div>

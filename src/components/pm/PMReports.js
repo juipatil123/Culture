@@ -1,231 +1,265 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './PMComponents.css';
 
 const PMReports = ({ projects, tasks, teamMembers }) => {
-  // Calculate statistics
+  const [reportType, setReportType] = useState('monthly'); // 'daily', 'weekly', 'monthly', 'all'
+
+  // Filter helper functions
+  const isToday = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+  };
+
+  const isThisWeek = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return d >= oneWeekAgo && d <= now;
+  };
+
+  const isThisMonth = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return d >= oneMonthAgo && d <= now;
+  };
+
+  // Get filtered data based on report type
+  const getFilteredData = () => {
+    if (reportType === 'all') return { filteredProjects: projects, filteredTasks: tasks };
+
+    const filteredProjects = projects.filter(p => {
+      const date = p.startDate || p.createdAt;
+      if (reportType === 'daily') return isToday(date);
+      if (reportType === 'weekly') return isThisWeek(date);
+      if (reportType === 'monthly') return isThisMonth(date);
+      return true;
+    });
+
+    const filteredTasks = tasks.filter(t => {
+      const date = t.dueDate || t.createdAt;
+      if (reportType === 'daily') return isToday(date);
+      if (reportType === 'weekly') return isThisWeek(date);
+      if (reportType === 'monthly') return isThisMonth(date);
+      return true;
+    });
+
+    return { filteredProjects, filteredTasks };
+  };
+
+  const { filteredProjects, filteredTasks } = getFilteredData();
+
+  // Calculate statistics for filtered data
   const stats = {
-    totalProjects: projects.length,
-    completedProjects: projects.filter(p => p.status === 'Completed').length,
-    onTrackProjects: projects.filter(p => p.status === 'On Track').length,
-    atRiskProjects: projects.filter(p => p.status === 'At Risk').length,
-    delayedProjects: projects.filter(p => p.status === 'Delayed').length,
-    totalTasks: tasks.length,
-    completedTasks: tasks.filter(t => t.status === 'completed').length,
-    inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
-    pendingTasks: tasks.filter(t => t.status === 'pending' || t.status === 'assigned').length,
+    totalProjects: filteredProjects.length,
+    completedProjects: filteredProjects.filter(p => p.status === 'Completed').length,
+    onTrackProjects: filteredProjects.filter(p => p.status === 'On Track').length,
+    atRiskProjects: filteredProjects.filter(p => p.status === 'At Risk').length,
+    delayedProjects: filteredProjects.filter(p => p.status === 'Delayed').length,
+    totalTasks: filteredTasks.length,
+    completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
+    inProgressTasks: filteredTasks.filter(t => t.status === 'in-progress').length,
+    pendingTasks: filteredTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length,
     teamSize: teamMembers.length,
-    avgProjectProgress: projects.length > 0
-      ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length)
+    avgProjectProgress: filteredProjects.length > 0
+      ? Math.round(filteredProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / filteredProjects.length)
       : 0
   };
 
   return (
     <div className="pm-reports">
-      <div className="page-header">
-        <h2>Reports & Analytics</h2>
-      </div>
+      <div className="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold mb-1">Reports & Analytics</h2>
+          <p className="text-muted small mb-0">Track performance metrics and project status</p>
+        </div>
 
-      {/* Project Statistics */}
-      <div className="report-section">
-        <h4>Project Statistics</h4>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <i className="fas fa-project-diagram text-primary"></i>
-            <div>
-              <h3>{stats.totalProjects}</h3>
-              <p>Total Projects</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-check-circle text-success"></i>
-            <div>
-              <h3>{stats.completedProjects}</h3>
-              <p>Completed</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-thumbs-up text-info"></i>
-            <div>
-              <h3>{stats.onTrackProjects}</h3>
-              <p>On Track</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-exclamation-triangle text-warning"></i>
-            <div>
-              <h3>{stats.atRiskProjects}</h3>
-              <p>At Risk</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-times-circle text-danger"></i>
-            <div>
-              <h3>{stats.delayedProjects}</h3>
-              <p>Delayed</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-percentage text-primary"></i>
-            <div>
-              <h3>{stats.avgProjectProgress}%</h3>
-              <p>Avg Progress</p>
-            </div>
-          </div>
+        <div className="report-filter-toggle btn-group bg-white p-1 rounded-3 shadow-sm border">
+          <button
+            className={`btn btn-sm px-3 ${reportType === 'daily' ? 'btn-primary' : 'btn-white text-muted border-0'}`}
+            onClick={() => setReportType('daily')}
+          >Daily</button>
+          <button
+            className={`btn btn-sm px-3 ${reportType === 'weekly' ? 'btn-primary' : 'btn-white text-muted border-0'}`}
+            onClick={() => setReportType('weekly')}
+          >Weekly</button>
+          <button
+            className={`btn btn-sm px-3 ${reportType === 'monthly' ? 'btn-primary' : 'btn-white text-muted border-0'}`}
+            onClick={() => setReportType('monthly')}
+          >Monthly</button>
+          <button
+            className={`btn btn-sm px-3 ${reportType === 'all' ? 'btn-primary' : 'btn-white text-muted border-0'}`}
+            onClick={() => setReportType('all')}
+          >All Time</button>
         </div>
       </div>
 
-      {/* Task Statistics */}
-      <div className="report-section">
-        <h4>Task Statistics</h4>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <i className="fas fa-tasks text-primary"></i>
-            <div>
-              <h3>{stats.totalTasks}</h3>
-              <p>Total Tasks</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-check text-success"></i>
-            <div>
-              <h3>{stats.completedTasks}</h3>
-              <p>Completed</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-spinner text-info"></i>
-            <div>
-              <h3>{stats.inProgressTasks}</h3>
-              <p>In Progress</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-clock text-warning"></i>
-            <div>
-              <h3>{stats.pendingTasks}</h3>
-              <p>Pending</p>
-            </div>
-          </div>
+      {stats.totalProjects === 0 && stats.totalTasks === 0 ? (
+        <div className="empty-state text-center py-5 bg-white rounded-4 shadow-sm border mb-4">
+          <i className="fas fa-chart-bar fa-3x text-muted opacity-25 mb-3"></i>
+          <h5 className="fw-bold">No data for this period</h5>
+          <p className="text-muted">There are no projects or tasks recorded in the {reportType} view.</p>
+          <button className="btn btn-sm btn-outline-primary" onClick={() => setReportType('all')}>View All Time</button>
         </div>
-      </div>
-
-      {/* Team Statistics */}
-      <div className="report-section">
-        <h4>Team Statistics</h4>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <i className="fas fa-users text-primary"></i>
-            <div>
-              <h3>{stats.teamSize}</h3>
-              <p>Team Members</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-chart-line text-success"></i>
-            <div>
-              <h3>{stats.teamSize > 0 ? Math.round(stats.totalProjects / stats.teamSize * 10) / 10 : 0}</h3>
-              <p>Projects per Member</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <i className="fas fa-tasks text-info"></i>
-            <div>
-              <h3>{stats.teamSize > 0 ? Math.round(stats.totalTasks / stats.teamSize * 10) / 10 : 0}</h3>
-              <p>Tasks per Member</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Overview */}
-      <div className="report-section">
-        <h4>Performance Overview</h4>
-        <div className="performance-cards">
-          <div className="performance-card">
-            <h5>Project Completion Rate</h5>
-            <div className="performance-bar">
-              <div
-                className="performance-fill bg-success"
-                style={{ width: `${stats.totalProjects > 0 ? (stats.completedProjects / stats.totalProjects * 100) : 0}%` }}
-              ></div>
-            </div>
-            <p>{stats.totalProjects > 0 ? Math.round(stats.completedProjects / stats.totalProjects * 100) : 0}%</p>
-          </div>
-          <div className="performance-card">
-            <h5>Task Completion Rate</h5>
-            <div className="performance-bar">
-              <div
-                className="performance-fill bg-info"
-                style={{ width: `${stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks * 100) : 0}%` }}
-              ></div>
-            </div>
-            <p>{stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}%</p>
-          </div>
-          <div className="performance-card">
-            <h5>Average Project Progress</h5>
-            <div className="performance-bar">
-              <div
-                className="performance-fill bg-primary"
-                style={{ width: `${stats.avgProjectProgress}%` }}
-              ></div>
-            </div>
-            <p>{stats.avgProjectProgress}%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Project Status Distribution */}
-      <div className="report-section">
-        <h4>Project Status Distribution</h4>
-        <div className="distribution-chart">
-          {stats.totalProjects > 0 ? (
-            <>
-              <div className="distribution-item">
-                <span className="distribution-label">Completed</span>
-                <div className="distribution-bar">
-                  <div
-                    className="distribution-fill bg-success"
-                    style={{ width: `${(stats.completedProjects / stats.totalProjects * 100)}%` }}
-                  ></div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="row g-4 mb-4">
+            <div className="col-md-4">
+              <div className="summary-card bg-grad-purple shadow-sm">
+                <div className="summary-card-circle"></div>
+                <div className="summary-card-title">Active Projects</div>
+                <div className="summary-card-value">{stats.totalProjects}</div>
+                <div className="summary-card-pill">
+                  Avg: {stats.avgProjectProgress}% Progress
                 </div>
-                <span className="distribution-value">{stats.completedProjects}</span>
               </div>
-              <div className="distribution-item">
-                <span className="distribution-label">On Track</span>
-                <div className="distribution-bar">
-                  <div
-                    className="distribution-fill bg-info"
-                    style={{ width: `${(stats.onTrackProjects / stats.totalProjects * 100)}%` }}
-                  ></div>
+            </div>
+            <div className="col-md-4">
+              <div className="summary-card bg-grad-green shadow-sm">
+                <div className="summary-card-circle"></div>
+                <div className="summary-card-title">Tasks Completed</div>
+                <div className="summary-card-value">{stats.completedTasks}</div>
+                <div className="summary-card-pill">
+                  {stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}% Rate
                 </div>
-                <span className="distribution-value">{stats.onTrackProjects}</span>
               </div>
-              <div className="distribution-item">
-                <span className="distribution-label">At Risk</span>
-                <div className="distribution-bar">
-                  <div
-                    className="distribution-fill bg-warning"
-                    style={{ width: `${(stats.atRiskProjects / stats.totalProjects * 100)}%` }}
-                  ></div>
+            </div>
+            <div className="col-md-4">
+              <div className="summary-card bg-grad-pink shadow-sm">
+                <div className="summary-card-circle"></div>
+                <div className="summary-card-title">Team Members</div>
+                <div className="summary-card-value">{stats.teamSize}</div>
+                <div className="summary-card-pill">
+                  {stats.teamSize > 0 ? (stats.totalTasks / stats.teamSize).toFixed(1) : 0} tasks/member
                 </div>
-                <span className="distribution-value">{stats.atRiskProjects}</span>
               </div>
-              <div className="distribution-item">
-                <span className="distribution-label">Delayed</span>
-                <div className="distribution-bar">
-                  <div
-                    className="distribution-fill bg-danger"
-                    style={{ width: `${(stats.delayedProjects / stats.totalProjects * 100)}%` }}
-                  ></div>
+            </div>
+          </div>
+
+          <div className="row g-4 mb-4">
+            {/* Project Status Charts */}
+            <div className="col-lg-8">
+              <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h5 className="fw-bold mb-4">Project Status Breakdown</h5>
+                <div className="status-distribution">
+                  {[
+                    { label: 'Completed', count: stats.completedProjects, color: 'bg-success' },
+                    { label: 'On Track', count: stats.onTrackProjects, color: 'bg-info' },
+                    { label: 'At Risk', count: stats.atRiskProjects, color: 'bg-warning' },
+                    { label: 'Delayed', count: stats.delayedProjects, color: 'bg-danger' }
+                  ].map((item, idx) => (
+                    <div key={idx} className="mb-4">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="text-muted small fw-bold">{item.label}</span>
+                        <span className="fw-bold small">{item.count} projects</span>
+                      </div>
+                      <div className="progress" style={{ height: '8px', borderRadius: '10px' }}>
+                        <div
+                          className={`progress-bar ${item.color}`}
+                          style={{ width: `${stats.totalProjects > 0 ? (item.count / stats.totalProjects * 100) : 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <span className="distribution-value">{stats.delayedProjects}</span>
               </div>
-            </>
-          ) : (
-            <p className="text-muted">No project data available</p>
-          )}
-        </div>
-      </div>
+            </div>
+
+            {/* Task Stats */}
+            <div className="col-lg-4">
+              <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h5 className="fw-bold mb-4">Task Overview</h5>
+                <div className="text-center mb-4">
+                  <div className="circular-progress-placeholder position-relative d-inline-block">
+                    <svg width="120" height="120" viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="16" fill="none" stroke="#f0f0f0" strokeWidth="3"></circle>
+                      <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" strokeWidth="3"
+                        strokeDasharray={`${stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks * 100) : 0}, 100`}
+                      ></circle>
+                    </svg>
+                    <div className="position-absolute top-50 start-50 translate-middle text-center">
+                      <h4 className="fw-bold mb-0">{stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}%</h4>
+                      <p className="text-muted smaller mb-0" style={{ fontSize: '0.6rem' }}>Done</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="task-mini-stats">
+                  <div className="d-flex justify-content-between mb-3 border-bottom pb-2">
+                    <span className="text-muted"><i className="fas fa-check-circle text-success me-2"></i>Completed</span>
+                    <span className="fw-bold">{stats.completedTasks}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-3 border-bottom pb-2">
+                    <span className="text-muted"><i className="fas fa-spinner text-info me-2"></i>In Progress</span>
+                    <span className="fw-bold">{stats.inProgressTasks}</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span className="text-muted"><i className="fas fa-clock text-warning me-2"></i>Pending</span>
+                    <span className="fw-bold">{stats.pendingTasks}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Productivity Table */}
+          <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div className="card-header bg-white p-3 border-0">
+              <h5 className="fw-bold mb-0">Team Productivity ({reportType})</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th className="ps-4">Member</th>
+                    <th>Projects Assigned</th>
+                    <th>Tasks (Total)</th>
+                    <th>Tasks (Done)</th>
+                    <th>Productivity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamMembers.slice(0, 5).map((member, idx) => {
+                    const memberTasks = filteredTasks.filter(t => t.assignedTo?.includes(member.name) || t.assignedTo?.includes(member.email));
+                    const doneTasks = memberTasks.filter(t => t.status === 'completed').length;
+                    const productivity = memberTasks.length > 0 ? Math.round((doneTasks / memberTasks.length) * 100) : 0;
+
+                    return (
+                      <tr key={idx}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="avatar-circle-sm bg-light text-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', fontSize: '12px' }}>
+                              {member.name?.charAt(0)}
+                            </div>
+                            <span className="small fw-bold">{member.name}</span>
+                          </div>
+                        </td>
+                        <td>{projects.filter(p => (p.assignedMembers || p.assigned || []).some(m => (typeof m === 'object' ? m.name : m) === member.name)).length}</td>
+                        <td>{memberTasks.length}</td>
+                        <td>{doneTasks}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="progress flex-grow-1" style={{ height: '5px', width: '60px' }}>
+                              <div className={`progress-bar ${productivity > 70 ? 'bg-success' : 'bg-warning'}`} style={{ width: `${productivity}%` }}></div>
+                            </div>
+                            <span className="small fw-bold">{productivity}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ const TeamLeaderManagement = () => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [selectedTeamLeader, setSelectedTeamLeader] = useState(null);
   const [showIndividualDashboard, setShowIndividualDashboard] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
 
   // Load team leaders
   const loadTeamLeaders = async () => {
@@ -140,12 +141,22 @@ const TeamLeaderManagement = () => {
           <option value="iOS Development">iOS Development</option>
           <option value="Quality Assurance">Quality Assurance</option>
           <option value="Design">Design</option>
-          <option value="DevOps">DevOps</option>
-          <option value="Marketing">Marketing</option>
-          <option value="Sales">Sales</option>
-          <option value="Human Resources">Human Resources</option>
-          <option value="Finance">Finance</option>
         </select>
+
+        <div className="view-toggle">
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('list')}
+          >
+            <i className="fas fa-list"></i>
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <i className="fas fa-th"></i>
+          </button>
+        </div>
       </div>
 
       {/* Team Leader List */}
@@ -159,60 +170,116 @@ const TeamLeaderManagement = () => {
           <i className="fas fa-users-cog fa-3x"></i>
           <p>No team leaders found</p>
         </div>
-      ) : (
-        <div className="pm-grid">
+      ) : viewMode === 'grid' ? (
+        <div className="tl-grid">
           {filteredTeamLeaders.map((leader) => (
-            <div key={leader.id || leader._id} className="pm-card">
-              <div className="pm-card-header">
-                <div className="pm-avatar">
+            <div key={leader.id || leader._id} className="tl-card">
+              <div className="tl-card-header">
+                <div className="user-avatar-large" style={{ position: 'absolute', top: '77.5px', left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
                   {leader.name?.charAt(0).toUpperCase()}
                 </div>
-                <span className="badge badge-info">Team Leader</span>
+                <div className="header-badge">Team Leader</div>
               </div>
-              <div className="pm-card-body">
+              <div className="tl-card-body">
                 <h4>{leader.name}</h4>
-                <p className="pm-email">{leader.email}</p>
-                <div className="pm-details">
-                  <div className="detail-item">
+                <p className="text-muted">{leader.email}</p>
+                <div className="card-detail-list">
+                  <div className="card-detail-item">
                     <i className="fas fa-building"></i>
-                    <span>{leader.department || 'Not Assigned'}</span>
+                    <span>{leader.department || 'Web Development'}</span>
                   </div>
-                  <div className="detail-item">
+                  <div className="card-detail-item">
                     <i className="fas fa-users"></i>
                     <span>{leader.teamSize || 0} Members</span>
                   </div>
-                  <div className="detail-item">
+                  <div className="card-detail-item">
                     <i className="fas fa-phone"></i>
-                    <span>{leader.phone || 'N/A'}</span>
+                    <span>{leader.phone || '9876543212'}</span>
                   </div>
                 </div>
               </div>
-              <div className="pm-card-footer">
+              <div className="tl-card-footer">
                 <button
-                  className="btn btn-sm btn-outline-info"
+                  className="btn-card-outline info"
                   onClick={() => handleViewTLDashboard(leader)}
                 >
-                  <i className="fas fa-eye me-1"></i>
-                  View Dashboard
+                  <i className="fas fa-tachometer-alt"></i>
+                  Dashboard
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-primary"
+                  className="btn-card-outline primary"
                   onClick={() => handleEditTeamLeader(leader)}
                 >
-                  <i className="fas fa-edit me-1"></i>
+                  <i className="far fa-edit"></i>
                   Edit
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-danger"
+                  className="btn-card-outline danger"
                   onClick={() => handleDeleteTeamLeader(leader.id || leader._id, leader.name)}
                 >
-                  <i className="fas fa-trash me-1"></i>
+                  <i className="far fa-trash-alt"></i>
                   Delete
                 </button>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <table className="tl-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Department</th>
+              <th>Team Size</th>
+              <th>Phone</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTeamLeaders.map((leader) => (
+              <tr key={leader.id || leader._id}>
+                <td>
+                  <div className="user-info">
+                    <div className="user-avatar" style={{ background: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)' }}>
+                      {leader.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <strong>{leader.name}</strong>
+                  </div>
+                </td>
+                <td>{leader.email}</td>
+                <td>{leader.department || 'Not Assigned'}</td>
+                <td>{leader.teamSize || 0}</td>
+                <td>{leader.phone || 'N/A'}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button
+                      className="btn btn-sm btn-outline-info"
+                      onClick={() => handleViewTLDashboard(leader)}
+                      title="View Dashboard"
+                    >
+                      <i className="fas fa-eye"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => handleEditTeamLeader(leader)}
+                      title="Edit"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDeleteTeamLeader(leader.id || leader._id, leader.name)}
+                      title="Delete"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {/* Add/Edit Team Leader Modal */}

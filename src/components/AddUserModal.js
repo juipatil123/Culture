@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [] }) => {
+const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [], teamLeaders = [] }) => {
   const handleClose = onClose || onHide;
   const [formData, setFormData] = useState({
     name: '',
@@ -9,7 +9,8 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
     department: 'Web Development',
     role: '',
     password: '',
-    assignedProject: ''
+    assignedProject: '',
+    teamLeaderId: ''
   });
 
   // Populate form when editing or reset when opening for new user
@@ -23,7 +24,9 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           department: editingUser.department || 'Web Development',
           role: editingUser.role || '',
           password: '', // Always blank - don't populate password when editing
-          assignedProject: editingUser.assignedProject || ''
+          assignedProject: editingUser.assignedProject || '',
+          teamLeaderId: editingUser.teamLeaderId || '',
+          gender: editingUser.gender || ''
         });
       } else {
         // Reset form completely for new user
@@ -34,7 +37,9 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           department: 'Web Development',
           role: '',
           password: '', // Explicitly blank for new users
-          assignedProject: ''
+          assignedProject: '',
+          teamLeaderId: '',
+          gender: ''
         });
       }
     }
@@ -60,6 +65,12 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validate phone number
+    if (formData.phone && formData.phone.length !== 10) {
+      alert('Phone number must be exactly 10 digits.');
+      return;
+    }
+
     // Validate password for new users
     if (!editingUser && !formData.password) {
       alert('Password is required for new users. Please enter a password.');
@@ -80,7 +91,8 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
       department: 'Web Developer',
       role: '',
       password: '',
-      assignedProject: ''
+      assignedProject: '',
+      teamLeaderId: ''
     });
     handleClose();
   };
@@ -128,15 +140,23 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
               </div>
               <div className="row">
                 <div className="col-md-6 mb-3">
-                  <label className="form-label">Phone Number</label>
+                  <label className="form-label">Phone Number (10 Digits) *</label>
                   <input
                     type="tel"
                     className="form-control"
                     name="phone"
                     value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="Enter phone number"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 10) {
+                        setFormData(prev => ({ ...prev, phone: value }));
+                      }
+                    }}
+                    placeholder="Enter 10-digit number"
+                    pattern="[0-9]{10}"
+                    required
                   />
+                  <small className="text-muted">Must be exactly 10 digits (e.g. 9876543210)</small>
                 </div>
                 <div className="col-md-6 mb-3">
                   {/* Empty column for spacing */}
@@ -182,6 +202,23 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                 </div>
               </div>
 
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Gender</label>
+                  <select
+                    className="form-select"
+                    name="gender"
+                    value={formData.gender || ''}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Only show project assignment for interns and team leaders */}
               {formData.role && formData.role !== 'project-manager' && formData.role !== 'employee' && (
                 <div className="row">
@@ -202,6 +239,31 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     </select>
                     <small className="text-muted">
                       Select a project to assign this user to. Leave blank for "Not Assigned" status.
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {/* Team Leader assignment for employees and interns */}
+              {(formData.role === 'employee' || formData.role === 'intern') && (
+                <div className="row">
+                  <div className="col-md-12 mb-3">
+                    <label className="form-label">Assign to Team Leader</label>
+                    <select
+                      className="form-select"
+                      name="teamLeaderId"
+                      value={formData.teamLeaderId}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">No Team Leader</option>
+                      {teamLeaders.map((tl) => (
+                        <option key={tl.id || tl._id} value={tl.id || tl._id}>
+                          {tl.name} ({tl.department})
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted">
+                      Assign this member to a team leader.
                     </small>
                   </div>
                 </div>

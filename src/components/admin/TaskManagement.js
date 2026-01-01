@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getAllTasks, createTask, updateTask, deleteTask } from '../../services/api';
+import { getAllTasks, createTask, updateTask, deleteTask, getAllProjects, getAllUsers } from '../../services/api';
 import AddTaskModal from '../AddTaskModal';
 import './AdminComponents.css';
 
-const TaskManagement = ({ projects = [], allUsers = [] }) => {
+const TaskManagement = () => {
   const [assignedTasks, setAssignedTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -11,22 +11,32 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
   const [taskSearchTerm, setTaskSearchTerm] = useState('');
   const [filterByStatus, setFilterByStatus] = useState('all');
   const [filterByPriority, setFilterByPriority] = useState('all');
+  const [viewMode, setViewMode] = useState('grid');
+  const [projects, setProjects] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
 
-  // Load tasks
-  const loadTasks = async () => {
+
+  // Load tasks, projects and users
+  const loadInitialData = async () => {
     setLoadingTasks(true);
     try {
-      const allTasks = await getAllTasks();
-      setAssignedTasks(allTasks);
+      const [fetchedTasks, fetchedProjects, fetchedUsers] = await Promise.all([
+        getAllTasks(),
+        getAllProjects(),
+        getAllUsers()
+      ]);
+      setAssignedTasks(fetchedTasks);
+      setProjects(fetchedProjects);
+      setAllUsers(fetchedUsers);
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoadingTasks(false);
     }
   };
 
   useEffect(() => {
-    loadTasks();
+    loadInitialData();
   }, []);
 
   // Handle add task
@@ -45,7 +55,9 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
       }
       setShowAddTaskModal(false);
       setEditingTask(null);
-      loadTasks();
+      // Reload only tasks to be faster, or use loadInitialData to sync all
+      const tasks = await getAllTasks();
+      setAssignedTasks(tasks);
     } catch (error) {
       console.error('Error saving task:', error);
       alert('Failed to save task. Please try again.');
@@ -154,32 +166,47 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+
+        <div className="view-toggle">
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('list')}
+          >
+            <i className="fas fa-list"></i>
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <i className="fas fa-th"></i>
+          </button>
+        </div>
       </div>
 
       {/* Task Stats */}
       <div className="task-stats">
-        <div className="stat-card">
+        <div className="stat-card total">
           <i className="fas fa-tasks"></i>
           <div>
             <h3>{assignedTasks.length}</h3>
             <p>Total Tasks</p>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card pending">
           <i className="fas fa-clock"></i>
           <div>
             <h3>{assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</h3>
             <p>Pending</p>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card progress">
           <i className="fas fa-spinner"></i>
           <div>
             <h3>{assignedTasks.filter(t => t.status === 'in-progress').length}</h3>
             <p>In Progress</p>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card completed">
           <i className="fas fa-check-circle"></i>
           <div>
             <h3>{assignedTasks.filter(t => t.status === 'completed').length}</h3>
@@ -199,35 +226,35 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
           <i className="fas fa-tasks fa-3x"></i>
           <p>No tasks found</p>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="tasks-grid">
           {filteredTasks.map((task) => (
-            <div key={task.id || task._id} className="task-card">
+            <div key={task.id || task._id} className={`task-card priority-${(task.priority || 'medium').toLowerCase()}`}>
               <div className="task-card-header">
-                <h4>{task.title || 'Untitled Task'}</h4>
+                <h4 style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title || 'Untitled Task'}</h4>
                 <div className="task-badges">
-                  <span className={`badge ${getStatusBadge(task.status)}`}>
+                  <span className={`badge ${getStatusBadge(task.status)} rounded-pill`}>
                     {task.status || 'Pending'}
                   </span>
-                  <span className={`badge ${getPriorityBadge(task.priority)}`}>
+                  <span className={`badge ${getPriorityBadge(task.priority)} rounded-pill`}>
                     {task.priority || 'Medium'}
                   </span>
                 </div>
               </div>
               <div className="task-card-body">
-                <p className="task-description">{task.description || 'No description'}</p>
+                <p className="task-description">{task.description || 'No description provided for this task.'}</p>
                 <div className="task-details">
                   <div className="detail-item">
-                    <i className="fas fa-user"></i>
-                    <span><strong>Assigned to:</strong> {task.assignedTo || 'Not Assigned'}</span>
+                    <i className="fas fa-user-circle"></i>
+                    <span><strong>Assigned to:</strong> {task.assignedTo || 'Unassigned'}</span>
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-project-diagram"></i>
                     <span><strong>Project:</strong> {task.project || task.projectName || 'General'}</span>
                   </div>
                   <div className="detail-item">
-                    <i className="fas fa-calendar"></i>
-                    <span><strong>Due:</strong> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
+                    <i className="fas fa-calendar-alt"></i>
+                    <span><strong>Due Date:</strong> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
                   </div>
                   {task.assignedBy && (
                     <div className="detail-item">
@@ -237,9 +264,9 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
                   )}
                 </div>
                 {task.progress !== undefined && (
-                  <div className="progress-section">
+                  <div className="progress-section mt-4">
                     <div className="progress-header">
-                      <span>Progress</span>
+                      <span>Execution Progress</span>
                       <span>{task.progress}%</span>
                     </div>
                     <div className="progress">
@@ -253,23 +280,80 @@ const TaskManagement = ({ projects = [], allUsers = [] }) => {
               </div>
               <div className="task-card-footer">
                 <button
-                  className="btn btn-sm btn-outline-primary"
+                  className="btn btn-sm btn-outline-primary rounded-pill px-3"
                   onClick={() => handleEditTask(task)}
                 >
                   <i className="fas fa-edit me-1"></i>
                   Edit
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-danger"
+                  className="btn btn-sm btn-outline-danger rounded-pill px-3"
                   onClick={() => handleDeleteTask(task.id || task._id, task.title)}
                 >
-                  <i className="fas fa-trash me-1"></i>
+                  <i className="fas fa-trash-alt me-1"></i>
                   Delete
                 </button>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <table className="tasks-table">
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Project</th>
+              <th>Assigned To</th>
+              <th>Due Date</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTasks.map((task) => (
+              <tr key={task.id || task._id}>
+                <td>
+                  <div className="fw-bold text-dark">{task.title || 'Untitled'}</div>
+                  <small className="text-muted d-block" style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.description || 'No description'}
+                  </small>
+                </td>
+                <td><span className="text-secondary fw-semibold">{task.project || task.projectName || 'General'}</span></td>
+                <td>{task.assignedTo || 'Unassigned'}</td>
+                <td><i className="far fa-calendar-alt me-1 text-muted"></i> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                  <span className={`badge ${getPriorityBadge(task.priority)} rounded-pill px-3`}>
+                    {task.priority || 'Medium'}
+                  </span>
+                </td>
+                <td>
+                  <span className={`badge ${getStatusBadge(task.status)} rounded-pill px-3`}>
+                    {task.status || 'Pending'}
+                  </span>
+                </td>
+                <td>
+                  <div className="action-btn-group">
+                    <button
+                      className="btn-action edit"
+                      onClick={() => handleEditTask(task)}
+                      title="Edit Task"
+                    >
+                      <i className="far fa-edit"></i>
+                    </button>
+                    <button
+                      className="btn-action delete"
+                      onClick={() => handleDeleteTask(task.id || task._id, task.title)}
+                      title="Delete Task"
+                    >
+                      <i className="far fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {/* Add/Edit Task Modal */}

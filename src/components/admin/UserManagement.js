@@ -19,54 +19,34 @@ const UserManagement = () => {
   const [showPasswordManagementModal, setShowPasswordManagementModal] = useState(false);
   const [selectedUserForPasswordManagement, setSelectedUserForPasswordManagement] = useState(null);
 
-  // Load users from API
+  // Load users from API (Firestore only)
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
       const apiUsers = await getAllUsers();
-      const processedUsers = apiUsers.map(apiUser => ({
-        ...apiUser,
-        id: apiUser.id || apiUser._id,
-        _id: apiUser._id || apiUser.id,
-        department: apiUser.department || 'Web Developer',
-        projectStatus: apiUser.assignedProject ? 'Assigned' : 'Not Assigned',
-        userType: apiUser.userType || (
-          apiUser.role === 'intern' ? 'Intern' :
+
+      const processedUsers = (apiUsers || [])
+        .filter(user => user.role !== 'intern')
+        .map(apiUser => ({
+          ...apiUser,
+          id: apiUser.id || apiUser._id,
+          _id: apiUser._id || apiUser.id,
+          department: apiUser.department || 'Web Developer',
+          projectStatus: apiUser.assignedProject ? 'Assigned' : 'Not Assigned',
+          userType: apiUser.userType || (
             apiUser.role === 'employee' ? 'Employee' :
               apiUser.role === 'team-leader' ? 'Team Leader' :
                 apiUser.role === 'project-manager' ? 'Project Manager' : 'Employee'
-        ),
-        status: apiUser.status || 'Active',
-        joinDate: apiUser.joinDate || apiUser.joiningDate || new Date().toISOString().split('T')[0]
-      }));
+          ),
+          status: apiUser.status || 'Active',
+          joinDate: apiUser.joinDate || apiUser.joiningDate || new Date().toISOString().split('T')[0]
+        }));
+
       setAllUsers(processedUsers);
+      console.log(`✅ Loaded ${processedUsers.length} users from Firestore`);
     } catch (error) {
-      console.error('Error loading users:', error);
-      // Fallback to localStorage if API fails
-      try {
-        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        if (localUsers.length > 0) {
-          const processedUsers = localUsers.map(user => ({
-            ...user,
-            id: user.id || user._id,
-            _id: user._id || user.id,
-            department: user.department || 'Web Developer',
-            projectStatus: user.assignedProject ? 'Assigned' : 'Not Assigned',
-            userType: user.userType || (
-              user.role === 'intern' ? 'Intern' :
-                user.role === 'employee' ? 'Employee' :
-                  user.role === 'team-leader' ? 'Team Leader' :
-                    user.role === 'project-manager' ? 'Project Manager' : 'Employee'
-            ),
-            status: user.status || 'Active',
-            joinDate: user.joinDate || user.joiningDate || new Date().toISOString().split('T')[0]
-          }));
-          setAllUsers(processedUsers);
-          console.log('✅ Loaded users from localStorage:', processedUsers.length);
-        }
-      } catch (localError) {
-        console.error('Error loading from localStorage:', localError);
-      }
+      console.error('Error loading users from Firestore:', error);
+      setAllUsers([]);
     } finally {
       setLoadingUsers(false);
     }
@@ -107,7 +87,7 @@ const UserManagement = () => {
       if (error.response) {
         console.error('📡 Server responded with:', error.response.status, error.response.data);
       }
-      alert('Failed to save user. Please try again.');
+      alert(error.message || 'Failed to save user. Please try again.');
     }
   };
 
@@ -117,16 +97,29 @@ const UserManagement = () => {
     setShowAddUserModal(true);
   };
 
-  // Handle delete user
+  // Handle delete user (Firestore only)
   const handleDeleteUser = async (userId, userName) => {
+    console.log(`🗑️ Attempting to delete user: ${userName} (ID: ${userId})`);
+
+    if (!userId) {
+      console.error('❌ Error: User ID is missing or undefined!');
+      alert('Cannot delete user: ID is missing.');
+      return;
+    }
+
     if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
       try {
+        console.log(`📡 Sending delete request to Firestore for ID: ${userId}...`);
         await deleteUser(userId);
+
+        console.log('✅ Delete successful in Firestore. Updating UI...');
         setAllUsers(prev => prev.filter(user => user.id !== userId && user._id !== userId));
+
         alert(`User ${userName} deleted successfully!`);
       } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user. Please try again.');
+        console.error('❌ FAILURE in handleDeleteUser:', error);
+        console.error('Detailed Error Object:', JSON.stringify(error, null, 2));
+        alert(`Failed to delete user: ${error.message || 'Unknown error'}`);
       }
     }
   };
@@ -230,7 +223,6 @@ const UserManagement = () => {
           <select value={filterByRole} onChange={(e) => setFilterByRole(e.target.value)}>
             <option value="all">All Roles</option>
             <option value="employee">Employee</option>
-            <option value="intern">Intern</option>
             <option value="team-leader">Team Leader</option>
             <option value="project-manager">Project Manager</option>
           </select>
@@ -293,7 +285,7 @@ const UserManagement = () => {
           <p>No users found</p>
         </div>
       ) : (
-        <div className={`users-${userViewMode}`}>
+        <div>
           {userViewMode === 'list' ? (
             <table className="users-table">
               <thead>
@@ -315,7 +307,7 @@ const UserManagement = () => {
                         <div className="user-avatar">
                           {user.name?.charAt(0).toUpperCase()}
                         </div>
-                        <span>{user.name}</span>
+                        <span className="fw-bold">{user.name}</span>
                       </div>
                     </td>
                     <td>{user.email}</td>
@@ -332,27 +324,27 @@ const UserManagement = () => {
                     </td>
                     <td>{new Date(user.joinDate).toLocaleDateString()}</td>
                     <td>
-                      <div className="action-buttons">
+                      <div className="action-btn-group">
                         <button
-                          className="btn btn-sm btn-outline-primary"
+                          className="btn-action edit"
                           onClick={() => handleEditUser(user)}
                           title="Edit"
                         >
-                          <i className="fas fa-edit"></i>
+                          <i className="far fa-edit"></i>
                         </button>
                         <button
-                          className="btn btn-sm btn-outline-warning"
+                          className="btn-action password"
                           onClick={() => handleOpenPasswordManagement(user)}
                           title="Password Management"
                         >
                           <i className="fas fa-key"></i>
                         </button>
                         <button
-                          className="btn btn-sm btn-outline-danger"
+                          className="btn-action delete"
                           onClick={() => handleDeleteUser(user.id || user._id, user.name)}
                           title="Delete"
                         >
-                          <i className="fas fa-trash"></i>
+                          <i className="far fa-trash-alt"></i>
                         </button>
                       </div>
                     </td>
@@ -368,40 +360,46 @@ const UserManagement = () => {
                     <div className="user-avatar-large">
                       {user.name?.charAt(0).toUpperCase()}
                     </div>
-                    <span className={`status-badge status-${user.status?.toLowerCase().replace(' ', '-')}`}>
-                      {user.status}
-                    </span>
                   </div>
                   <div className="user-card-body">
                     <h4>{user.name}</h4>
                     <p className="user-email">{user.email}</p>
                     <div className="user-details">
-                      <span className={`badge badge-${user.role}`}>{user.userType}</span>
-                      <span className="department">{user.department}</span>
+                      <span className="detail-item">
+                        <i className={`fas ${user.role === 'team-leader' ? 'fa-user-tie' : user.role === 'project-manager' ? 'fa-user-shield' : 'fa-user'} me-2`}></i>
+                        {user.userType}
+                      </span>
+                      <span className="detail-item">
+                        <i className="fas fa-building me-2"></i>
+                        {user.department || 'Web Development'}
+                      </span>
+                      <span className="detail-item">
+                        <i className="fas fa-calendar-check me-2"></i>
+                        Joined: {new Date(user.joinDate).toLocaleDateString()}
+                      </span>
                     </div>
-                    <p className="join-date">Joined: {new Date(user.joinDate).toLocaleDateString()}</p>
                   </div>
                   <div className="user-card-footer">
                     <button
-                      className="btn btn-sm btn-outline-primary"
+                      className="btn-action edit"
                       onClick={() => handleEditUser(user)}
+                      title="Edit User"
                     >
-                      <i className="fas fa-edit me-1"></i>
-                      Edit
+                      <i className="far fa-edit"></i>
                     </button>
                     <button
-                      className="btn btn-sm btn-outline-warning"
+                      className="btn-action password"
                       onClick={() => handleOpenPasswordManagement(user)}
+                      title="Manage Password"
                     >
-                      <i className="fas fa-key me-1"></i>
-                      Password
+                      <i className="fas fa-key"></i>
                     </button>
                     <button
-                      className="btn btn-sm btn-outline-danger"
+                      className="btn-action delete"
                       onClick={() => handleDeleteUser(user.id || user._id, user.name)}
+                      title="Delete User"
                     >
-                      <i className="fas fa-trash me-1"></i>
-                      Delete
+                      <i className="far fa-trash-alt"></i>
                     </button>
                   </div>
                 </div>
@@ -421,6 +419,7 @@ const UserManagement = () => {
           }}
           onSave={handleSaveUser}
           editingUser={editingUser}
+          teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
         />
       )}
 

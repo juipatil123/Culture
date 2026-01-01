@@ -137,10 +137,10 @@ const Revenue = () => {
                     <div className="dashboard-card bg-warning text-white" style={{ borderRadius: '15px', padding: '20px' }}>
                         <div className="d-flex justify-content-between align-items-center mb-3">
                             <div className="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
-                                <i className="fas fa-dollar-sign fs-5"></i>
+                                <i className="fas fa-rupee-sign fs-5"></i>
                             </div>
                         </div>
-                        <h3 className="fw-bold mb-1">${stats.totalRevenue.toLocaleString()}</h3>
+                        <h3 className="fw-bold mb-1">₹{stats.totalRevenue.toLocaleString()}</h3>
                         <p className="mb-0 opacity-75 small fw-semibold text-uppercase" style={{ letterSpacing: '1px' }}>Total Revenue</p>
                     </div>
                 </div>
@@ -152,7 +152,7 @@ const Revenue = () => {
                                 <i className="fas fa-check-circle fs-5"></i>
                             </div>
                         </div>
-                        <h3 className="fw-bold mb-1">${stats.totalAdvance.toLocaleString()}</h3>
+                        <h3 className="fw-bold mb-1">₹{stats.totalAdvance.toLocaleString()}</h3>
                         <p className="mb-0 opacity-75 small fw-semibold text-uppercase" style={{ letterSpacing: '1px' }}>Advance Received</p>
                     </div>
                 </div>
@@ -164,7 +164,7 @@ const Revenue = () => {
                                 <i className="fas fa-clock fs-5"></i>
                             </div>
                         </div>
-                        <h3 className="fw-bold mb-1">${stats.totalRemaining.toLocaleString()}</h3>
+                        <h3 className="fw-bold mb-1">₹{stats.totalRemaining.toLocaleString()}</h3>
                         <p className="mb-0 opacity-75 small fw-semibold text-uppercase" style={{ letterSpacing: '1px' }}>Remaining Payment</p>
                     </div>
                 </div>
@@ -232,16 +232,16 @@ const Revenue = () => {
                                         <span><strong>PM:</strong> {project.projectManager}</span>
                                     </div>
                                     <div className="info-item">
-                                        <i className="fas fa-dollar-sign"></i>
-                                        <span><strong>Total Cost:</strong> ${project.projectCost.toLocaleString()}</span>
+                                        <i className="fas fa-rupee-sign"></i>
+                                        <span><strong>Total Cost:</strong> ₹{project.projectCost.toLocaleString()}</span>
                                     </div>
                                     <div className="info-item">
                                         <i className="fas fa-check-circle"></i>
-                                        <span><strong>Advance:</strong> ${project.advancePayment.toLocaleString()}</span>
+                                        <span><strong>Advance:</strong> ₹{project.advancePayment.toLocaleString()}</span>
                                     </div>
                                     <div className="info-item">
                                         <i className="fas fa-clock"></i>
-                                        <span><strong>Remaining:</strong> ${project.remainingPayment.toLocaleString()}</span>
+                                        <span><strong>Remaining:</strong> ₹{project.remainingPayment.toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div className="progress-section">
@@ -280,9 +280,9 @@ const Revenue = () => {
                                 <td><strong>{project.name}</strong></td>
                                 <td>{project.clientName}</td>
                                 <td>{project.projectManager}</td>
-                                <td>${project.projectCost.toLocaleString()}</td>
-                                <td>${project.advancePayment.toLocaleString()}</td>
-                                <td>${project.remainingPayment.toLocaleString()}</td>
+                                <td>₹{project.projectCost.toLocaleString()}</td>
+                                <td>₹{project.advancePayment.toLocaleString()}</td>
+                                <td>₹{project.remainingPayment.toLocaleString()}</td>
                                 <td>{getStatusBadge(project.status)}</td>
                                 <td>
                                     <div className="progress" style={{ height: '8px' }}>
