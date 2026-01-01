@@ -625,11 +625,16 @@ const EmployeeDashboard = ({
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
-                                                            <span className="badge bg-light text-dark border">{task.priority ? task.priority.toUpperCase() : 'MEDIUM'}</span>
-                                                        </div>
-                                                        <div className="col-lg-2 mb-2 mb-lg-0">
-                                                            <span className={`badge ${task.status === 'completed' ? 'bg-success text-white' : task.status === 'in-progress' ? 'bg-primary text-white' : 'bg-warning text-dark'}`}>
-                                                                {(task.status || 'NEW').toUpperCase()}
+                                                            <span className="badge px-3 py-2 rounded-pill" style={{
+                                                                fontSize: '0.75rem',
+                                                                backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
+                                                                    ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
+                                                                        '#6c757d', // Grey (New/Assigned)
+                                                                color: 'white'
+                                                            }}>
+                                                                {((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
+                                                                    ? 'NEW'
+                                                                    : (task.status || 'NEW').toUpperCase()}
                                                             </span>
                                                         </div>
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
@@ -639,7 +644,42 @@ const EmployeeDashboard = ({
                                                             </small>
                                                         </div>
                                                         <div className="col-lg-2 text-end">
-                                                            {/* User requested no buttons */}
+                                                            <div className="d-flex justify-content-end gap-2">
+                                                                {['new', 'pending', 'assigned', ''].includes((task.status || '').toLowerCase()) && (
+                                                                    <button
+                                                                        className="btn btn-sm btn-primary fw-bold"
+                                                                        onClick={() => handleStartTask(task.id)}
+                                                                        style={{ borderRadius: '6px' }}
+                                                                    >
+                                                                        Start
+                                                                    </button>
+                                                                )}
+                                                                {((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') && (
+                                                                    <>
+                                                                        <button
+                                                                            className="btn btn-sm fw-bold text-white"
+                                                                            onClick={() => setNoteModalTask(task)}
+                                                                            style={{ borderRadius: '6px', backgroundColor: '#f59e0b', border: 'none' }}
+                                                                        >
+                                                                            Note
+                                                                        </button>
+                                                                        <button
+                                                                            className="btn btn-sm fw-bold text-white"
+                                                                            onClick={() => handleCompleteTask(task)}
+                                                                            style={{ borderRadius: '6px', backgroundColor: '#10b981', border: 'none' }}
+                                                                        >
+                                                                            Complete
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                <button
+                                                                    className="btn btn-sm fw-bold"
+                                                                    onClick={() => setSelectedTask(task)}
+                                                                    style={{ borderRadius: '6px', backgroundColor: '#f3e8ff', color: '#9333ea', border: 'none' }}
+                                                                >
+                                                                    Details
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
