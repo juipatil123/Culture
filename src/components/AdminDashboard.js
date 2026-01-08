@@ -959,124 +959,146 @@ const AdminDashboard = ({ userData, onLogout }) => {
           <Reports />
         )}
 
-        {activeView === 'support-help' && (
-          <SupportHelp adminData={safeUserData} />
-        )}
+<<<<<<< Updated upstream
+  {
+    activeView === 'support-help' && (
+      <SupportHelp adminData={safeUserData} />
+    )
+  }
 
+  {
+    activeView === 'revenue' && (
+      <RevenueView />
+    )
+  }
+
+  {
+    activeView === 'client-dashboard' && (
+      <div className="container-fluid p-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold mb-0">Client Overview</h3>
+          <button className="btn btn-outline-secondary" onClick={() => setActiveView('dashboard')}>
+            <i className="fas fa-arrow-left me-2"></i> Back
+          </button>
+        </div>
+
+        <div className="card border-0 shadow-sm rounded-3">
+          <div className="card-header bg-white border-0 py-3">
+            <h5 className="mb-0 fw-bold text-primary">
+              Total Clients: {new Set(projects.map(p => p.clientName).filter(Boolean)).size}
+            </h5>
+          </div>
+          <div className="card-body">
+            {projects.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead className="bg-light">
+                    <tr>
+                      <th>Sr. No.</th>
+                      <th>Client Name</th>
+                      <th>Projects Count</th>
+                      <th>Total Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
+                      const clientProjects = projects.filter(p => p.clientName === client);
+                      const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
+                      return (
+                        <tr key={index}>
+                          <td>{index + 1}</td>
+                          <td className="fw-semibold">{client}</td>
+                          <td>{clientProjects.length}</td>
+                          <td>₹{revenue.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-muted my-4">No clients found.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  {
+    activeView === 'notice' && (
+      <AdminNotice />
+    )
+  }
+=======
         {activeView === 'revenue' && (
           <RevenueView />
         )}
+>>>>>>> Stashed changes
+      </div >
 
-        {activeView === 'client-dashboard' && (
-          <div className="container-fluid p-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h3 className="fw-bold mb-0">Client Overview</h3>
-              <button className="btn btn-outline-secondary" onClick={() => setActiveView('dashboard')}>
-                <i className="fas fa-arrow-left me-2"></i> Back
-              </button>
-            </div>
+  {/* Modals */ }
+{
+  showAddUserModal && (
+    <AddUserModal
+      show={showAddUserModal}
+      onHide={() => {
+        setShowAddUserModal(false);
+        setEditingUser(null);
+      }}
+      onSave={handleSaveUser}
+      editingUser={editingUser}
+      projects={projects}
+      teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
+    />
+  )
+}
 
-            <div className="card border-0 shadow-sm rounded-3">
-              <div className="card-header bg-white border-0 py-3">
-                <h5 className="mb-0 fw-bold text-primary">
-                  Total Clients: {new Set(projects.map(p => p.clientName).filter(Boolean)).size}
-                </h5>
-              </div>
-              <div className="card-body">
-                {projects.length > 0 ? (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="bg-light">
-                        <tr>
-                          <th>Sr. No.</th>
-                          <th>Client Name</th>
-                          <th>Projects Count</th>
-                          <th>Total Revenue</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
-                          const clientProjects = projects.filter(p => p.clientName === client);
-                          const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
-                          return (
-                            <tr key={index}>
-                              <td>{index + 1}</td>
-                              <td className="fw-semibold">{client}</td>
-                              <td>{clientProjects.length}</td>
-                              <td>₹{revenue.toLocaleString()}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted my-4">No clients found.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+{
+  showAddProjectModal && (
+    <AddProjectModal
+      show={showAddProjectModal}
+      onHide={() => {
+        setShowAddProjectModal(false);
+        setEditingProject(null);
+      }}
+      onSave={handleSaveProject}
+      editingProject={editingProject}
+      availableEmployees={allUsers}
+    />
+  )
+}
 
-        {activeView === 'notice' && (
-          <AdminNotice />
-        )}
-      </div>
+{
+  showAddTaskModal && (
+    <AddTaskModal
+      show={showAddTaskModal}
+      onHide={() => {
+        setShowAddTaskModal(false);
+        setEditingTask(null);
+      }}
+      onSave={handleSaveTask}
+      editingTask={editingTask}
+      allUsers={allUsers}
+      projects={projects}
+    />
+  )
+}
 
-      {/* Modals */}
-      {showAddUserModal && (
-        <AddUserModal
-          show={showAddUserModal}
-          onHide={() => {
-            setShowAddUserModal(false);
-            setEditingUser(null);
-          }}
-          onSave={handleSaveUser}
-          editingUser={editingUser}
-          projects={projects}
-          teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
-        />
-      )}
-
-      {showAddProjectModal && (
-        <AddProjectModal
-          show={showAddProjectModal}
-          onHide={() => {
-            setShowAddProjectModal(false);
-            setEditingProject(null);
-          }}
-          onSave={handleSaveProject}
-          editingProject={editingProject}
-          availableEmployees={allUsers}
-        />
-      )}
-
-      {showAddTaskModal && (
-        <AddTaskModal
-          show={showAddTaskModal}
-          onHide={() => {
-            setShowAddTaskModal(false);
-            setEditingTask(null);
-          }}
-          onSave={handleSaveTask}
-          editingTask={editingTask}
-          allUsers={allUsers}
-          projects={projects}
-        />
-      )}
-
-      {showAddProjectManagerModal && (
-        <AddProjectManagerModal
-          show={showAddProjectManagerModal}
-          onHide={() => {
-            setShowAddProjectManagerModal(false);
-            setEditingProjectManager(null);
-          }}
-          onSave={handleSaveProjectManager}
-          editingProjectManager={editingProjectManager}
-        />
-      )}
-    </div>
+{
+  showAddProjectManagerModal && (
+    <AddProjectManagerModal
+      show={showAddProjectManagerModal}
+      onHide={() => {
+        setShowAddProjectManagerModal(false);
+        setEditingProjectManager(null);
+      }}
+      onSave={handleSaveProjectManager}
+      editingProjectManager={editingProjectManager}
+    />
+  )
+}
+    </div >
   );
 };
 
