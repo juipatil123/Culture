@@ -129,10 +129,18 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
   // Filter employees based on search term and exclude already assigned members
   const getFilteredEmployees = () => {
     return availableEmployees.filter(employee => {
-      const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (employee.department && employee.department.toLowerCase().includes(searchTerm.toLowerCase()));
-      const notAlreadyAssigned = !formData.assignedMembers.includes(employee.name);
+      // Safe access to properties with fallbacks
+      const name = employee?.name || '';
+      const email = employee?.email || '';
+      const department = employee?.department || '';
+      const term = (searchTerm || '').toLowerCase();
+
+      const matchesSearch = name.toLowerCase().includes(term) ||
+        email.toLowerCase().includes(term) ||
+        department.toLowerCase().includes(term);
+
+      // Ensure name exists before checking inclusion
+      const notAlreadyAssigned = name && !formData.assignedMembers.includes(name);
       return matchesSearch && notAlreadyAssigned;
     });
   };
@@ -149,9 +157,17 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
     const registeredProjectManagers = availableEmployees.filter(employee => {
       // Only show users who are actually registered as project managers
       const isProjectManager = employee.role === 'project-manager' || employee.userType === 'Project Manager';
-      const matchesSearch = employee.name.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
-        employee.email.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
-        (employee.department && employee.department.toLowerCase().includes(managerSearchTerm.toLowerCase()));
+
+      // Safe access to properties with fallbacks
+      const name = employee?.name || '';
+      const email = employee?.email || '';
+      const department = employee?.department || '';
+      const term = (managerSearchTerm || '').toLowerCase();
+
+      const matchesSearch = name.toLowerCase().includes(term) ||
+        email.toLowerCase().includes(term) ||
+        department.toLowerCase().includes(term);
+
       return isProjectManager && matchesSearch;
     });
 

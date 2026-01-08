@@ -785,3 +785,78 @@
 .bg-light-primary {
     background-color: #f5f3ff !important;
 }
+
+/* Summary Cards for Reports */
+.summary-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 1.5rem;
+    color: white;
+    overflow: hidden;
+    height: 100%;
+    border: none;
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+}
+
+.summary-card-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    opacity: 0.95;
+    z-index: 2;
+}
+
+.summary-card-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1.25rem;
+    line-height: 1;
+    z-index: 2;
+}
+
+.summary-card-pill {
+    background: white;
+    color: #333;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    width: fit-content;
+    display: inline-block;
+    min-width: 140px;
+    text-align: center;
+    z-index: 2;
+}
+
+.summary-card-circle {
+    position: absolute;
+    right: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 90px;
+    height: 90px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    z-index: 1;
+}
+
+.bg-grad-purple {
+    background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%) !important;
+}
+
+.bg-grad-green {
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%) !important;
+}
+
+.bg-grad-pink {
+    background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%) !important;
+}

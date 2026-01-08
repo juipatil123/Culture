@@ -7,7 +7,7 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import InternDashboard from './components/InternDashboard';
 import UnifiedLogin from './components/UnifiedLogin';
 import { AuthProvider } from './context/AuthContext';
-import { getAllTasks, getAllProjects } from './services/api';
+import { getAllTasks, getAllProjects, subscribeToTasks } from './services/api';
 import 'boxicons/css/boxicons.min.css';
 import './App.css';
 
@@ -20,22 +20,27 @@ function EmployeeDashboardWrapper({ userData, onLogout }) {
   const userEmail = userData?.email || localStorage.getItem('userEmail');
   const userName = userData?.name || localStorage.getItem('userName');
 
-  const isUserAssignedToTask = (task, email) => {
-    if (!task || !email) return false;
+  const isUserAssignedToTask = (task, email, name) => {
+    if (!task) return false;
+
+    const checkMatch = (val) => {
+      if (!val) return false;
+      const strVal = (typeof val === 'object' ? (val.email || val.name || '') : val).toString().toLowerCase();
+      // Check if it matches email OR name
+      return (email && strVal === email.toLowerCase()) || (name && strVal === name.toLowerCase());
+    };
+
     const assignedTo = task.assignedTo;
     if (Array.isArray(assignedTo)) {
-      return assignedTo.some(e =>
-        (typeof e === 'object' ? (e.email || e.name || '') : e).toString().toLowerCase() === email.toLowerCase()
-      );
+      return assignedTo.some(e => checkMatch(e));
     }
-    const to = (typeof assignedTo === 'object' ? (assignedTo.email || assignedTo.name || '') : (assignedTo || '')).toString().toLowerCase();
-    return to === email.toLowerCase();
+    return checkMatch(assignedTo);
   };
 
   const loadTasks = async () => {
     try {
       const allTasks = await getAllTasks();
-      const myTasks = allTasks.filter(task => isUserAssignedToTask(task, userEmail));
+      const myTasks = allTasks.filter(task => isUserAssignedToTask(task, userEmail, userName));
       setAssignedTasks(myTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -66,8 +71,20 @@ function EmployeeDashboardWrapper({ userData, onLogout }) {
   };
 
   useEffect(() => {
-    loadTasks();
+    // Initial project load
     loadProjects();
+
+    // Subscribe to tasks for real-time updates
+    const unsubscribe = subscribeToTasks((allTasks) => {
+      // Filter tasks for the current user (using both email and name)
+      const myTasks = allTasks.filter(task => isUserAssignedToTask(task, userEmail, userName));
+      setAssignedTasks(myTasks);
+    });
+
+    return () => {
+      // Cleanup subscription
+      if (unsubscribe) unsubscribe();
+    };
   }, [userEmail, userName]);
 
   return (

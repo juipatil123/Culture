@@ -249,7 +249,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                 <div className="col-md-6">
                   <div className="mb-3">
                     <label className="form-label">
-                      <i className="fas fa-dollar-sign me-1"></i>Salary
+                      <i className="fas fa-rupee-sign me-1"></i>Salary
                     </label>
                     <input
                       type="number"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProjects, createProject, updateProject, deleteProject } from '../../services/api';
+import { getAllProjects, createProject, updateProject, deleteProject, getAllUsers } from '../../services/api';
 import AddProjectModal from '../AddProjectModal';
 import './AdminComponents.css';
 
@@ -11,12 +11,17 @@ const ProjectManagement = () => {
   const [projectViewMode, setProjectViewMode] = useState('card');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [filterByStatus, setFilterByStatus] = useState('all');
+  const [projectManagers, setProjectManagers] = useState([]);
 
-  // Load projects
-  const loadProjects = async () => {
+  // Load projects and users (including PMs)
+  const loadData = async () => {
     setLoadingProjects(true);
     try {
-      const projectsData = await getAllProjects();
+      const [projectsData, usersData] = await Promise.all([
+        getAllProjects(),
+        getAllUsers()
+      ]);
+
       console.log('Admin: Loaded raw projects:', projectsData);
 
       const transformedProjects = (projectsData || []).map((project, index) => ({
@@ -46,16 +51,17 @@ const ProjectManagement = () => {
       }));
 
       setProjects(transformedProjects);
+      setProjectManagers(usersData || []); // Using this state to store all users for the modal
       console.log(`✅ Admin: Set ${transformedProjects.length} projects to state`);
     } catch (error) {
-      console.error('Error loading projects:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoadingProjects(false);
     }
   };
 
   useEffect(() => {
-    loadProjects();
+    loadData();
   }, []);
 
   // Handle add project
@@ -74,7 +80,7 @@ const ProjectManagement = () => {
       }
       setShowAddProjectModal(false);
       setEditingProject(null);
-      loadProjects();
+      loadData();
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Failed to save project. Please try again.');
@@ -94,6 +100,7 @@ const ProjectManagement = () => {
         await deleteProject(projectId);
         setProjects(prev => prev.filter(p => p.id !== projectId));
         alert(`Project "${projectName}" deleted successfully!`);
+        // loadData(); // Optional: if we want to refresh fully, but local update is faster
       } catch (error) {
         console.error('Error deleting project:', error);
         alert('Failed to delete project. Please try again.');
@@ -133,13 +140,14 @@ const ProjectManagement = () => {
     };
     const config = statusConfig[status] || statusConfig['On Track'];
     return (
-      <span style={{
+      <span className="badge rounded-pill" style={{
         backgroundColor: config.bg,
         color: config.text,
-        padding: '4px 8px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        fontWeight: 'bold'
+        padding: '6px 14px',
+        fontSize: '11px',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
       }}>
         {status}
       </span>
@@ -210,51 +218,50 @@ const ProjectManagement = () => {
             <div key={project.id} className="project-card">
               <div className="project-card-header">
                 <h4>{project.name}</h4>
-                {getStatusBadge(project.status)}
+                <div className="status-label">{project.status}</div>
               </div>
               <div className="project-card-body">
-                <div className="project-info">
-                  <div className="info-item">
-                    <i className="fas fa-user-tie"></i>
+                <div className="proj-detail-list">
+                  <div className="proj-detail-item">
+                    <i className="fas fa-user"></i>
                     <span><strong>Client:</strong> {project.clientName}</span>
                   </div>
-                  <div className="info-item">
-                    <i className="fas fa-user"></i>
-                    <span><strong>PM:</strong> {project.projectManager || 'Not Assigned'}</span>
+                  <div className="proj-detail-item">
+                    <i className="fas fa-user-circle"></i>
+                    <span><strong>Manager:</strong> {project.projectManager || 'Not Assigned'}</span>
                   </div>
-                  <div className="info-item">
-                    <i className="fas fa-calendar"></i>
-                    <span><strong>Start:</strong> {project.date}</span>
+                  <div className="proj-detail-item">
+                    <i className="fas fa-calendar-alt"></i>
+                    <span><strong>Start Date:</strong> {project.date}</span>
                   </div>
-                  <div className="info-item">
-                    <i className="fas fa-dollar-sign"></i>
-                    <span><strong>Cost:</strong> ${project.projectCost || 0}</span>
-                  </div>
-                </div>
-                <div className="progress-section">
-                  <div className="progress-header">
-                    <span>Progress</span>
-                    <span>{project.progress}%</span>
-                  </div>
-                  <div className="progress">
-                    <div
-                      className="progress-bar"
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
+                  <div className="proj-detail-item">
+                    <i className="fas fa-rupee-sign"></i>
+                    <span><strong>Costing:</strong> ₹{project.projectCost || 0}</span>
                   </div>
                 </div>
-                {project.assigned.length > 0 && (
-                  <div className="team-members">
-                    <span>Team:</span>
-                    <div className="member-avatars">
-                      {project.assigned.slice(0, 3).map((member, index) => (
-                        <div key={index} className={`member-avatar ${member.color}`} title={member.name}>
+
+                <div className="proj-progress-section mt-3">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="small fw-bold text-muted">Progress</span>
+                    <span className="small fw-bold text-primary">{project.progress}%</span>
+                  </div>
+                  <div className="proj-progress-bar-container">
+                    <div className="proj-progress-bar" style={{ width: `${project.progress}%` }}></div>
+                  </div>
+                </div>
+
+                {project.assigned && project.assigned.length > 0 && (
+                  <div className="team-section mt-3">
+                    <span className="small fw-bold text-muted">Team Members:</span>
+                    <div className="avatar-stack ms-2">
+                      {project.assigned.slice(0, 4).map((member, index) => (
+                        <div key={index} className="stack-avatar" title={member.name}>
                           {member.name.charAt(0)}
                         </div>
                       ))}
-                      {project.extra > 0 && (
-                        <div className="member-avatar bg-secondary">
-                          +{project.extra}
+                      {project.assigned.length > 4 && (
+                        <div className="stack-avatar more">
+                          +{project.assigned.length - 4}
                         </div>
                       )}
                     </div>
@@ -263,17 +270,17 @@ const ProjectManagement = () => {
               </div>
               <div className="project-card-footer">
                 <button
-                  className="btn btn-sm btn-outline-primary"
+                  className="btn btn-sm btn-outline-primary rounded-pill px-3"
                   onClick={() => handleEditProject(project)}
                 >
-                  <i className="fas fa-edit me-1"></i>
+                  <i className="far fa-edit me-1"></i>
                   Edit
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-danger"
+                  className="btn btn-sm btn-outline-danger rounded-pill px-3"
                   onClick={() => handleDeleteProject(project.id, project.name)}
                 >
-                  <i className="fas fa-trash me-1"></i>
+                  <i className="far fa-trash-alt me-1"></i>
                   Delete
                 </button>
               </div>
@@ -297,36 +304,38 @@ const ProjectManagement = () => {
           <tbody>
             {filteredProjects.map((project) => (
               <tr key={project.id}>
-                <td><strong>{project.name}</strong></td>
-                <td>{project.clientName}</td>
+                <td><div className="fw-bold text-dark">{project.name}</div></td>
+                <td><span className="text-secondary">{project.clientName}</span></td>
                 <td>{project.projectManager || 'Not Assigned'}</td>
                 <td>{getStatusBadge(project.status)}</td>
                 <td>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div
-                      className="progress-bar"
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
+                  <div className="d-flex align-items-center gap-2" style={{ minWidth: '120px' }}>
+                    <div className="progress flex-grow-1" style={{ height: '6px', background: '#f0f2f5' }}>
+                      <div
+                        className="progress-bar"
+                        style={{ width: `${project.progress}%`, background: 'linear-gradient(90deg, #4361ee, #4cc9f0)' }}
+                      ></div>
+                    </div>
+                    <span className="small fw-bold">{project.progress}%</span>
                   </div>
-                  <small>{project.progress}%</small>
                 </td>
-                <td>{project.date}</td>
-                <td>${project.projectCost || 0}</td>
+                <td><i className="far fa-calendar-alt me-1 text-muted"></i> {project.date}</td>
+                <td className="fw-bold text-dark">₹{project.projectCost || 0}</td>
                 <td>
-                  <div className="action-buttons">
+                  <div className="action-btn-group">
                     <button
-                      className="btn btn-sm btn-outline-primary"
+                      className="btn-action edit"
                       onClick={() => handleEditProject(project)}
-                      title="Edit"
+                      title="Edit Project"
                     >
-                      <i className="fas fa-edit"></i>
+                      <i className="far fa-edit"></i>
                     </button>
                     <button
-                      className="btn btn-sm btn-outline-danger"
+                      className="btn-action delete"
                       onClick={() => handleDeleteProject(project.id, project.name)}
-                      title="Delete"
+                      title="Delete Project"
                     >
-                      <i className="fas fa-trash"></i>
+                      <i className="far fa-trash-alt"></i>
                     </button>
                   </div>
                 </td>
@@ -346,6 +355,7 @@ const ProjectManagement = () => {
           }}
           onSave={handleSaveProject}
           editingProject={editingProject}
+          availableEmployees={projectManagers}
         />
       )}
     </div>

@@ -1,21 +1,25 @@
-import {
-  ProjectService,
-  TaskService,
-  AdminService,
-  PMService,
-  TLService,
-  MemberService,
-  PointsService,
-  RoleService,
-  DailyWorkService,
-  getTasksByProject
-} from '../firebase/firestoreService';
-import { AuthService } from '../firebase/authService';
+import axios from 'axios';
 
-/**
- * API Service Bridge
- * This file maps existing API function calls to Firestore operations.
- */
+// Use CRA proxy (package.json proxy -> http://localhost:5000)
+const API_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://YOUR-RENDER-BACKEND-URL.onrender.com/api"
+    : "http://localhost:5000/api";
+
+
+// Axios instance
+const api = axios.create({ baseURL: API_URL });
+
+// Attach token if present (check for employee, admin, or PM token)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token') ||
+    localStorage.getItem('adminToken') ||
+    localStorage.getItem('pmToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Project Managers
 export const getAllProjectManagers = async () => {
@@ -158,17 +162,22 @@ export const updateUser = async (id, userData) => {
 };
 
 export const updateUserPassword = async (id, newPassword) => {
-  // Update password field in the document (Note: Firebase Auth password is separate, 
-  // but for legacy UI we reflect it in Firestore)
-  const users = await getAllUsers();
-  const user = users.find(u => u.id === id);
-  if (!user) throw new Error("User not found");
-
-  const role = (user.role || '').toLowerCase();
-  if (role === 'project-manager') return await PMService.update(id, { password: newPassword });
-  if (role === 'team-leader') return await TLService.update(id, { password: newPassword });
-  if (role === 'admin') return await AdminService.update(id, { password: newPassword });
-  return await MemberService.update(id, { password: newPassword });
+  // Try different endpoints based on user type
+  try {
+    // Try team members first
+    const res = await api.patch(`/team-members/${id}/password`, { password: newPassword });
+    return res.data;
+  } catch (error) {
+    // If team member fails, try project manager
+    try {
+      const res = await api.patch(`/project-managers/${id}/password`, { password: newPassword });
+      return res.data;
+    } catch (pmError) {
+      // If project manager fails, try team leader
+      const res = await api.patch(`/team-leaders/${id}/password`, { password: newPassword });
+      return res.data;
+    }
+  }
 };
 
 export const deleteUser = async (id) => {
@@ -200,6 +209,8 @@ export const getTasksByUser = async (userId) => {
 };
 
 // Task Notes Management
+export { subscribeToTasks };
+
 export const addNoteToTask = async (taskId, noteData) => {
   const task = await TaskService.getById(taskId);
   const notes = task.notes || [];
@@ -273,14 +284,20 @@ export const deleteCustomRole = async (id) => {
 
 // Dashboard Analytics
 export const getDashboardStats = async () => {
-  const projects = await ProjectService.getAll();
-  const members = await MemberService.getAll();
-  return {
-    totalUsers: members.length,
-    activeProjects: projects.length,
-    totalClients: projects.length,
-    totalRevenue: projects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0)
-  };
+  try {
+    const res = await api.get(`/dashboard/stats`);
+    return res.data;
+  } catch (error) {
+    // Calculate stats from available data
+    const projects = await getAllProjects();
+    const users = await getAllUsers();
+    return {
+      totalUsers: users.length,
+      activeProjects: projects.length,
+      totalClients: projects.length, // Approximate
+      totalRevenue: projects.reduce((sum, p) => sum + (p.projectCost || 0), 0)
+    };
+  }
 };
 
 export const getProgressData = async () => {

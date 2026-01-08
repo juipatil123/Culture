@@ -12,6 +12,8 @@ const ProjectManagerManagement = () => {
   const [pmFilterDepartment, setPmFilterDepartment] = useState('all');
   const [selectedProjectManager, setSelectedProjectManager] = useState(null);
   const [showIndividualDashboard, setShowIndividualDashboard] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+
 
 
   // Load project managers
@@ -182,6 +184,21 @@ const ProjectManagerManagement = () => {
           <option value="Mobile Development">Mobile Development</option>
           <option value="UI/UX Design">UI/UX Design</option>
         </select>
+
+        <div className="view-toggle">
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('list')}
+          >
+            <i className="fas fa-list"></i>
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <i className="fas fa-th"></i>
+          </button>
+        </div>
       </div>
 
       {/* PM List */}
@@ -195,60 +212,116 @@ const ProjectManagerManagement = () => {
           <i className="fas fa-user-tie fa-3x"></i>
           <p>No project managers found</p>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="pm-grid">
           {filteredPMs.map((pm) => (
             <div key={pm.id || pm._id} className="pm-card">
               <div className="pm-card-header">
-                <div className="pm-avatar">
+                <div className="user-avatar-large" style={{ position: 'absolute', top: '77.5px', left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
                   {pm.name?.charAt(0).toUpperCase()}
                 </div>
-                <span className="badge badge-pm">Project Manager</span>
+                <div className="header-badge">Project Manager</div>
               </div>
               <div className="pm-card-body">
                 <h4>{pm.name}</h4>
-                <p className="pm-email">{pm.email}</p>
-                <div className="pm-details">
-                  <div className="detail-item">
+                <p className="text-muted">{pm.email}</p>
+                <div className="card-detail-list">
+                  <div className="card-detail-item">
                     <i className="fas fa-building"></i>
-                    <span>{pm.department || 'Not Assigned'}</span>
+                    <span>{pm.department || 'Web Development'}</span>
                   </div>
-                  <div className="detail-item">
+                  <div className="card-detail-item">
                     <i className="fas fa-project-diagram"></i>
                     <span>{pm.assignedProjects?.length || 0} Projects</span>
                   </div>
-                  <div className="detail-item">
+                  <div className="card-detail-item">
                     <i className="fas fa-phone"></i>
-                    <span>{pm.phone || 'N/A'}</span>
+                    <span>{pm.phone || '9876543212'}</span>
                   </div>
                 </div>
               </div>
               <div className="pm-card-footer">
                 <button
-                  className="btn btn-sm btn-outline-info"
+                  className="btn-card-outline info"
                   onClick={() => handleViewPMDashboard(pm)}
                 >
-                  <i className="fas fa-eye me-1"></i>
-                  View Dashboard
+                  <i className="fas fa-tachometer-alt"></i>
+                  Dashboard
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-primary"
+                  className="btn-card-outline primary"
                   onClick={() => handleEditProjectManager(pm)}
                 >
-                  <i className="fas fa-edit me-1"></i>
+                  <i className="far fa-edit"></i>
                   Edit
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-danger"
+                  className="btn-card-outline danger"
                   onClick={() => handleDeleteProjectManager(pm.id || pm._id, pm.name)}
                 >
-                  <i className="fas fa-trash me-1"></i>
+                  <i className="far fa-trash-alt"></i>
                   Delete
                 </button>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <table className="pm-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Department</th>
+              <th>Projects</th>
+              <th>Phone</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredPMs.map((pm) => (
+              <tr key={pm.id || pm._id}>
+                <td>
+                  <div className="user-info">
+                    <div className="user-avatar">
+                      {pm.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <strong>{pm.name}</strong>
+                  </div>
+                </td>
+                <td>{pm.email}</td>
+                <td>{pm.department || 'Not Assigned'}</td>
+                <td>{pm.assignedProjects?.length || 0}</td>
+                <td>{pm.phone || 'N/A'}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button
+                      className="btn btn-sm btn-outline-info"
+                      onClick={() => handleViewPMDashboard(pm)}
+                      title="View Dashboard"
+                    >
+                      <i className="fas fa-eye"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => handleEditProjectManager(pm)}
+                      title="Edit"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDeleteProjectManager(pm.id || pm._id, pm.name)}
+                      title="Delete"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {/* Add/Edit PM Modal */}

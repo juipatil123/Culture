@@ -60,20 +60,13 @@ const AdminOverview = ({
         <div className="admin-overview">
             <div className="row mb-4">
                 {/* Overall Progress Analytics Chart */}
-                <div className="col-md-8 mb-4">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3">
-                            <h5 className="fw-bold mb-0">Overall Progress Analytics</h5>
-                            <div className="dropdown">
-                                <button className="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    This Month
-                                </button>
-                                <ul className="dropdown-menu">
-                                    <li><a className="dropdown-item" href="#">This Week</a></li>
-                                    <li><a className="dropdown-item" href="#">This Month</a></li>
-                                    <li><a className="dropdown-item" href="#">This Quarter</a></li>
-                                </ul>
-                            </div>
+                <div className="col-md-12 col-lg-8 mb-4">
+                    <div className="card border-0 shadow-sm h-100 overflow-hidden">
+                        <div className="card-header border-0 d-flex justify-content-between align-items-center bg-white py-3">
+                            <h5 className="fw-bold mb-0 text-dark">Overall Progress Analytics</h5>
+                            <button className="btn btn-light btn-sm fw-bold text-muted">
+                                <i className="fas fa-download me-2"></i> Report
+                            </button>
                         </div>
                         <div className="card-body">
                             <div style={{ height: '300px' }}>
@@ -84,33 +77,37 @@ const AdminOverview = ({
                 </div>
 
                 {/* Recent Activity Card */}
-                <div className="col-md-4 mb-4">
-                    <div className="card border-0 shadow-sm h-100 stats-card clickable" onClick={() => onCardClick('recent-activity')}>
-                        <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3">
-                            <h5 className="fw-bold mb-0">Recent Activity</h5>
-                            <i className="fas fa-clock text-primary"></i>
+                <div className="col-md-12 col-lg-4 mb-4">
+                    <div className="card border-0 shadow-sm h-100">
+                        <div className="card-header border-0 d-flex justify-content-between align-items-center bg-white py-3">
+                            <h5 className="fw-bold mb-0 text-dark">Recent Activity</h5>
+                            <span className="badge bg-soft-primary text-primary rounded-pill px-3 py-2">Latest</span>
                         </div>
-                        <div className="card-body">
+                        <div className="card-body px-4">
                             {recentActivities && recentActivities.length > 0 ? (
                                 <div className="activity-list">
                                     {recentActivities.slice(0, 5).map((activity, index) => (
-                                        <div key={index} className="activity-item d-flex align-items-start mb-3">
-                                            <div className={`activity-icon me-3 rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary`} style={{ width: '32px', height: '32px', minWidth: '32px' }}>
-                                                <i className={`fas ${activity.icon || 'fa-bell'}`} style={{ fontSize: '12px' }}></i>
+                                        <div key={index} className="activity-item d-flex align-items-start mb-4">
+                                            <div className="activity-icon-premium me-3">
+                                                <i className={`fas ${activity.icon || 'fa-info-circle'}`}></i>
                                             </div>
                                             <div className="activity-content flex-grow-1">
-                                                <div className="activity-text small">
-                                                    <strong className="d-block">{activity.title || activity.message}</strong>
-                                                    <span className="text-muted">{activity.description || activity.time}</span>
+                                                <div className="activity-text">
+                                                    <strong className="d-block mb-1 text-dark">{activity.title || activity.message}</strong>
+                                                    <span className="text-muted small d-block">
+                                                        <i className="far fa-clock me-1"></i> {activity.description || activity.time}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center text-muted py-4">
-                                    <i className="fas fa-clock fa-2x mb-2 opacity-25"></i>
-                                    <p className="small mb-0">No recent activity</p>
+                                <div className="text-center text-muted py-5">
+                                    <div className="empty-activity-icon mb-3">
+                                        <i className="fas fa-ghost fa-3x opacity-25"></i>
+                                    </div>
+                                    <p className="small mb-0">Everything's quiet right now</p>
                                 </div>
                             )}
                         </div>
@@ -186,11 +183,8 @@ const AdminOverview = ({
                                             <span className={`badge rounded-pill ${project.status === 'Completed' ? 'bg-success' :
                                                 project.status === 'At Risk' ? 'bg-warning text-dark' :
                                                     project.status === 'Delayed' ? 'bg-danger' : 'bg-primary'
-                                                } bg-opacity-10 text-${project.status === 'Completed' ? 'success' :
-                                                    project.status === 'At Risk' ? 'warning' :
-                                                        project.status === 'Delayed' ? 'danger' : 'primary'
-                                                }`} style={{ fontSize: '0.75rem' }}>
-                                                {project.status}
+                                                }`} style={{ fontSize: '0.75rem', minWidth: '80px', padding: '8px 12px' }}>
+                                                {project.status || 'Active'}
                                             </span>
                                         </td>
                                         <td>

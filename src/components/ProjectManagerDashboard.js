@@ -9,6 +9,9 @@ import PMProjects from './pm/PMProjects';
 import PMTasks from './pm/PMTasks';
 import PMTeam from './pm/PMTeam';
 import PMReports from './pm/PMReports';
+import TeamLeaderNotice from './TeamLeaderNotice'; // Reusing TeamLeaderNotice component
+import TeamLeaderSupport from './TeamLeaderSupport'; // Reusing TeamLeaderSupport component
+import { subscribeToNotices } from '../firebase/firestoreService';
 
 import {
   getAllProjects,
@@ -55,6 +58,25 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     teamSize: 0,
     completionRate: 0
   });
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    if (!safeUserData.id && !safeUserData._id) return;
+    let isFirstLoad = true;
+    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, safeUserData.role, (notices) => {
+      const count = notices.filter(n => !n.read).length;
+
+      if (!isFirstLoad && count > unreadCount) {
+        const newest = notices[0];
+        setNotification(`New Message from ${newest.senderName}: ${newest.subject}`);
+        setTimeout(() => setNotification(null), 5000);
+      }
+      setUnreadCount(count);
+      isFirstLoad = false;
+    });
+    return () => unsubscribe();
+  }, [safeUserData, unreadCount]);
 
   // State for Quick Task Assignment (Ported from MultiRoleDashboard/PMDashboardSidebar)
   const [selectedEmployeeForTask, setSelectedEmployeeForTask] = useState('');
@@ -428,6 +450,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       setActiveView('team');
     } else if (menuItem === 'Reports') {
       setActiveView('reports');
+    } else if (menuItem === 'Notice') {
+      setActiveView('notice');
+    } else if (menuItem === 'Support & Help') {
+      setActiveView('support-help');
     }
     setIsMobileSidebarOpen(false);
   };
@@ -489,6 +515,41 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         </div>
       </div>
 
+      {notification && (
+        <div className="notification-pop animate__animated animate__fadeInDown" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          padding: '15px 25px',
+          borderRadius: '10px',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          borderLeft: '5px solid #0056b3'
+        }}>
+          <i className="fas fa-bell fa-lg"></i>
+          <div>
+            <strong style={{ display: 'block', fontSize: '0.9rem' }}>New Message</strong>
+            <span style={{ fontSize: '0.85rem' }}>{notification}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{ background: 'none', border: 'none', color: 'white', padding: '0 0 0 10px', cursor: 'pointer' }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`mobile-overlay ${isMobileSidebarOpen ? 'show' : ''}`}
+        onClick={() => setIsMobileSidebarOpen(false)}
+      ></div>
+
       {/* Sidebar */}
       <div className={`dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
@@ -531,6 +592,23 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
               <a onClick={() => handleMenuClick('Reports')}>
                 <i className="fas fa-chart-bar"></i>
                 <span>Reports</span>
+              </a>
+            </li>
+            <li className={activeView === 'notice' ? 'active' : ''}>
+              <a onClick={() => handleMenuClick('Notice')}>
+                <i className="fas fa-bell"></i>
+                <span>Notice</span>
+                {unreadCount > 0 && (
+                  <span className="badge bg-danger rounded-pill ms-2 animate__animated animate__pulse animate__infinite" style={{ fontSize: '0.65rem' }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </a>
+            </li>
+            <li className={activeView === 'support-help' ? 'active' : ''}>
+              <a onClick={() => handleMenuClick('Support & Help')}>
+                <i className="fas fa-headset"></i>
+                <span>Support & Help</span>
               </a>
             </li>
           </ul>
@@ -623,7 +701,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                         <p className="text-muted">Add a new task and assign it to team members</p>
                         <button
                           className="btn btn-primary w-100 py-3 mt-3 fw-bold"
-                          onClick={() => setSelectedEmployeeForTask('select')}
+                          onClick={() => {
+                            setEditingTask(null);
+                            setShowAddTaskModal(true);
+                          }}
                         >
                           <i className="fas fa-plus me-2"></i>Create Task
                         </button>
@@ -831,6 +912,14 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
             tasks={assignedTasks}
             teamMembers={teamMembers}
           />
+        )}
+
+        {activeView === 'notice' && (
+          <TeamLeaderNotice userData={safeUserData} />
+        )}
+
+        {activeView === 'support-help' && (
+          <TeamLeaderSupport allUsers={allUsersList} userData={safeUserData} />
         )}
       </div>
 

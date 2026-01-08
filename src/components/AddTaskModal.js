@@ -11,8 +11,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     dueDate: '',
     assignedBy: '',
     project: '',
-    assignedTo: '', // Single string for legacy/individual selection
-    assignedMembers: [] // Array for multiple users
+    assignedTo: ''
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,36 +33,40 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     return projects;
   };
 
-  // Get all potential members (employees, interns)
+  // Get employees assigned to current PM's projects
   const getAvailableEmployees = () => {
-    let baseList = allUsers.filter(user =>
-      user.role === 'employee' || user.role === 'intern' ||
-      user.userType === 'Employee' || user.userType === 'Intern'
-    );
-
     if (currentUserRole === 'project-manager') {
-      // Optional: Filter to only show employees assigned to projects this PM manages
-      const pmProjects = projects.filter(p => p.projectManager === currentUserName || p.projectManager === currentUserEmail);
-      const projectMemberNames = new Set();
-      pmProjects.forEach(p => {
-        (p.assignedMembers || p.assigned || []).forEach(m => {
-          const name = typeof m === 'object' ? (m.name || m.email) : m;
-          if (name) projectMemberNames.add(name.toLowerCase());
-        });
+      // Get projects managed by current PM
+      const pmProjects = projects.filter(project =>
+        project.projectManager === currentUserName ||
+        project.projectManager === currentUserEmail
+      );
+
+      // Get all employees assigned to these projects
+      const employeesInProjects = new Set();
+      pmProjects.forEach(project => {
+        if (project.assigned && Array.isArray(project.assigned)) {
+          project.assigned.forEach(member => {
+            if (typeof member === 'object' && member.name) {
+              employeesInProjects.add(member.name);
+            } else if (typeof member === 'string') {
+              employeesInProjects.add(member);
+            }
+          });
+        }
       });
 
-      if (projectMemberNames.size > 0) {
-        // If PM has projects with members, prefer showing those first or filtering
-        // For flexibility, let's allow searching all but highlighting project members if we want.
-        // User asked for "multiple users", so let's keep search broad but relevant.
-      }
+      // Filter users to only show employees in PM's projects
+      return allUsers.filter(user =>
+        (user.role === 'employee' || user.role === 'intern' || user.userType === 'Employee' || user.userType === 'Intern') &&
+        (employeesInProjects.has(user.name) || employeesInProjects.has(user.email))
+      );
     }
 
-    if (!searchTerm) return baseList.slice(0, 5);
-
-    return baseList.filter(user =>
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    // For other roles, show all employees
+    return allUsers.filter(user =>
+      user.role === 'employee' || user.role === 'intern' ||
+      user.userType === 'Employee' || user.userType === 'Intern'
     );
   };
 
@@ -84,8 +87,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           dueDate: editingTask.dueDate || '',
           assignedBy: editingTask.assignedBy || currentUserName,
           project: editingTask.project || '',
-          assignedTo: members.length > 0 ? members[0] : '',
-          assignedMembers: members
+          assignedTo: editingTask.assignedTo || ''
         });
       } else {
         setFormData({
@@ -96,8 +98,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           dueDate: '',
           assignedBy: currentUserName,
           project: '',
-          assignedTo: '',
-          assignedMembers: []
+          assignedTo: ''
         });
       }
     }
@@ -252,8 +253,15 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     type="text"
                     className="form-control bg-light"
                     value={formData.assignedBy}
+                    onChange={handleInputChange}
+                    placeholder="Enter assigner name"
                     readOnly
+                    style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed' }}
                   />
+                  <div className="form-text">
+                    <i className="fas fa-info-circle me-1"></i>
+                    Auto-filled with your name
+                  </div>
                 </div>
               </div>
 
@@ -337,6 +345,30 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                   onChange={handleInputChange}
                   rows="3"
                   placeholder="Enter task description"
+                ></textarea>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-bold small text-primary">Task Requirement (Changes/Updates)</label>
+                <textarea
+                  className="form-control"
+                  name="requirement"
+                  value={formData.requirement}
+                  onChange={handleInputChange}
+                  rows="2"
+                  placeholder="Specify task requirements or change requests..."
+                ></textarea>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-bold small text-success">Working Notes (What's working / Progress)</label>
+                <textarea
+                  className="form-control border-success border-opacity-10"
+                  name="workingNotes"
+                  value={formData.workingNotes}
+                  onChange={handleInputChange}
+                  rows="2"
+                  placeholder="Note down current progress, what is working, logs etc."
                 ></textarea>
               </div>
             </div>

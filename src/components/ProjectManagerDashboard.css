@@ -6,196 +6,154 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.dashboard-header,
-.dashboard-content {
-    margin-left: 260px;
-    /* Shift content to make room for fixed sidebar */
-}
-
-@media (max-width: 992px) {
-
-    .dashboard-header,
-    .dashboard-content {
-        margin-left: 0;
-    }
-}
-
-/* Header */
-.dashboard-header {
-    height: 70px;
-    background: #fff;
+/* Header - PM Theme (Purple) */
+.pm-dashboard .dashboard-header {
+    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+    color: white;
+    padding: 1.5rem 2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 2.5rem;
     position: sticky;
     top: 0;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    width: calc(100% - 260px);
-    /* Explicitly set width to prevent overflow */
-    border-bottom: 1px solid #edf2f7;
+    z-index: 1000;
 }
 
-.header-left h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
-    color: #1e293b;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.user-info {
+.pm-dashboard .header-left {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-.user-name {
-    font-weight: 700;
-    color: #1e293b;
-    font-size: 0.95rem;
+.pm-dashboard .header-left h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
 }
 
-.user-avatar {
-    width: 38px;
-    height: 38px;
-    background: #4f46e5;
-    color: #fff;
-    border-radius: 10px;
+.pm-dashboard .mobile-menu-toggle {
+    display: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pm-dashboard .mobile-menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.pm-dashboard .header-right {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-    box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
+    gap: 1.5rem;
 }
 
-.user-role {
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 4px;
+.pm-dashboard .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pm-dashboard .user-name {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.pm-dashboard .user-role {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
 }
 
 /* Sidebar */
 .dashboard-sidebar {
     width: 260px;
-    height: 100vh;
-    background: #4f46e5;
-    /* Modern Indigo/Purple */
-    color: #fff;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 1000;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 4px 0 15px rgba(79, 70, 229, 0.15);
+    height: 100vh;
+    overflow-y: auto;
+    padding-top: 5rem;
+    z-index: 999;
+    transition: transform 0.3s ease;
 }
 
-.sidebar-header {
+.pm-dashboard .sidebar-header {
     padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: transparent;
-    /* Ensure it stays purple */
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
 }
 
-.sidebar-header h3 {
-    font-size: 1.1rem;
-    font-weight: 800;
+.pm-dashboard .sidebar-header h3 {
     margin: 0;
-    color: #ffffff;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #6f42c1;
 }
 
-.sidebar-nav {
-    padding: 1.5rem 0;
-    flex-grow: 1;
+.pm-dashboard .mobile-close {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
 }
 
-.sidebar-nav ul {
+.pm-dashboard .sidebar-nav ul {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.sidebar-nav li {
-    padding: 0.25rem 1rem;
+.pm-dashboard .sidebar-nav li {
+    margin: 0;
 }
 
 .sidebar-nav li a {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem 1rem;
-    color: rgba(255, 255, 255, 0.7);
+    padding: 1rem 1.5rem;
+    color: #666;
     text-decoration: none;
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.pm-dashboard .sidebar-nav a:hover {
+    background-color: #f8f9fa;
+    color: #6f42c1;
+    border-left-color: #6f42c1;
+}
+
+.pm-dashboard .sidebar-nav li.active a {
+    background-color: #f0e6ff;
+    color: #6f42c1;
+    border-left-color: #6f42c1;
     font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.sidebar-nav li:hover a {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    transform: translateX(5px);
-}
-
-.sidebar-nav li.active a {
-    background: #fff;
-    color: #4f46e5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-nav li a i {
     width: 20px;
     text-align: center;
-    font-size: 1.1rem;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-    padding: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logout-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.85rem 1rem;
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.logout-btn:hover {
-    background: #ef4444;
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-.logout-btn i {
-    font-size: 1rem;
 }
 
 /* Main Content */

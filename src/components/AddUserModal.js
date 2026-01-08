@@ -24,8 +24,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           department: editingUser.department || 'Web Development',
           role: editingUser.role || '',
           password: '', // Always blank - don't populate password when editing
-          assignedProject: editingUser.assignedProject || '',
-          teamLeaderId: editingUser.teamLeaderId || ''
+          assignedProject: editingUser.assignedProject || ''
         });
       } else {
         // Reset form completely for new user
@@ -36,8 +35,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           department: 'Web Development',
           role: '',
           password: '', // Explicitly blank for new users
-          assignedProject: '',
-          teamLeaderId: ''
+          assignedProject: ''
         });
       }
     }
@@ -196,6 +194,23 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     <option value="employee">Employee</option>
                     <option value="project-manager">Project Manager</option>
                     <option value="team-leader">Team Leader</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Gender</label>
+                  <select
+                    className="form-select"
+                    name="gender"
+                    value={formData.gender || ''}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
               </div>

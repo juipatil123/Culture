@@ -31,29 +31,29 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
 
   return (
     <tr>
-      <td style={{padding: '15px 20px', verticalAlign: 'middle'}}>
+      <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
         <div className="d-flex align-items-center">
-          <div 
+          <div
             className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
-            style={{width: '40px', height: '40px', fontSize: '16px', fontWeight: 'bold'}}
+            style={{ width: '40px', height: '40px', fontSize: '16px', fontWeight: 'bold' }}
           >
             {user.name.charAt(0)}
           </div>
           <div>
-            <div className="fw-semibold" style={{fontSize: '15px'}}>{user.name}</div>
+            <div className="fw-semibold" style={{ fontSize: '15px' }}>{user.name}</div>
             <small className="text-muted">{user.userType || user.role}</small>
           </div>
         </div>
       </td>
-      <td style={{padding: '15px 20px', verticalAlign: 'middle'}}>
-        <span className="text-muted" style={{fontSize: '14px'}}>{user.email}</span>
+      <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
+        <span className="text-muted" style={{ fontSize: '14px' }}>{user.email}</span>
       </td>
-      <td style={{padding: '15px 20px', verticalAlign: 'middle'}}>
-        <span className="badge bg-info" style={{fontSize: '12px', padding: '6px 12px'}}>{user.userType || user.role}</span>
+      <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
+        <span className="badge bg-info" style={{ fontSize: '12px', padding: '6px 12px' }}>{user.userType || user.role}</span>
       </td>
-      <td style={{padding: '15px 20px', verticalAlign: 'middle'}}>
+      <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
         <div className="d-flex align-items-center">
-          <code className="me-2" style={{fontSize: '12px'}}>
+          <code className="me-2" style={{ fontSize: '12px' }}>
             {showPassword ? (user.password || "defaultPassword123") : "••••••••"}
           </code>
           <button
@@ -65,14 +65,14 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
           </button>
         </div>
       </td>
-      <td style={{padding: '15px 20px', verticalAlign: 'middle'}}>
+      <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
         <div className="d-flex gap-2">
           {isResetting ? (
             <div className="d-flex align-items-center gap-1">
               <input
                 type="password"
                 className="form-control form-control-sm"
-                style={{width: '140px'}}
+                style={{ width: '140px' }}
                 placeholder="New password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -123,11 +123,11 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
   );
 };
 
-const PasswordManagementModal = ({ 
-  show, 
-  onHide, 
-  user, 
-  onResetPassword, 
+const PasswordManagementModal = ({
+  show,
+  onHide,
+  user,
+  onResetPassword,
   onDeleteUser,
   currentUserRole,
   allUsers = []
@@ -161,17 +161,18 @@ const PasswordManagementModal = ({
       alert('Password must be at least 6 characters long!');
       return;
     }
-    
-    onResetPassword(user.id, newPassword);
+
+    onResetPassword(user.id || user._id, newPassword);
     setNewPassword('');
     setConfirmPassword('');
     setResetMode(false);
     onHide();
+    alert('✅ Password reset successfully!');
   };
 
   const handleDeleteUser = () => {
     if (window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
-      onDeleteUser(user.id, user.name);
+      onDeleteUser(user.id || user._id, user.name);
       onHide();
     }
   };
@@ -183,63 +184,26 @@ const PasswordManagementModal = ({
   if (!show) return null;
 
   return (
-    <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.8)' }}>
-      <div className="modal-dialog" style={{
-        margin: '0',
-        maxWidth: '100vw',
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'stretch'
-      }}>
-        <div className="modal-content" style={{
-          width: '100%',
-          height: '100vh',
-          borderRadius: '0',
-          border: 'none',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div className="modal-header bg-primary text-white" style={{
-            padding: '1.5rem 2rem',
-            borderBottom: '2px solid rgba(255,255,255,0.2)'
-          }}>
-            <h4 className="modal-title mb-0">
-              <i className="fas fa-cog me-3"></i>
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
+        <div className="modal-content">
+          <div className="modal-header bg-primary text-white">
+            <h5 className="modal-title">
+              <i className="fas fa-cog me-2"></i>
               {user ? `User Management - ${user.name}` : 'Password Management - All Users'}
-            </h4>
-            <div className="d-flex align-items-center gap-3">
-              <small className="text-white-50">
-                <i className="fas fa-expand-arrows-alt me-2"></i>
-                Full Screen Mode
-              </small>
-              <button 
-                type="button" 
-                className="btn btn-outline-light btn-sm" 
-                onClick={onHide}
-                style={{padding: '8px 16px'}}
-              >
-                <i className="fas fa-times me-2"></i>
-                Close
-              </button>
-            </div>
+            </h5>
+            <button type="button" className="btn-close btn-close-white" onClick={onHide}></button>
           </div>
-          
-          <div className="modal-body" style={{
-            padding: '2rem',
-            flex: '1',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
+
+          <div className="modal-body">
             {user ? (
               // Single user management view
               <>
                 <div className="user-info-section mb-4">
                   <div className="d-flex align-items-center mb-3">
-                    <div 
+                    <div
                       className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
-                      style={{width: '60px', height: '60px', fontSize: '24px', fontWeight: 'bold'}}
+                      style={{ width: '60px', height: '60px', fontSize: '24px', fontWeight: 'bold' }}
                     >
                       {user.name.charAt(0)}
                     </div>
@@ -257,7 +221,7 @@ const PasswordManagementModal = ({
                     Password Management
                     {resetMode && <span className="badge bg-info ms-2">Reset Mode Active</span>}
                   </h6>
-                  
+
                   {!resetMode ? (
                     <div className="password-actions">
                       <div className="mb-3">
@@ -287,7 +251,7 @@ const PasswordManagementModal = ({
                           )}
                         </small>
                       </div>
-                      
+
                       <div className="d-grid gap-2">
                         <button
                           className="btn btn-warning"
@@ -329,7 +293,7 @@ const PasswordManagementModal = ({
                           autoFocus
                         />
                       </div>
-                      
+
                       <div className="mb-3">
                         <label className="form-label">Confirm New Password</label>
                         <input
@@ -341,7 +305,7 @@ const PasswordManagementModal = ({
                           minLength="6"
                         />
                       </div>
-                      
+
                       <div className="d-flex gap-2">
                         <button
                           className="btn btn-success flex-fill"
@@ -389,11 +353,7 @@ const PasswordManagementModal = ({
               </>
             ) : (
               // All users table view
-              <div className="all-users-section" style={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
+              <div className="all-users-section">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h6 className="mb-0">
                     <i className="fas fa-users me-2"></i>
@@ -401,32 +361,26 @@ const PasswordManagementModal = ({
                   </h6>
                   <small className="text-muted">
                     <i className="fas fa-sync-alt me-1"></i>
-                    Updates automatically when new users are added
+                    Updates automatically
                   </small>
                 </div>
-                
-                <div className="table-responsive" style={{
-                  flex: '1',
-                  overflowY: 'auto',
-                  maxHeight: 'calc(100vh - 250px)',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px'
-                }}>
-                  <table className="table table-hover table-lg" style={{fontSize: '14px'}}>
-                    <thead className="table-light sticky-top" style={{fontSize: '15px', fontWeight: '600'}}>
+
+                <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  <table className="table table-hover table-lg" style={{ fontSize: '14px' }}>
+                    <thead className="table-light sticky-top">
                       <tr>
-                        <th style={{padding: '15px 20px', minWidth: '200px'}}>User</th>
-                        <th style={{padding: '15px 20px', minWidth: '250px'}}>Email</th>
-                        <th style={{padding: '15px 20px', minWidth: '120px'}}>Role</th>
-                        <th style={{padding: '15px 20px', minWidth: '180px'}}>Password</th>
-                        <th style={{padding: '15px 20px', minWidth: '150px'}}>Actions</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Password</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allUsers.map((userData, index) => (
-                        <UserRow 
-                          key={userData.id || index} 
-                          user={userData} 
+                        <UserRow
+                          key={userData.id || index}
+                          user={userData}
                           onResetPassword={onResetPassword}
                           onDeleteUser={onDeleteUser}
                           currentUserRole={currentUserRole}
@@ -434,7 +388,7 @@ const PasswordManagementModal = ({
                       ))}
                     </tbody>
                   </table>
-                  
+
                   {allUsers.length === 0 && (
                     <div className="text-center py-4">
                       <i className="fas fa-users fa-2x text-muted mb-2"></i>
@@ -445,26 +399,14 @@ const PasswordManagementModal = ({
               </div>
             )}
           </div>
-          
-          <div className="modal-footer bg-light" style={{
-            padding: '1.5rem 2rem',
-            borderTop: '2px solid #dee2e6',
-            justifyContent: 'space-between'
-          }}>
-            <div className="d-flex align-items-center text-muted">
-              <i className="fas fa-info-circle me-2"></i>
-              <small>
-                {user ? 'Managing individual user account' : `Showing ${allUsers.length} registered users`}
-              </small>
-            </div>
-            <button 
-              type="button" 
-              className="btn btn-primary" 
+
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
               onClick={onHide}
-              style={{padding: '10px 24px'}}
             >
-              <i className="fas fa-check me-2"></i>
-              Done
+              Close
             </button>
           </div>
         </div>

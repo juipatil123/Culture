@@ -56,11 +56,29 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
 
     if (selectedTeamLeader) {
       // Show members of the selected team leader
+
       baseList = (allUsers.length > 0 ? allUsers : teamMembers).filter(user =>
         user.teamLeaderId === selectedTeamLeader._id ||
         user.teamLeaderId === selectedTeamLeader.id ||
         user.teamLeader === selectedTeamLeader.name
       );
+
+      baseList = (allUsers.length > 0 ? allUsers : teamMembers).filter(user => {
+        // Strict null checks to avoid matching undefined === undefined
+        const tlId = selectedTeamLeader._id || selectedTeamLeader.id;
+        const tlName = selectedTeamLeader.name;
+
+        const matchesId = tlId && (
+          (user.teamLeaderId && user.teamLeaderId.toString() === tlId.toString())
+        );
+
+        const matchesName = tlName && (
+          (user.teamLeader && user.teamLeader === tlName)
+        );
+
+        return matchesId || matchesName;
+      });
+
     } else {
       // Show only team leaders initially
       baseList = (allUsers.length > 0 ? allUsers : teamMembers).filter(user =>
