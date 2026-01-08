@@ -14,7 +14,7 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
       }
       // Use both id and _id to ensure compatibility
       const userId = user.id || user._id;
-      console.log('🔑 Quick reset for user:', userId, 'New password:', newPassword);
+      // console.log('🔑 Quick reset for user:', userId, 'New password:', newPassword);
       onResetPassword(userId, newPassword);
       setNewPassword('');
       setIsResetting(false);
@@ -53,11 +53,15 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
       </td>
       <td style={{ padding: '15px 20px', verticalAlign: 'middle' }}>
         <div className="d-flex align-items-center">
-          <code className="me-2" style={{ fontSize: '12px' }}>
-            {showPassword ? (user.password || "defaultPassword123") : "••••••••"}
-          </code>
+          <input
+            type={showPassword ? "text" : "password"}
+            className="form-control form-control-sm border-0 bg-transparent py-0"
+            style={{ width: '100px', fontSize: '13px', color: '#555' }}
+            value={showPassword ? (user.password || "(No password recorded)") : "********"}
+            readOnly
+          />
           <button
-            className="btn btn-sm btn-outline-secondary"
+            className="btn btn-sm btn-outline-secondary border-0 ms-1"
             onClick={() => setShowPassword(!showPassword)}
             title={showPassword ? 'Hide password' : 'Show password'}
           >
@@ -95,12 +99,13 @@ const UserRow = ({ user, onResetPassword, onDeleteUser, currentUserRole }) => {
             </div>
           ) : (
             <>
+              {/* Edit/Reset Button - simplified to one action */}
               <button
-                className="btn btn-sm btn-warning"
+                className="btn btn-sm btn-primary"
                 onClick={handleQuickReset}
-                title="Reset password"
+                title="Update password"
               >
-                <i className="fas fa-key"></i>
+                <i className="fas fa-edit"></i>
               </button>
               {currentUserRole === 'admin' && (
                 <button
@@ -229,8 +234,8 @@ const PasswordManagementModal = ({
                         <div className="input-group">
                           <input
                             type={showPassword ? "text" : "password"}
-                            className={`form-control ${!user.password || user.password === 'defaultPassword123' ? 'border-warning' : ''}`}
-                            value={showPassword ? (user.password || "defaultPassword123") : "••••••••"}
+                            className="form-control"
+                            value={showPassword ? (user.password || "(No password recorded)") : "••••••••"}
                             readOnly
                           />
                           <button
@@ -243,10 +248,10 @@ const PasswordManagementModal = ({
                         </div>
                         <small className="text-muted">
                           {showPassword ? 'Click eye icon to hide password' : 'Click eye icon to view password'}
-                          {(!user.password || user.password === 'defaultPassword123') && showPassword && (
-                            <span className="text-warning d-block mt-1">
-                              <i className="fas fa-exclamation-triangle me-1"></i>
-                              This is a default password - user should reset it for security
+                          {showPassword && !user.password && (
+                            <span className="text-danger d-block mt-1">
+                              <i className="fas fa-info-circle me-1"></i>
+                              This user was added before password-saving was enabled. Please use "Edit Password" to set a new one.
                             </span>
                           )}
                         </small>
@@ -254,17 +259,7 @@ const PasswordManagementModal = ({
 
                       <div className="d-grid gap-2">
                         <button
-                          className="btn btn-warning"
-                          onClick={() => {
-                            console.log('Reset Password clicked, setting resetMode to true');
-                            setResetMode(true);
-                          }}
-                        >
-                          <i className="fas fa-sync-alt me-2"></i>
-                          Reset Password
-                        </button>
-                        <button
-                          className="btn btn-outline-primary"
+                          className="btn btn-primary"
                           onClick={() => {
                             console.log('Edit Password clicked, setting resetMode to true');
                             setResetMode(true);

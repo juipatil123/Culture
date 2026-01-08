@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TeamLeaderNotice from './TeamLeaderNotice';
 import TeamLeaderSupport from './TeamLeaderSupport';
 import { subscribeToNotices } from '../firebase/firestoreService';
+import { formatDate } from '../utils/dateUtils';
 import './ProjectManagerDashboard.css'; // Reuse PM dashboard styles
 
 
@@ -492,12 +493,7 @@ const EmployeeDashboard = ({
                                     </div>
                                     <div className="card-body">
                                         {projects.length > 0 ? projects.slice(0, 3).map((p, i) => {
-                                            const deadline = p.endDate || p.dueDate ?
-                                                new Date(p.endDate || p.dueDate).toLocaleDateString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric'
-                                                }) : 'No deadline';
+                                            const deadline = formatDate(p.endDate || p.dueDate);
 
                                             return (
                                                 <div key={i} className="mb-3 pb-3" style={{ borderBottom: i < Math.min(projects.length, 3) - 1 ? '1px solid #e5e7eb' : 'none' }}>
@@ -640,7 +636,7 @@ const EmployeeDashboard = ({
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
                                                             <small className="text-muted">
                                                                 <i className="far fa-calendar-alt me-1 text-danger"></i>
-                                                                {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date'}
+                                                                {formatDate(task.dueDate)}
                                                             </small>
                                                         </div>
                                                         <div className="col-lg-2 text-end">

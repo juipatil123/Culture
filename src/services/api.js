@@ -32,8 +32,12 @@ export const createProjectManager = async (projectManagerData) => {
 };
 
 export const updateProjectManager = async (id, projectManagerData) => {
+  if (projectManagerData.password) {
+    await AuthService.updatePassword(id, projectManagerData.password);
+  }
   return await PMService.update(id, projectManagerData);
 };
+
 
 export const deleteProjectManager = async (id) => {
   return await PMService.delete(id);
@@ -152,21 +156,26 @@ export const createUser = async (userData) => {
 
 export const updateUser = async (id, userData) => {
   const role = (userData.role || '').toLowerCase();
+
+  // Synchronize password update in Firebase Auth if provided
+  if (userData.password) {
+    try {
+      await AuthService.updatePassword(id, userData.password);
+    } catch (passwordError) {
+      console.warn('⚠️ API: Password update in Auth failed, proceeding with Firestore update anyway.', passwordError);
+    }
+  }
+
   if (role === 'project-manager') return await PMService.update(id, userData);
   if (role === 'team-leader') return await TLService.update(id, userData);
   if (role === 'admin') return await AdminService.update(id, userData);
   return await MemberService.update(id, userData);
 };
 
+
 export const updateUserPassword = async (id, newPassword) => {
-  // Update password field in the document directly
-  // Since all users are in the unified 'users' collection, we can use any service logic
-  // that targets 'users' collection updates. MemberService.update does exactly this.
   try {
-    return await MemberService.update(id, {
-      password: newPassword,
-      passwordUpdatedAt: new Date().toISOString()
-    });
+    return await AuthService.updatePassword(id, newPassword);
   } catch (error) {
     console.error("Error in updateUserPassword:", error);
     throw error;
@@ -255,6 +264,9 @@ export const createTeamLeader = async (teamLeaderData) => {
 };
 
 export const updateTeamLeader = async (id, teamLeaderData) => {
+  if (teamLeaderData.password) {
+    await AuthService.updatePassword(id, teamLeaderData.password);
+  }
   return await TLService.update(id, teamLeaderData);
 };
 

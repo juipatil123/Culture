@@ -85,6 +85,9 @@ const RoleManagement = () => {
     <div className="role-management">
       <div className="page-header">
         <h2>Role Management</h2>
+        <div className="header-stats">
+          <span className="badge bg-info p-2">Total Custom Roles: {customRoles.length}</span>
+        </div>
         <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
           <i className="fas fa-plus me-2"></i>
           Add Custom Role
@@ -197,14 +200,24 @@ const RoleManagement = () => {
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Role Name</label>
+                  <label className="form-label">Role Name *</label>
                   <input
                     type="text"
                     className="form-control"
                     value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Restrict to letters and spaces only
+                      const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+                      setNewRoleName(filteredValue);
+                    }}
                     placeholder="Enter role name"
+                    autoComplete="off"
+                    required
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed. Numbers and special characters are blocked.
+                  </small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Permissions</label>

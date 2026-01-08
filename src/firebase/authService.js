@@ -27,11 +27,16 @@ export const AuthService = {
      * Login user and fetch their profile from the correct sub-collection
      */
     login: async (email, password, expectedRole) => {
+        // Enforce @gmail.com
+        if (!email.toLowerCase().endsWith('@gmail.com')) {
+            throw new Error('Only @gmail.com email addresses are allowed.');
+        }
         try {
+            const normalizedEmail = email.toLowerCase();
             // 1. Firebase Auth SignIn
             let userCredential;
             try {
-                userCredential = await signInWithEmailAndPassword(auth, email, password);
+                userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
             } catch (authError) {
                 console.error('Firebase Auth Error:', authError.code);
                 // Re-throw with clear message
@@ -45,7 +50,7 @@ export const AuthService = {
 
             // 2. Search for user profile in unified root 'users' collection
             const colRef = collection(db, 'users');
-            const q = query(colRef, where("email", "==", email));
+            const q = query(colRef, where("email", "==", normalizedEmail));
             const querySnapshot = await getDocs(q);
 
             if (querySnapshot.empty) {
@@ -114,6 +119,10 @@ export const AuthService = {
      */
     registerUser: async (userData) => {
         const { email, password, role } = userData;
+        // Enforce @gmail.com
+        if (!email.toLowerCase().endsWith('@gmail.com')) {
+            throw new Error('Only @gmail.com email addresses are allowed.');
+        }
         console.log(`👤 AuthService: Starting registration for ${email} as ${role}`);
 
         try {
@@ -145,13 +154,14 @@ export const AuthService = {
 
             const profileData = {
                 ...userData,
+                email: email.toLowerCase(),
+                password: password, // Explicitly ensure password is saved
                 uid: newUser.uid,
                 createdAt: new Date().toISOString()
             };
 
-            // Remove password from Firestore profile for security
-            delete profileData.password;
 
+            // Store password in Firestore profile to enable "View Password" feature
             await setDoc(userDocRef, profileData);
             console.log(`🎉 AuthService: Profile saved to users/${newUser.uid}`);
 
@@ -173,5 +183,66 @@ export const AuthService = {
             // Ensure we throw a proper Error object
             throw new Error(errorMessage);
         }
+    },
+
+    /**
+     * Update user password in both Firebase Auth and Firestore.
+     * Requires the old password to be stored in Firestore (recorded during registration).
+     */
+    updatePassword: async (userId, newPassword) => {
+        try {
+            console.log(`🔐 AuthService: Updating password for user ${userId}`);
+
+            // 1. Get the user's current data from Firestore
+            const userDocRef = doc(db, 'users', userId);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (!userDocSnap.exists()) {
+                throw new Error('User profile not found in database.');
+            }
+
+            const userData = userDocSnap.data();
+            const email = userData.email;
+            const oldPassword = userData.password; // The password we have recorded
+
+            if (!oldPassword) {
+                console.warn('⚠️ No old password found in Firestore. Updating Firestore only. User may need to use Forgot Password.');
+            } else {
+                try {
+                    // 2. Use temp app to update password in Firebase Auth
+                    const tempAppName = `update-pw-app-${Date.now()}`;
+                    const tempApp = initializeApp(firebaseConfig, tempAppName);
+                    const tempAuth = getAuth(tempApp);
+
+                    // Sign in as the user
+                    const userCredential = await signInWithEmailAndPassword(tempAuth, email, oldPassword);
+                    // Update password
+                    const { updatePassword: firebaseUpdatePassword } = await import('firebase/auth');
+                    await firebaseUpdatePassword(userCredential.user, newPassword);
+
+                    // Clean up
+                    await deleteApp(tempApp);
+                    console.log('✅ AuthService: Firebase Auth password updated successfully');
+                } catch (authError) {
+                    console.error('❌ AuthService: Failed to update Firebase Auth password:', authError);
+                    // If it fails (e.g. password mismatch in Auth), we still update Firestore 
+                    // so the "View Password" reflects what the admin intended.
+                }
+            }
+
+            // 3. Update Firestore profile
+            await setDoc(userDocRef, {
+                ...userData,
+                password: newPassword,
+                passwordUpdatedAt: new Date().toISOString()
+            });
+            console.log('✅ AuthService: Firestore profile updated with new password');
+
+            return { success: true };
+        } catch (error) {
+            console.error('❌ AuthService: updatePassword Error:', error);
+            throw error;
+        }
     }
 };
+

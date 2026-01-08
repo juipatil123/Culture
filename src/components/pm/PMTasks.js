@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import { updateTask, deleteTask } from '../../services/api';
 import './PMComponents.css';
 
@@ -228,7 +229,7 @@ const PMTasks = ({ tasks, projects, onRefresh, onAddTask, onEditTask, userName, 
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="date-item d-flex align-items-center gap-1 text-muted">
                         <i className="fas fa-calendar-alt small"></i>
-                        <span className="small">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}</span>
+                        <span className="small">{formatDate(task.dueDate)}</span>
                       </div>
                       {getPriorityBadge(task.priority || 'medium')}
                     </div>
@@ -296,7 +297,7 @@ const PMTasks = ({ tasks, projects, onRefresh, onAddTask, onEditTask, userName, 
                     <td>
                       <div className="small text-muted">
                         <i className="far fa-calendar-alt me-1"></i>
-                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
+                        {formatDate(task.dueDate)}
                       </div>
                     </td>
                     <td className="pe-4 text-end">

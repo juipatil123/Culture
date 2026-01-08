@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatDate } from '../utils/dateUtils';
 
 const TeamLeaderProfile = ({ userData, onUpdateProfile }) => {
     const [formData, setFormData] = React.useState(userData || {});
@@ -79,7 +80,7 @@ const TeamLeaderProfile = ({ userData, onUpdateProfile }) => {
                                     <small className="text-muted d-block mb-1">Join Date</small>
                                     <div className="d-flex align-items-center">
                                         <i className="fas fa-calendar-alt text-primary me-2"></i>
-                                        <span>{formData.joinDate ? new Date(formData.joinDate).toLocaleDateString() : 'N/A'}</span>
+                                        <span>{formatDate(formData.joinDate)}</span>
                                     </div>
                                 </div>
                             </div>

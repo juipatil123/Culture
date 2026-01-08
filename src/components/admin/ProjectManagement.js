@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProjects, createProject, updateProject, deleteProject, getAllUsers } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
 import AddProjectModal from '../AddProjectModal';
 import './AdminComponents.css';
 
@@ -27,7 +28,7 @@ const ProjectManagement = () => {
       const transformedProjects = (projectsData || []).map((project, index) => ({
         id: project._id || project.id || `proj-${index}`,
         name: project.name || 'Untitled Project',
-        date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
+        date: formatDate(project.startDate),
         progress: project.progress || 0,
         status: project.projectStatus === 'assigned' ? 'Assigned' :
           project.projectStatus === 'on-track' ? 'On Track' :
@@ -75,8 +76,10 @@ const ProjectManagement = () => {
     try {
       if (editingProject) {
         await updateProject(editingProject.id || editingProject._id, projectData);
+        alert('Project updated successfully!');
       } else {
         await createProject(projectData);
+        alert('Project added successfully!');
       }
       setShowAddProjectModal(false);
       setEditingProject(null);
@@ -158,6 +161,9 @@ const ProjectManagement = () => {
     <div className="project-management">
       <div className="page-header">
         <h2>Project Management</h2>
+        <div className="header-stats">
+          <span className="badge bg-info p-2">Total Projects: {filteredProjects.length}</span>
+        </div>
         <button className="btn btn-primary" onClick={handleAddProject}>
           <i className="fas fa-plus me-2"></i>
           Add Project
@@ -214,9 +220,10 @@ const ProjectManagement = () => {
         </div>
       ) : projectViewMode === 'card' ? (
         <div className="projects-grid">
-          {filteredProjects.map((project) => (
+          {filteredProjects.map((project, index) => (
             <div key={project.id} className="project-card">
               <div className="project-card-header">
+                <span className="sr-no-badge">#{index + 1}</span>
                 <h4>{project.name}</h4>
                 <div className="status-label">{project.status}</div>
               </div>
@@ -291,9 +298,10 @@ const ProjectManagement = () => {
         <table className="projects-table">
           <thead>
             <tr>
+              <th>Sr. No.</th>
               <th>Project Name</th>
               <th>Client</th>
-              <th>PM</th>
+              <th>Email Id</th>
               <th>Status</th>
               <th>Progress</th>
               <th>Start Date</th>
@@ -302,11 +310,12 @@ const ProjectManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredProjects.map((project) => (
+            {filteredProjects.map((project, index) => (
               <tr key={project.id}>
+                <td>{index + 1}</td>
                 <td><div className="fw-bold text-dark">{project.name}</div></td>
                 <td><span className="text-secondary">{project.clientName}</span></td>
-                <td>{project.projectManager || 'Not Assigned'}</td>
+                <td>{project.projectManagerEmail || project.projectManager || 'Not Assigned'}</td>
                 <td>{getStatusBadge(project.status)}</td>
                 <td>
                   <div className="d-flex align-items-center gap-2" style={{ minWidth: '120px' }}>

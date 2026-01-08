@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import './PMComponents.css';
 
 const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDeleteProject, userName, userEmail }) => {
@@ -28,14 +29,7 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
 
   const filteredProjects = getFilteredProjects();
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch (e) {
-      return dateStr;
-    }
-  };
+
 
   // Get status badge
   const getStatusBadge = (status) => {

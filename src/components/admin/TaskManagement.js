@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTasks, createTask, updateTask, deleteTask, getAllProjects, getAllUsers } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
 import AddTaskModal from '../AddTaskModal';
 import './AdminComponents.css';
 
@@ -50,8 +51,10 @@ const TaskManagement = () => {
     try {
       if (editingTask) {
         await updateTask(editingTask.id || editingTask._id, taskData);
+        alert('Task updated successfully!');
       } else {
         await createTask(taskData);
+        alert('Task added successfully!');
       }
       setShowAddTaskModal(false);
       setEditingTask(null);
@@ -134,6 +137,12 @@ const TaskManagement = () => {
     <div className="task-management">
       <div className="page-header">
         <h2>Task Management</h2>
+        <div className="header-stats">
+          <span className="badge bg-primary p-2 me-1">Total: {assignedTasks.length}</span>
+          <span className="badge bg-warning text-dark p-2 me-1">Pending: {assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</span>
+          <span className="badge bg-info p-2 me-1">In Progress: {assignedTasks.filter(t => t.status === 'in-progress').length}</span>
+          <span className="badge bg-success p-2">Completed: {assignedTasks.filter(t => t.status === 'completed').length}</span>
+        </div>
         <button className="btn btn-primary" onClick={handleAddTask}>
           <i className="fas fa-plus me-2"></i>
           Add Task
@@ -228,9 +237,10 @@ const TaskManagement = () => {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="tasks-grid">
-          {filteredTasks.map((task) => (
+          {filteredTasks.map((task, index) => (
             <div key={task.id || task._id} className={`task-card priority-${(task.priority || 'medium').toLowerCase()}`}>
               <div className="task-card-header">
+                <span className="sr-no-badge">#{index + 1}</span>
                 <h4 style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title || 'Untitled Task'}</h4>
                 <div className="task-badges">
                   <span className={`badge ${getStatusBadge(task.status)} rounded-pill`}>
@@ -254,7 +264,7 @@ const TaskManagement = () => {
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-calendar-alt"></i>
-                    <span><strong>Due Date:</strong> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
+                    <span><strong>Due Date:</strong> {formatDate(task.dueDate)}</span>
                   </div>
                   {task.assignedBy && (
                     <div className="detail-item">
@@ -301,27 +311,37 @@ const TaskManagement = () => {
         <table className="tasks-table">
           <thead>
             <tr>
-              <th>Task</th>
-              <th>Project</th>
-              <th>Assigned To</th>
-              <th>Due Date</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th style={{ width: '60px' }}>Sr. No.</th>
+              <th style={{ minWidth: '200px' }}>Task</th>
+              <th style={{ minWidth: '150px' }}>Project</th>
+              <th style={{ minWidth: '120px' }}>Assigned To</th>
+              <th style={{ width: '100px' }}>Due Date</th>
+              <th style={{ width: '90px' }}>Priority</th>
+              <th style={{ width: '100px' }}>Status</th>
+              <th style={{ width: '100px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredTasks.map((task) => (
+            {filteredTasks.map((task, index) => (
               <tr key={task.id || task._id}>
+                <td className="text-center fw-bold">{index + 1}</td>
                 <td>
                   <div className="fw-bold text-dark">{task.title || 'Untitled'}</div>
-                  <small className="text-muted d-block" style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <small className="text-muted d-block" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {task.description || 'No description'}
                   </small>
                 </td>
-                <td><span className="text-secondary fw-semibold">{task.project || task.projectName || 'General'}</span></td>
-                <td>{task.assignedTo || 'Unassigned'}</td>
-                <td><i className="far fa-calendar-alt me-1 text-muted"></i> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                  <span className="text-secondary fw-semibold" style={{ display: 'block', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.project || task.projectName || 'General'}
+                  </span>
+                </td>
+                <td>
+                  <span style={{ display: 'block', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.assignedTo || 'Unassigned'}
+                  </span>
+                </td>
+                <td><i className="far fa-calendar-alt me-1 text-muted"></i> {formatDate(task.dueDate)}</td>
                 <td>
                   <span className={`badge ${getPriorityBadge(task.priority)} rounded-pill px-3`}>
                     {task.priority || 'Medium'}

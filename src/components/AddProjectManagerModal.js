@@ -9,10 +9,13 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
     experience: '',
     specialization: '',
     salary: '',
+    projectCount: '',
     joiningDate: new Date().toISOString().split('T')[0],
     status: 'Active',
     password: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const [errors, setErrors] = useState({});
 
@@ -26,6 +29,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
         experience: editingManager.experience || '',
         specialization: editingManager.specialization || '',
         salary: editingManager.salary || '',
+        projectCount: editingManager.projectCount || '',
         joiningDate: editingManager.joiningDate || new Date().toISOString().split('T')[0],
         status: editingManager.status || 'Active',
         password: editingManager.password || ''
@@ -39,6 +43,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
         experience: '',
         specialization: '',
         salary: '',
+        projectCount: '',
         joiningDate: new Date().toISOString().split('T')[0],
         status: 'Active',
         password: ''
@@ -52,10 +57,14 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+      newErrors.name = 'Name must contain only letters and spaces';
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
+    } else if (!formData.email.toLowerCase().endsWith('@gmail.com')) {
+      newErrors.email = 'Only @gmail.com email addresses are allowed';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
@@ -91,17 +100,41 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
         id: editingManager ? editingManager.id : `PM${Date.now()}`,
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4f46e5&color=fff`
       };
+
+      // Prevent overwriting existing password with an empty string during updates
+      if (editingManager && !managerData.password) {
+        delete managerData.password;
+      }
+
       onSave(managerData);
       onHide();
     }
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Apply restrictions based on field name
+    if (name === 'name') {
+      // Restrict to letters and spaces only
+      value = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'email') {
+      // Automatically convert to lowercase
+      value = value.toLowerCase();
+    } else if (name === 'phone') {
+      // Block non-digits and limit to 10
+      value = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'salary' || name === 'projectCount') {
+      // Block non-digits and negative values
+      value = value.replace(/\D/g, '');
+      if (value !== '' && parseInt(value) < 0) value = '0';
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -124,7 +157,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
             </h5>
             <button type="button" className="btn-close btn-close-white" onClick={onHide}></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="modal-body">
               <div className="row">
                 <div className="col-md-6">
@@ -139,6 +172,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       value={formData.name}
                       onChange={handleChange}
                       placeholder="Enter full name"
+                      required
                     />
                     {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                   </div>
@@ -154,7 +188,9 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="Enter email address"
+                      placeholder="Enter @gmail.com address"
+                      required
+                      autoComplete="off"
                     />
                     {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                   </div>
@@ -173,7 +209,8 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="Enter phone number"
+                      placeholder="Enter 10-digit phone number"
+                      maxLength="10"
                     />
                     {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                   </div>
@@ -252,15 +289,33 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       <i className="fas fa-rupee-sign me-1"></i>Salary
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       className="form-control"
                       name="salary"
                       value={formData.salary}
                       onChange={handleChange}
-                      placeholder="Enter annual salary"
+                      placeholder="Enter annual salary (numbers only)"
                     />
                   </div>
                 </div>
+                <div className="col-md-6">
+                  <div className="mb-3">
+                    <label className="form-label">
+                      <i className="fas fa-project-diagram me-1"></i>Project Count
+                    </label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      name="projectCount"
+                      value={formData.projectCount || ''}
+                      onChange={handleChange}
+                      placeholder="Number of assigned projects"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6">
                   <div className="mb-3">
                     <label className="form-label">
@@ -300,15 +355,27 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                     <label className="form-label">
                       <i className="fas fa-lock me-1"></i>Password *
                     </label>
-                    <input
-                      type="password"
-                      className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Enter login password"
-                    />
-                    {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+                    <div className="input-group">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        className={`form-control ${errors.password ? 'is-invalid' : ''}`}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Enter login password"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        className="btn btn-outline-secondary"
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        tabIndex="-1"
+                      >
+                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                    {errors.password && <div className="invalid-feedback d-block">{errors.password}</div>}
+
                   </div>
                 </div>
               </div>

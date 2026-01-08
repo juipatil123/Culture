@@ -3,7 +3,7 @@ import { getAllTeamLeaders, createTeamLeader, updateTeamLeader, deleteTeamLeader
 import AddTeamLeaderModal from '../AddTeamLeaderModal';
 import './AdminComponents.css';
 
-const TeamLeaderManagement = () => {
+const TeamLeaderManagement = ({ onTLAdded }) => {
   const [teamLeaders, setTeamLeaders] = useState([]);
   const [loadingTeamLeaders, setLoadingTeamLeaders] = useState(false);
   const [showAddTeamLeaderModal, setShowAddTeamLeaderModal] = useState(false);
@@ -75,7 +75,7 @@ const TeamLeaderManagement = () => {
         alert('Team Leader updated successfully!');
       } else {
         await createTeamLeader(leaderData);
-        alert('Team Leader created successfully!');
+        if (onTLAdded) onTLAdded(leaderData.name);
       }
       setShowAddTeamLeaderModal(false);
       setEditingTeamLeader(null);
@@ -116,6 +116,9 @@ const TeamLeaderManagement = () => {
     <div className="team-leader-management">
       <div className="page-header">
         <h2>Team Leader Management</h2>
+        <div className="header-stats">
+          <span className="badge bg-info p-2">Total TLs: {filteredTeamLeaders.length}</span>
+        </div>
         <button className="btn btn-primary" onClick={handleAddTeamLeader}>
           <i className="fas fa-user-plus me-2"></i>
           Add Team Leader
@@ -172,9 +175,10 @@ const TeamLeaderManagement = () => {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="tl-grid">
-          {filteredTeamLeaders.map((leader) => (
+          {filteredTeamLeaders.map((leader, index) => (
             <div key={leader.id || leader._id} className="tl-card">
               <div className="tl-card-header">
+                <span className="sr-no-badge">#{index + 1}</span>
                 <div className="user-avatar-large" style={{ position: 'absolute', top: '77.5px', left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
                   {leader.name?.charAt(0).toUpperCase()}
                 </div>
@@ -228,6 +232,7 @@ const TeamLeaderManagement = () => {
         <table className="tl-table">
           <thead>
             <tr>
+              <th>Sr. No.</th>
               <th>Name</th>
               <th>Email</th>
               <th>Department</th>
@@ -237,8 +242,9 @@ const TeamLeaderManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredTeamLeaders.map((leader) => (
+            {filteredTeamLeaders.map((leader, index) => (
               <tr key={leader.id || leader._id}>
+                <td>{index + 1}</td>
                 <td>
                   <div className="user-info">
                     <div className="user-avatar" style={{ background: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)' }}>

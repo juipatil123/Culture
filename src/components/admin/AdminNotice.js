@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
+import { formatDate } from '../../utils/dateUtils';
 
 const AdminNotice = () => {
     const [employees, setEmployees] = useState([]);
@@ -80,6 +81,34 @@ const AdminNotice = () => {
             alert('Failed to send notice.');
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleDownloadHistory = () => {
+        const headers = ['Recipient', 'Subject', 'Type', 'Date', 'Read Status'];
+        const rows = sentNotices.map(notice => [
+            notice.recipientName || 'Unknown',
+            notice.subject || '',
+            notice.severity || 'info',
+            notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : formatDate(new Date()),
+            notice.read ? 'Read' : 'Unread'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `notice_history_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     };
 
@@ -165,8 +194,15 @@ const AdminNotice = () => {
 
                 <div className="col-lg-7">
                     <div className="card border-0 shadow-sm rounded-3">
-                        <div className="card-header bg-white border-0 py-3">
+                        <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                             <h5 className="mb-0 fw-bold">Sent History</h5>
+                            <button
+                                className="btn btn-sm btn-outline-success"
+                                onClick={handleDownloadHistory}
+                                disabled={sentNotices.length === 0}
+                            >
+                                <i className="fas fa-download me-2"></i>Export CSV
+                            </button>
                         </div>
                         <div className="card-body p-0">
                             {loading ? (
@@ -198,7 +234,7 @@ const AdminNotice = () => {
                                                         </span>
                                                     </td>
                                                     <td className="small text-muted">
-                                                        {notice.createdAt?.seconds ? new Date(notice.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                        {notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : 'Just now'}
                                                     </td>
                                                     <td>
                                                         {notice.read ? (

@@ -52,15 +52,17 @@ const UnifiedLogin = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    // Normalize email to lowercase
+    const normalizedValue = name === 'identifier' ? value.toLowerCase() : value;
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: normalizedValue
     }));
-    setError(''); // Clear error when user types
+    setError('');
 
-    // Check user's actual role when email is entered
-    if (name === 'identifier' && value.includes('@')) {
-      checkUserRole(value);
+    if (name === 'identifier' && normalizedValue.includes('@')) {
+      checkUserRole(normalizedValue);
     }
   };
 
@@ -122,47 +124,7 @@ const UnifiedLogin = () => {
     }
   };
 
-  // MongoDB deletion test function (can be called from browser console)
-  window.testMongoDBDeletion = async (userId) => {
-    console.log(`🧪 Testing MongoDB deletion for user ID: ${userId}`);
 
-    try {
-      // Import the API functions
-      const { deleteUser, deleteProjectManager, deleteTeamLeader } = await import('../services/api');
-
-      console.log('🔄 Trying deleteUser endpoint...');
-      try {
-        const result1 = await deleteUser(userId);
-        console.log('✅ deleteUser successful:', result1);
-        return { success: true, method: 'deleteUser', result: result1 };
-      } catch (e1) {
-        console.log('❌ deleteUser failed:', e1.message);
-
-        console.log('🔄 Trying deleteProjectManager endpoint...');
-        try {
-          const result2 = await deleteProjectManager(userId);
-          console.log('✅ deleteProjectManager successful:', result2);
-          return { success: true, method: 'deleteProjectManager', result: result2 };
-        } catch (e2) {
-          console.log('❌ deleteProjectManager failed:', e2.message);
-
-          console.log('🔄 Trying deleteTeamLeader endpoint...');
-          try {
-            const result3 = await deleteTeamLeader(userId);
-            console.log('✅ deleteTeamLeader successful:', result3);
-            return { success: true, method: 'deleteTeamLeader', result: result3 };
-          } catch (e3) {
-            console.log('❌ deleteTeamLeader failed:', e3.message);
-            console.log('💥 All deletion methods failed');
-            return { success: false, errors: [e1.message, e2.message, e3.message] };
-          }
-        }
-      }
-    } catch (importError) {
-      console.error('❌ Failed to import API functions:', importError);
-      return { success: false, error: 'Failed to import API functions' };
-    }
-  };
 
   // Test function for debugging (can be called from browser console)
   window.testPMLogin = () => {
@@ -196,8 +158,8 @@ const UnifiedLogin = () => {
       pm.email && pm.email.toLowerCase() === testCredentials.identifier.toLowerCase()
     );
 
-    console.log('🎯 Matching PM:', matchingPM);
-    console.log('🔐 Password match:', matchingPM ? matchingPM.password === testCredentials.password : false);
+    // console.log('🎯 Matching PM:', matchingPM);
+    // console.log('🔐 Password match:', matchingPM ? matchingPM.password === testCredentials.password : false);
 
     return { storedPMs, matchingPM, passwordMatch: matchingPM ? matchingPM.password === testCredentials.password : false };
   };
@@ -222,9 +184,14 @@ const UnifiedLogin = () => {
       setIsLoading(false);
       return;
     }
+    if (!identifier.toLowerCase().endsWith('@gmail.com')) {
+      setError('Only @gmail.com email addresses are allowed.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      console.log(`🚀 Attempting Login for ${identifier} as ${role}`);
+      // console.log(`🚀 Attempting Login for ${identifier} as ${role}`);
 
 
       // Import the dynamic auth service
@@ -250,6 +217,7 @@ const UnifiedLogin = () => {
         if (role === 'team-leader') localStorage.setItem('tlToken', token);
 
         console.log('✅ Login successful, redirecting...');
+        alert(`Login successfully! Welcome ${user.name || 'User'}`);
         navigate('/dashboard');
       }
     } catch (err) {
@@ -259,8 +227,28 @@ const UnifiedLogin = () => {
 
       let friendlyMessage = 'Login failed. Please check your credentials and role.';
 
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        friendlyMessage = 'Invalid email or password. Please verify your credentials in Firebase Auth.';
+      if (err.code === 'auth/user-not-found') {
+        friendlyMessage = 'Email not found. Please check your email address.';
+      } else if (err.code === 'auth/wrong-password') {
+        friendlyMessage = 'Password wrong. Please try again.';
+      } else if (err.code === 'auth/invalid-credential') {
+        // Try to check if email exists in our records to be more specific (as requested)
+        friendlyMessage = 'Invalid email or password. Please try again.';
+        try {
+          const { db } = await import('../firebase/firebaseConfig');
+          const { collection, query, where, getDocs } = await import('firebase/firestore');
+          const q = query(collection(db, 'users'), where("email", "==", identifier.trim()));
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+            friendlyMessage = 'Email not found. Please check your email address.';
+          } else {
+            friendlyMessage = 'Password wrong. Please try again.';
+          }
+        } catch (dbErr) {
+          console.log('Manual email check failed:', dbErr);
+          // Fallback already set to friendlyMessage
+        }
       } else if (err.code === 'ROLE_MISMATCH' || err.message.includes('Access Denied')) {
         friendlyMessage = err.message;
       } else if (err.code === 'auth/too-many-requests') {
@@ -335,8 +323,9 @@ const UnifiedLogin = () => {
               required
               className="form-input"
               autoComplete="off"
-              data-lpignore="true"
-              data-form-type="other"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
               key="email-input"
             />
           </div>
@@ -353,8 +342,6 @@ const UnifiedLogin = () => {
               required
               className="form-input"
               autoComplete="new-password"
-              data-lpignore="true"
-              data-form-type="other"
               key="password-input"
             />
           </div>
@@ -386,52 +373,7 @@ const UnifiedLogin = () => {
             )}
           </button>
 
-          {/* Connection Test Section */}
-          <div style={{ marginTop: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={async () => {
-                const { testFirestoreConnection } = await import('../firebase/testFirestore');
-                const result = await testFirestoreConnection();
-                alert(result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
-              }}
-              style={{
-                background: 'transparent',
-                border: '1px solid #ddd',
-                padding: '8px 15px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                color: '#666',
-                width: 'fit-content'
-              }}
-            >
-              <i className='bx bx-signal-5'></i> Test Firestore Connection
-            </button>
 
-            <button
-              type="button"
-              onClick={async () => {
-                const confirmSeed = window.confirm("This will populate your Firestore with sample data. Continue?");
-                if (!confirmSeed) return;
-                const { seedFirestore } = await import('../firebase/seedFirestore');
-                const result = await seedFirestore();
-                alert(result.success ? `✅ ${result.message}` : `❌ ${result.message}`);
-              }}
-              style={{
-                background: 'transparent',
-                border: '1px solid #e3f2fd',
-                padding: '8px 15px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                color: '#1976d2',
-                width: 'fit-content'
-              }}
-            >
-              <i className='bx bx-cloud-upload'></i> Seed Mock Data to Firestore
-            </button>
-          </div>
 
           <div className="signup-link">
             <p>Don't have an account? <a href="#" className="link">Sign up</a></p>

@@ -98,11 +98,11 @@ const PointsScheme = () => {
                 <span className="points-label">Points</span>
               </div>
             </div>
-            <div className="scheme-body">
+            <div className="scheme-body p-3">
               <h4>{scheme.name}</h4>
               <p>{scheme.description}</p>
             </div>
-            <div className="scheme-footer">
+            <div className="scheme-footer p-3 d-flex justify-content-end gap-2 border-top">
               <button
                 className="btn btn-sm btn-outline-primary"
                 onClick={() => handleEditScheme(scheme)}
@@ -150,20 +150,37 @@ const PointsScheme = () => {
                     type="text"
                     className="form-control"
                     value={schemeName}
-                    onChange={(e) => setSchemeName(e.target.value)}
+                    onChange={(e) => {
+                      // Only allow letters and spaces
+                      const value = e.target.value;
+                      if (/^[a-zA-Z\s]*$/.test(value)) {
+                        setSchemeName(value);
+                      }
+                    }}
                     placeholder="Enter scheme name"
+                    autoComplete="off"
                   />
+                  <small className="form-text text-muted">
+                    Only alphabetic characters allowed.
+                  </small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Points *</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     value={schemePoints}
-                    onChange={(e) => setSchemePoints(e.target.value)}
+                    onChange={(e) => {
+                      // Only allow positive numbers
+                      const value = e.target.value.replace(/[^0-9]/g, '');
+                      setSchemePoints(value);
+                    }}
                     placeholder="Enter points value"
-                    min="1"
+                    autoComplete="off"
                   />
+                  <small className="form-text text-muted">
+                    Only positive values allowed.
+                  </small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Description</label>

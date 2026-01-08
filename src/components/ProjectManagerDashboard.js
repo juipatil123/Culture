@@ -3,6 +3,7 @@ import './ProjectManagerDashboard.css';
 import AddTaskModal from './AddTaskModal';
 import AddProjectModal from './AddProjectModal';
 import AddUserModal from './AddUserModal';
+import { formatDate } from '../utils/dateUtils';
 
 // Import modular PM components
 import PMProjects from './pm/PMProjects';
@@ -86,9 +87,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   const [taskDueDate, setTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [allUsersList, setAllUsersList] = useState([]);
   const [recentActivities, setRecentActivities] = useState([
-    { id: 1, type: 'task', title: 'Task Completed', desc: 'Review development team implementation completed', user: 'Jane Smith', project: 'E-learning Platform', date: '11/23/2025', icon: 'check', color: 'success' },
-    { id: 2, type: 'assignment', title: 'New Task Assigned', desc: 'Review development team implementations assigned to John Doe', user: 'John Doe', project: 'E-learning Platform', date: '11/23/2025', icon: 'tasks', color: 'primary' },
-    { id: 3, type: 'update', title: 'Project Update', desc: 'E-learning Platform - In progress: Completed UI mockups', user: 'System', project: 'E-learning Platform', date: '11/23/2025', icon: 'info', color: 'info', progress: 75 }
+    { id: 1, type: 'task', title: 'Task Completed', desc: 'Review development team implementation completed', user: 'Jane Smith', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'check', color: 'success' },
+    { id: 2, type: 'assignment', title: 'New Task Assigned', desc: 'Review development team implementations assigned to John Doe', user: 'John Doe', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'tasks', color: 'primary' },
+    { id: 3, type: 'update', title: 'Project Update', desc: 'E-learning Platform - In progress: Completed UI mockups', user: 'System', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'info', color: 'info', progress: 75 }
+
   ]);
 
   // Load PM's projects
@@ -127,7 +129,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         id: project._id || project.id,
         _id: project._id || project.id,
         name: project.name,
-        date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
+        date: formatDate(project.startDate),
         progress: project.progress || 0,
         status: project.projectStatus === 'assigned' ? 'Assigned' :
           project.projectStatus === 'on-track' ? 'On Track' :

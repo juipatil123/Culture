@@ -120,9 +120,23 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let processedValue = value;
+
+    // Apply field-specific validations
+    if (name === 'clientName') {
+      // Only allow letters and spaces for client name
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'projectCost' || name === 'advancePayment') {
+      // Only allow positive numbers (including zero)
+      processedValue = value.replace(/[^0-9]/g, '');
+      if (processedValue !== '' && parseInt(processedValue) < 0) {
+        processedValue = '0';
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
   };
 
@@ -275,7 +289,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
             </h5>
             <button type="button" className="btn-close btn-close-white" onClick={handleClose}></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="modal-body">
               <div className="row">
                 <div className="col-md-6 mb-3">
@@ -301,6 +315,9 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     placeholder="Enter client name"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed.
+                  </small>
                 </div>
               </div>
               <div className="row">
@@ -457,7 +474,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Project Cost *</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     name="projectCost"
                     value={formData.projectCost}
@@ -465,19 +482,25 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     placeholder="Enter project cost"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Only positive values or zero allowed.
+                  </small>
                 </div>
               </div>
               <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Advance Payment</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     name="advancePayment"
                     value={formData.advancePayment}
                     onChange={handleInputChange}
                     placeholder="Enter advance payment"
                   />
+                  <small className="form-text text-muted">
+                    Only positive values or zero allowed.
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Project Status</label>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, createUser, updateUser, deleteUser, updateUserPassword } from '../../services/api';
+import { getAllUsers, createUser, updateUser, deleteUser, updateUserPassword, getAllProjects } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
 import AddUserModal from '../AddUserModal';
 import PasswordManagementModal from '../PasswordManagementModal';
 import './AdminComponents.css';
 
-const UserManagement = () => {
+const UserManagement = ({ onUserAdded }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -18,6 +19,7 @@ const UserManagement = () => {
   const [userViewMode, setUserViewMode] = useState('list');
   const [showPasswordManagementModal, setShowPasswordManagementModal] = useState(false);
   const [selectedUserForPasswordManagement, setSelectedUserForPasswordManagement] = useState(null);
+  const [projects, setProjects] = useState([]);
 
   // Load users from API (Firestore only)
   const loadUsers = async () => {
@@ -26,17 +28,19 @@ const UserManagement = () => {
       const apiUsers = await getAllUsers();
 
       const processedUsers = (apiUsers || [])
-        .filter(user => user.role !== 'intern')
         .map(apiUser => ({
+
           ...apiUser,
           id: apiUser.id || apiUser._id,
           _id: apiUser._id || apiUser.id,
           department: apiUser.department || 'Web Developer',
           projectStatus: apiUser.assignedProject ? 'Assigned' : 'Not Assigned',
           userType: apiUser.userType || (
-            apiUser.role === 'employee' ? 'Employee' :
-              apiUser.role === 'team-leader' ? 'Team Leader' :
-                apiUser.role === 'project-manager' ? 'Project Manager' : 'Employee'
+            apiUser.role?.toLowerCase() === 'employee' ? 'Employee' :
+              apiUser.role?.toLowerCase() === 'team-leader' ? 'Team Leader' :
+                apiUser.role?.toLowerCase() === 'project-manager' ? 'Project Manager' :
+                  apiUser.role?.toLowerCase() === 'intern' ? 'Intern' :
+                    apiUser.role?.toLowerCase() === 'admin' ? 'Admin' : 'Employee'
           ),
           status: apiUser.status || 'Active',
           joinDate: apiUser.joinDate || apiUser.joiningDate || new Date().toISOString().split('T')[0]
@@ -54,7 +58,17 @@ const UserManagement = () => {
 
   useEffect(() => {
     loadUsers();
+    loadProjects();
   }, []);
+
+  const loadProjects = async () => {
+    try {
+      const projectsData = await getAllProjects();
+      setProjects(projectsData || []);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    }
+  };
 
   // Handle add user
   const handleAddUser = () => {
@@ -76,6 +90,7 @@ const UserManagement = () => {
         console.log('➕ Creating new user...');
         result = await createUser(userDataToSave);
         console.log('✅ Creation successful, result:', result);
+        if (onUserAdded) onUserAdded(userDataToSave.name);
       }
       setShowAddUserModal(false);
       setEditingUser(null);
@@ -136,11 +151,24 @@ const UserManagement = () => {
       await updateUserPassword(userId, newPassword);
 
       // Update local state
-      setAllUsers(prev => prev.map(user =>
-        (user.id === userId || user._id === userId)
-          ? { ...user, password: newPassword, passwordUpdatedAt: new Date().toISOString() }
-          : user
-      ));
+      setAllUsers(prev => {
+        const updatedUsers = prev.map(user =>
+          (user.id === userId || user._id === userId)
+            ? { ...user, password: newPassword, passwordUpdatedAt: new Date().toISOString() }
+            : user
+        );
+
+        // Also update the currently selected user if they are the one being reset
+        if (selectedUserForPasswordManagement && (selectedUserForPasswordManagement.id === userId || selectedUserForPasswordManagement._id === userId)) {
+          setSelectedUserForPasswordManagement(prevSelected => ({
+            ...prevSelected,
+            password: newPassword,
+            passwordUpdatedAt: new Date().toISOString()
+          }));
+        }
+
+        return updatedUsers;
+      });
 
       console.log('✅ Password updated successfully');
     } catch (error) {
@@ -164,7 +192,7 @@ const UserManagement = () => {
 
     // Role filter
     if (filterByRole !== 'all') {
-      filtered = filtered.filter(user => user.role === filterByRole);
+      filtered = filtered.filter(user => user.role?.toLowerCase() === filterByRole.toLowerCase());
     }
 
     // Department filter
@@ -207,6 +235,68 @@ const UserManagement = () => {
         </button>
       </div>
 
+      {/* Role Statistics Summary */}
+      <div className="role-stats-summary mb-4">
+        <div className="row g-3">
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card total">
+              <div className="stat-icon"><i className="fas fa-users"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">All Users</div>
+                <div className="stat-value">{allUsers.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card employee">
+              <div className="stat-icon"><i className="fas fa-user-md"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Employees</div>
+                <div className="stat-value">{allUsers.filter(u => u.role?.toLowerCase() === 'employee').length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card team-leader">
+              <div className="stat-icon"><i className="fas fa-user-tie"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Team Leaders</div>
+                <div className="stat-value">{allUsers.filter(u => u.role?.toLowerCase() === 'team-leader').length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card project-manager">
+              <div className="stat-icon"><i className="fas fa-user-shield"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Project Managers</div>
+                <div className="stat-value">{allUsers.filter(u => u.role?.toLowerCase() === 'project-manager').length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card admin">
+              <div className="stat-icon"><i className="fas fa-user-cog"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Admins</div>
+                <div className="stat-value">{allUsers.filter(u => u.role?.toLowerCase() === 'admin').length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="stat-card other">
+              <div className="stat-icon"><i className="fas fa-ellipsis-h"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Other</div>
+                <div className="stat-value">
+                  {allUsers.filter(u => !['employee', 'team-leader', 'project-manager', 'admin'].includes(u.role?.toLowerCase())).length}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters and Search */}
       <div className="filters-section">
         <div className="search-box">
@@ -225,14 +315,23 @@ const UserManagement = () => {
             <option value="employee">Employee</option>
             <option value="team-leader">Team Leader</option>
             <option value="project-manager">Project Manager</option>
+            <option value="intern">Intern</option>
+            <option value="admin">Admin</option>
           </select>
+
 
           <select value={filterByDepartment} onChange={(e) => setFilterByDepartment(e.target.value)}>
             <option value="all">All Departments</option>
-            <option value="Web Developer">Web Developer</option>
-            <option value="Mobile Developer">Mobile Developer</option>
-            <option value="UI/UX Designer">UI/UX Designer</option>
-            <option value="QA Tester">QA Tester</option>
+            <option value="Web Development">Web Development</option>
+            <option value="Android Development">Android Development</option>
+            <option value="iOS Development">iOS Development</option>
+            <option value="Quality Assurance">Quality Assurance</option>
+            <option value="Design">Design</option>
+            <option value="DevOps">DevOps</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Sales">Sales</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Finance">Finance</option>
           </select>
 
           <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
@@ -322,7 +421,7 @@ const UserManagement = () => {
                         {user.status}
                       </span>
                     </td>
-                    <td>{new Date(user.joinDate).toLocaleDateString()}</td>
+                    <td>{formatDate(user.joinDate)}</td>
                     <td>
                       <div className="action-btn-group">
                         <button
@@ -419,6 +518,7 @@ const UserManagement = () => {
           }}
           onSave={handleSaveUser}
           editingUser={editingUser}
+          projects={projects}
           teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
         />
       )}

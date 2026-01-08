@@ -105,9 +105,26 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let processedValue = value;
+
+    // Validate points - only positive values
+    if (name === 'points') {
+      processedValue = value.replace(/[^0-9]/g, '');
+    }
+
+    // Auto-update progress to 100% when status is completed
+    if (name === 'status' && value === 'completed') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: processedValue,
+        progress: 100
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
 
     if (name === 'project') {
@@ -165,7 +182,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
             </h5>
             <button type="button" className="btn-close btn-close-white" onClick={handleClose}></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="modal-body p-4">
               <div className="row">
                 <div className="col-md-6 mb-3">
@@ -225,7 +242,9 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
+                    required
                   >
+                    <option value="">Select Status</option>
                     <option value="assigned">Assigned</option>
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
@@ -261,14 +280,16 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Points (Story Points)</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     name="points"
                     value={formData.points}
                     onChange={handleInputChange}
                     placeholder="e.g., 5"
-                    min="0"
                   />
+                  <small className="form-text text-muted">
+                    Only positive values allowed.
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Progress (%)</label>

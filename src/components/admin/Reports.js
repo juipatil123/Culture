@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProjects, getAllUsers } from '../../services/api';
+import { getAllProjects, getAllUsers, updateProject } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
+import AddProjectModal from '../AddProjectModal';
 import './Reports.css';
 
 const Reports = () => {
@@ -9,6 +11,8 @@ const Reports = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [sortBy, setSortBy] = useState('cost-desc');
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingProject, setEditingProject] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -119,6 +123,63 @@ const Reports = () => {
     const filteredProjects = getFilteredAndSortedProjects();
     const stats = calculateStats();
 
+    // Handle Edit Project
+    const handleEditProject = (project) => {
+        setEditingProject(project);
+        setShowEditModal(true);
+    };
+
+    // Handle Save Project
+    const handleSaveProject = async (projectData) => {
+        try {
+            await updateProject(editingProject.id || editingProject._id, projectData);
+            alert('Project updated successfully!');
+            setShowEditModal(false);
+            setEditingProject(null);
+            loadData();
+        } catch (error) {
+            console.error('Error updating project:', error);
+            alert('Failed to update project. Please try again.');
+        }
+    };
+
+    // Handle Download Report
+    const handleDownloadReport = () => {
+        // Define CSV headers
+        const headers = ['Project Name', 'Client', 'Manager', 'Status', 'Cost', 'Advance', 'Start Date', 'End Date'];
+
+        // Map project data to CSV rows
+        const rows = filteredProjects.map(p => [
+            p.name || '',
+            p.clientName || '',
+            p.projectManager || '',
+            p.projectStatus || '',
+            p.projectCost || '0',
+            p.advancePayment || '0',
+            formatDate(p.startDate),
+            formatDate(p.endDate)
+        ]);
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        // Create download link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `project_report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
     return (
         <div className="reports-container">
             <div className="reports-header">
@@ -129,13 +190,12 @@ const Reports = () => {
                     </h3>
                     <div className="text-muted small">
                         <i className="fas fa-calendar-alt me-2"></i>
-                        {new Date().toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}
+                        {formatDate(new Date())}
                     </div>
+                    <button className="btn btn-outline-success ms-3" onClick={handleDownloadReport}>
+                        <i className="fas fa-download me-2"></i>
+                        Download Report
+                    </button>
                 </div>
 
                 {/* Statistics Cards */}
@@ -267,6 +327,14 @@ const Reports = () => {
                                             {formatCurrency(projectCost)}
                                         </div>
                                     </div>
+                                    <div className="border-bottom pb-2 mb-2 d-flex justify-content-end">
+                                        <button
+                                            className="btn btn-sm btn-link text-primary text-decoration-none"
+                                            onClick={() => handleEditProject(project)}
+                                        >
+                                            <i className="fas fa-edit me-1"></i> Edit Details
+                                        </button>
+                                    </div>
 
                                     <div className="project-details">
                                         <div className="detail-row">
@@ -286,8 +354,8 @@ const Reports = () => {
                                                 <i className="fas fa-calendar me-2"></i>Duration:
                                             </span>
                                             <span className="detail-value">
-                                                {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'} -
-                                                {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}
+                                                {formatDate(project.startDate)} -
+                                                {formatDate(project.endDate)}
                                             </span>
                                         </div>
                                     </div>
@@ -336,7 +404,23 @@ const Reports = () => {
                     </div>
                 )}
             </div>
-        </div>
+
+            {/* Add/Edit Project Modal - Reused from Project Management */}
+            {
+                showEditModal && (
+                    <AddProjectModal
+                        show={showEditModal}
+                        onHide={() => {
+                            setShowEditModal(false);
+                            setEditingProject(null);
+                        }}
+                        onSave={handleSaveProject}
+                        editingProject={editingProject}
+                        availableEmployees={users}
+                    />
+                )
+            }
+        </div >
     );
 };
 

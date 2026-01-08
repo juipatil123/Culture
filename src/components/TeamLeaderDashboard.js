@@ -19,6 +19,7 @@ import TeamLeaderProfile from './TeamLeaderProfile';
 import TeamLeaderSupport from './TeamLeaderSupport';
 import TeamLeaderNotice from './TeamLeaderNotice';
 import { subscribeToNotices } from '../firebase/firestoreService';
+import { formatDate } from '../utils/dateUtils';
 
 const TeamLeaderDashboard = ({
   userData,
@@ -503,7 +504,7 @@ const TeamLeaderDashboard = ({
                         <div className="d-flex justify-content-between align-items-center">
                           <div className="d-flex align-items-center text-muted small">
                             <i className="far fa-calendar-alt text-danger me-2"></i>
-                            <span>Joined: {member.createdAt ? new Date(member.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : new Date().toLocaleDateString()}</span>
+                            <span>Joined: {formatDate(member.createdAt)}</span>
                           </div>
                           <div className="d-flex gap-2">
                             <button
@@ -581,7 +582,7 @@ const TeamLeaderDashboard = ({
                       <td className="text-muted small" style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {req.text}
                       </td>
-                      <td>{new Date(req.date).toLocaleDateString()}</td>
+                      <td>{formatDate(req.date)}</td>
                       <td className="pe-4">
                         <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3">Pending</span>
                       </td>

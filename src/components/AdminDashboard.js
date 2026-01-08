@@ -20,6 +20,7 @@ import Reports from './admin/Reports';
 import SupportHelp from './admin/SupportHelp';
 import AdminNotice from './admin/AdminNotice';
 import { subscribeToNotices, subscribeToProjects, subscribeToAllUsers } from '../firebase/firestoreService';
+import { formatDate } from '../utils/dateUtils';
 
 import {
   getAllUsers,
@@ -156,6 +157,12 @@ const AdminDashboard = ({ userData, onLogout }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notification, setNotification] = useState(null);
+
+  const triggerNotification = (message) => {
+    setNotification(message);
+    setTimeout(() => setNotification(null), 5000);
+  };
+
 
   useEffect(() => {
     if (!safeUserData.id && !safeUserData._id) return;
@@ -513,6 +520,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
         await updateUser(editingUser.id || editingUser._id, userDataToSave);
       } else {
         await createUser(userDataToSave);
+        triggerNotification(`Success: New user ${userDataToSave.name} has been added!`);
       }
       setShowAddUserModal(false);
       setEditingUser(null);
@@ -728,10 +736,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         <div className="header-right">
           <div className="user-profile-section">
             <div className="user-avatar-sm">AD</div>
-            <div className="user-info-text d-none d-sm-block">
-              <span className="user-name">Admin User</span>
+            <div className="user-info-text d-none d-sm-block text-start ms-2">
+              <span className="user-name fw-bold d-block">{userName}</span>
+              <span className="user-role badge badge-admin px-2 py-0 rounded-pill" style={{ fontSize: '0.7rem' }}>Admin</span>
             </div>
-            <i className="fas fa-chevron-down small text-muted ms-2"></i>
           </div>
         </div>
       </div>
@@ -875,7 +883,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
               <h3 className="fw-bold mb-0">Dashboard Overview</h3>
               <div className="text-muted small">
                 <i className="fas fa-calendar-alt me-2"></i>
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {formatDate(new Date())}
               </div>
             </div>
 
@@ -917,15 +925,15 @@ const AdminDashboard = ({ userData, onLogout }) => {
 
         {/* Other views will be rendered here based on activeView state */}
         {activeView === 'employees' && (
-          <UserManagement />
+          <UserManagement onUserAdded={(name) => triggerNotification(`Success: New user ${name} has been added!`)} />
         )}
 
         {activeView === 'project-managers' && (
-          <ProjectManagerManagement />
+          <ProjectManagerManagement onPMAdded={(name) => triggerNotification(`Success: Project Manager ${name} has been added!`)} />
         )}
 
         {activeView === 'team-leaders' && (
-          <TeamLeaderManagement />
+          <TeamLeaderManagement onTLAdded={(name) => triggerNotification(`Success: Team Leader ${name} has been added!`)} />
         )}
 
         {activeView === 'projects' && (
@@ -959,6 +967,57 @@ const AdminDashboard = ({ userData, onLogout }) => {
           <RevenueView />
         )}
 
+        {activeView === 'client-dashboard' && (
+          <div className="container-fluid p-4">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h3 className="fw-bold mb-0">Client Overview</h3>
+              <button className="btn btn-outline-secondary" onClick={() => setActiveView('dashboard')}>
+                <i className="fas fa-arrow-left me-2"></i> Back
+              </button>
+            </div>
+
+            <div className="card border-0 shadow-sm rounded-3">
+              <div className="card-header bg-white border-0 py-3">
+                <h5 className="mb-0 fw-bold text-primary">
+                  Total Clients: {new Set(projects.map(p => p.clientName).filter(Boolean)).size}
+                </h5>
+              </div>
+              <div className="card-body">
+                {projects.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle">
+                      <thead className="bg-light">
+                        <tr>
+                          <th>Sr. No.</th>
+                          <th>Client Name</th>
+                          <th>Projects Count</th>
+                          <th>Total Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
+                          const clientProjects = projects.filter(p => p.clientName === client);
+                          const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
+                          return (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td className="fw-semibold">{client}</td>
+                              <td>{clientProjects.length}</td>
+                              <td>₹{revenue.toLocaleString()}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted my-4">No clients found.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeView === 'notice' && (
           <AdminNotice />
         )}
@@ -975,6 +1034,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
           onSave={handleSaveUser}
           editingUser={editingUser}
           projects={projects}
+          teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
         />
       )}
 

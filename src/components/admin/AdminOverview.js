@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 
 const AdminOverview = ({
     stats,
@@ -189,7 +190,7 @@ const AdminOverview = ({
                                         </td>
                                         <td>
                                             <small className="text-muted">
-                                                {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                                                {formatDate(project.endDate)}
                                             </small>
                                         </td>
                                         <td className="pe-4 text-end">
