@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './PMComponents.css';
 
-const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, onEditMember }) => {
+const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, onEditMember, onDeleteMember }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('list');
   const [selectedTeamLeader, setSelectedTeamLeader] = useState(null);
@@ -80,10 +80,14 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
       });
 
     } else {
-      // Show only team leaders initially
-      baseList = (allUsers.length > 0 ? allUsers : teamMembers).filter(user =>
-        user.role === 'team-leader' || user.userType === 'team-leader'
-      );
+      // Show team leaders, employees and interns initially
+      baseList = (allUsers.length > 0 ? allUsers : teamMembers).filter(user => {
+        const role = (user.role || '').toLowerCase();
+        const type = (user.userType || '').toLowerCase();
+        return role === 'team-leader' || type === 'team-leader' ||
+          role === 'employee' || type === 'employee' ||
+          role === 'intern' || type === 'intern';
+      });
     }
 
     if (!searchTerm) return baseList;
@@ -282,6 +286,9 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
                     <button className="btn btn-sm btn-outline-info" onClick={() => onEditMember(member)} title="Edit Member">
                       <i className="fas fa-edit"></i>
                     </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => onDeleteMember(member)} title="Delete Member">
+                      <i className="fas fa-trash-alt"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -387,8 +394,8 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
                         <button className="btn btn-sm btn-outline-primary" onClick={() => onEditMember(member)} title="Edit Member">
                           <i className="fas fa-edit"></i>
                         </button>
-                        <button className="btn btn-sm btn-outline-info" onClick={() => onEditMember(member)} title="View Details">
-                          <i className="fas fa-eye"></i>
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => onDeleteMember(member)} title="Delete Member">
+                          <i className="fas fa-trash-alt"></i>
                         </button>
                       </div>
                     </td>

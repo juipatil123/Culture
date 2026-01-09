@@ -21,6 +21,7 @@ import Reports from './admin/Reports';
 import SupportHelp from './admin/SupportHelp';
 import AdminNotice from './admin/AdminNotice';
 import { subscribeToNotices, subscribeToProjects, subscribeToAllUsers } from '../firebase/firestoreService';
+import { formatDate } from '../utils/dateUtils';
 
 import {
   getAllUsers,
@@ -53,11 +54,14 @@ import {
 
 // Global project status configuration
 const PROJECT_STATUS_CONFIG = {
-  'Assigned': { bg: '#6f42c1', text: 'white', label: 'Assigned' },
+  'Pending': { bg: '#6f42c1', text: 'white', label: 'Pending' },
+  'Assigned': { bg: '#6f42c1', text: 'white', label: 'Pending' }, // Legacy mapping
   'Completed': { bg: '#28a745', text: 'white', label: 'Completed' },
-  'On Track': { bg: '#007bff', text: 'white', label: 'On Track' },
-  'At Risk': { bg: '#ffc107', text: 'black', label: 'At Risk' },
-  'Delayed': { bg: '#dc3545', text: 'white', label: 'Delayed' }
+  'In Progress': { bg: '#007bff', text: 'white', label: 'In Progress' },
+  'On Track': { bg: '#007bff', text: 'white', label: 'In Progress' }, // Legacy mapping
+  'Overdue': { bg: '#dc3545', text: 'white', label: 'Overdue' },
+  'At Risk': { bg: '#dc3545', text: 'white', label: 'Overdue' }, // Legacy mapping
+  'Delayed': { bg: '#dc3545', text: 'white', label: 'Overdue' }  // Legacy mapping
 };
 
 const AdminDashboard = ({ userData, onLogout }) => {
@@ -158,6 +162,12 @@ const AdminDashboard = ({ userData, onLogout }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notification, setNotification] = useState(null);
 
+  const triggerNotification = (message) => {
+    setNotification(message);
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+
   useEffect(() => {
     if (!safeUserData.id && !safeUserData._id) return;
     let isFirstLoad = true;
@@ -177,7 +187,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
 
   // Helper function to get project status badge
   const getProjectStatusBadge = (status) => {
-    const config = PROJECT_STATUS_CONFIG[status] || PROJECT_STATUS_CONFIG['On Track'];
+    const config = PROJECT_STATUS_CONFIG[status] || PROJECT_STATUS_CONFIG['Pending'];
     return (
       <span style={{
         backgroundColor: config.bg,
@@ -368,11 +378,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         name: project.name || 'Untitled Project',
         date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -461,11 +470,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         name: project.name || 'Untitled Project',
         date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -514,6 +522,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
         await updateUser(editingUser.id || editingUser._id, userDataToSave);
       } else {
         await createUser(userDataToSave);
+        triggerNotification(`Success: New user ${userDataToSave.name} has been added!`);
       }
       setShowAddUserModal(false);
       setEditingUser(null);
@@ -596,6 +605,12 @@ const AdminDashboard = ({ userData, onLogout }) => {
     } catch (error) {
       console.error('Error saving project:', error);
     }
+  };
+
+  // Handler for viewing project details
+  const handleViewProject = (project) => {
+    setEditingProject(project);
+    setShowAddProjectModal(true);
   };
 
   // Handler for saving/updating tasks
@@ -756,10 +771,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         <div className="header-right">
           <div className="user-profile-section">
             <div className="user-avatar-sm">AD</div>
-            <div className="user-info-text d-none d-sm-block">
-              <span className="user-name">Admin User</span>
+            <div className="user-info-text d-none d-sm-block text-start ms-2">
+              <span className="user-name fw-bold d-block">{userName}</span>
+              <span className="user-role badge badge-admin px-2 py-0 rounded-pill" style={{ fontSize: '0.7rem' }}>Admin</span>
             </div>
-            <i className="fas fa-chevron-down small text-muted ms-2"></i>
           </div>
         </div>
       </div>
@@ -903,7 +918,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
               <h3 className="fw-bold mb-0">Dashboard Overview</h3>
               <div className="text-muted small">
                 <i className="fas fa-calendar-alt me-2"></i>
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {formatDate(new Date())}
               </div>
             </div>
 
@@ -919,7 +934,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
                       <div className="dashboard-card-icon-container">
                         <i className={`${card.icon} text-white fs-5`}></i>
                       </div>
-                      <span className="dashboard-card-status">{card.trend}</span>
+                      {/* <span className="dashboard-card-status">{card.trend}</span> */}
                     </div>
                     <div>
                       <h3 className="text-white">{card.value}</h3>
@@ -939,21 +954,22 @@ const AdminDashboard = ({ userData, onLogout }) => {
                 setShowAddProjectModal(true);
               }}
               onCardClick={handleMenuClick}
+              onViewProject={handleViewProject}
             />
           </div>
         )}
 
         {/* Other views will be rendered here based on activeView state */}
         {activeView === 'employees' && (
-          <UserManagement />
+          <UserManagement onUserAdded={(name) => triggerNotification(`Success: New user ${name} has been added!`)} />
         )}
 
         {activeView === 'project-managers' && (
-          <ProjectManagerManagement />
+          <ProjectManagerManagement onPMAdded={(name) => triggerNotification(`Success: Project Manager ${name} has been added!`)} />
         )}
 
         {activeView === 'team-leaders' && (
-          <TeamLeaderManagement />
+          <TeamLeaderManagement onTLAdded={(name) => triggerNotification(`Success: Team Leader ${name} has been added!`)} />
         )}
 
         {activeView === 'projects' && (
@@ -987,64 +1003,124 @@ const AdminDashboard = ({ userData, onLogout }) => {
           <RevenueView />
         )}
 
-        {activeView === 'notice' && (
-          <AdminNotice />
+        {activeView === 'client-dashboard' && (
+          <div className="container-fluid p-4">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h3 className="fw-bold mb-0">Client Overview</h3>
+              <button className="btn btn-outline-secondary" onClick={() => setActiveView('dashboard')}>
+                <i className="fas fa-arrow-left me-2"></i> Back
+              </button>
+            </div>
+
+            <div className="card border-0 shadow-sm rounded-3">
+              <div className="card-header bg-white border-0 py-3">
+                <h5 className="mb-0 fw-bold text-primary">
+                  Total Clients: {new Set(projects.map(p => p.clientName).filter(Boolean)).size}
+                </h5>
+              </div>
+              <div className="card-body">
+                {projects.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle">
+                      <thead className="bg-light">
+                        <tr>
+                          <th>Sr. No.</th>
+                          <th>Client Name</th>
+                          <th>Projects Count</th>
+                          <th>Total Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
+                          const clientProjects = projects.filter(p => p.clientName === client);
+                          const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
+                          return (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td className="fw-semibold">{client}</td>
+                              <td>{clientProjects.length}</td>
+                              <td>₹{revenue.toLocaleString()}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted my-4">No clients found.</p>
+                )}
+              </div>
+            </div>
+          </div>
         )}
-      </div>
+
+        {activeView === 'notice' && (
+          <AdminNotice userData={safeUserData} />
+        )}
+      </div >
 
       {/* Modals */}
-      {showAddUserModal && (
-        <AddUserModal
-          show={showAddUserModal}
-          onHide={() => {
-            setShowAddUserModal(false);
-            setEditingUser(null);
-          }}
-          onSave={handleSaveUser}
-          editingUser={editingUser}
-          projects={projects}
-        />
-      )}
+      {
+        showAddUserModal && (
+          <AddUserModal
+            show={showAddUserModal}
+            onHide={() => {
+              setShowAddUserModal(false);
+              setEditingUser(null);
+            }}
+            onSave={handleSaveUser}
+            editingUser={editingUser}
+            projects={projects}
+            teamLeaders={allUsers.filter(u => u.role === 'team-leader')}
+          />
+        )
+      }
 
-      {showAddProjectModal && (
-        <AddProjectModal
-          show={showAddProjectModal}
-          onHide={() => {
-            setShowAddProjectModal(false);
-            setEditingProject(null);
-          }}
-          onSave={handleSaveProject}
-          editingProject={editingProject}
-          availableEmployees={allUsers}
-        />
-      )}
+      {
+        showAddProjectModal && (
+          <AddProjectModal
+            show={showAddProjectModal}
+            onHide={() => {
+              setShowAddProjectModal(false);
+              setEditingProject(null);
+            }}
+            onSave={handleSaveProject}
+            editingProject={editingProject}
+            availableEmployees={allUsers}
+          />
+        )
+      }
 
-      {showAddTaskModal && (
-        <AddTaskModal
-          show={showAddTaskModal}
-          onHide={() => {
-            setShowAddTaskModal(false);
-            setEditingTask(null);
-          }}
-          onSave={handleSaveTask}
-          editingTask={editingTask}
-          allUsers={allUsers}
-          projects={projects}
-        />
-      )}
+      {
+        showAddTaskModal && (
+          <AddTaskModal
+            show={showAddTaskModal}
+            onHide={() => {
+              setShowAddTaskModal(false);
+              setEditingTask(null);
+            }}
+            onSave={handleSaveTask}
+            editingTask={editingTask}
+            allUsers={allUsers}
+            projects={projects}
+          />
+        )
+      }
 
-      {showAddProjectManagerModal && (
-        <AddProjectManagerModal
-          show={showAddProjectManagerModal}
-          onHide={() => {
-            setShowAddProjectManagerModal(false);
-            setEditingProjectManager(null);
-          }}
-          onSave={handleSaveProjectManager}
-          editingProjectManager={editingProjectManager}
-        />
-      )}
-    </div>
+      {
+        showAddProjectManagerModal && (
+          <AddProjectManagerModal
+            show={showAddProjectManagerModal}
+            onHide={() => {
+              setShowAddProjectManagerModal(false);
+              setEditingProjectManager(null);
+            }}
+            onSave={handleSaveProjectManager}
+            editingProjectManager={editingProjectManager}
+          />
+        )
+      }
+    </div >
   );
 };
 

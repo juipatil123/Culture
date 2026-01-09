@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 
 const AdminOverview = ({
     stats,
     recentActivities,
     projects,
     onAddProject,
-    onCardClick
+    onCardClick,
+    onViewProject
 }) => {
 
     useEffect(() => {
@@ -64,7 +66,10 @@ const AdminOverview = ({
                     <div className="card border-0 shadow-sm h-100 overflow-hidden">
                         <div className="card-header border-0 d-flex justify-content-between align-items-center bg-white py-3">
                             <h5 className="fw-bold mb-0 text-dark">Overall Progress Analytics</h5>
-                            <button className="btn btn-light btn-sm fw-bold text-muted">
+                            <button
+                                className="btn btn-light btn-sm fw-bold text-muted"
+                                onClick={() => onCardClick('Reports')}
+                            >
                                 <i className="fas fa-download me-2"></i> Report
                             </button>
                         </div>
@@ -123,7 +128,10 @@ const AdminOverview = ({
                         <small className="text-muted">Track and manage project progress</small>
                     </div>
                     <div className="d-flex gap-2">
-                        <button className="btn btn-outline-secondary btn-sm">
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => onCardClick('All Projects')}
+                        >
                             <i className="fas fa-filter me-1"></i> Filter
                         </button>
                         <button
@@ -171,30 +179,33 @@ const AdminOverview = ({
                                             <div className="d-flex align-items-center" style={{ width: '120px' }}>
                                                 <div className="progress flex-grow-1" style={{ height: '6px' }}>
                                                     <div
-                                                        className={`progress-bar ${project.progress === 100 ? 'bg-success' : 'bg-primary'}`}
+                                                        className={`progress-bar ${(project.status === 'Completed' || project.progress === 100) ? 'bg-success' : 'bg-primary'}`}
                                                         role="progressbar"
-                                                        style={{ width: `${project.progress}%` }}
+                                                        style={{ width: `${project.status === 'Completed' ? 100 : project.progress}%` }}
                                                     ></div>
                                                 </div>
-                                                <span className="ms-2 small fw-bold">{project.progress}%</span>
+                                                <span className="ms-2 small fw-bold">{project.status === 'Completed' ? 100 : project.progress}%</span>
                                             </div>
                                         </td>
                                         <td>
                                             <span className={`badge rounded-pill ${project.status === 'Completed' ? 'bg-success' :
-                                                project.status === 'At Risk' ? 'bg-warning text-dark' :
-                                                    project.status === 'Delayed' ? 'bg-danger' : 'bg-primary'
+                                                project.status === 'In Progress' ? 'bg-primary' :
+                                                    project.status === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark'
                                                 }`} style={{ fontSize: '0.75rem', minWidth: '80px', padding: '8px 12px' }}>
-                                                {project.status || 'Active'}
+                                                {project.status || 'Pending'}
                                             </span>
                                         </td>
                                         <td>
                                             <small className="text-muted">
-                                                {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                                                {formatDate(project.endDate)}
                                             </small>
                                         </td>
                                         <td className="pe-4 text-end">
-                                            <button className="btn btn-sm btn-light border-0">
-                                                <i className="fas fa-ellipsis-v text-muted"></i>
+                                            <button
+                                                className="btn btn-sm btn-outline-primary"
+                                                onClick={() => onViewProject(project)}
+                                            >
+                                                View
                                             </button>
                                         </td>
                                     </tr>

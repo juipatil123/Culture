@@ -12,6 +12,8 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
     phone: '',
     specialization: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+
 
   useEffect(() => {
     if (editingLeader) {
@@ -44,9 +46,28 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validate email domain
+    if (!formData.email.toLowerCase().endsWith('@gmail.com')) {
+      alert('Only @gmail.com email addresses are allowed.');
+      return;
+    }
+
+    // Validate name (only letters and spaces allowed)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(formData.name)) {
+      alert('Name must contain only letters and spaces. Numbers and special characters are not allowed.');
+      return;
+    }
+
     // Validate password for new user
     if (!editingLeader && (!formData.password || formData.password.length < 6)) {
       alert("Password must be at least 6 characters.");
+      return;
+    }
+
+    // Validate phone number - must be exactly 10 digits if provided
+    if (formData.phone && formData.phone.length !== 10) {
+      alert('Mobile number must be exactly 10 digits.');
       return;
     }
 
@@ -68,9 +89,23 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let normalizedValue = value;
+
+    // Handle different field validations
+    if (name === 'name') {
+      // Only allow letters and spaces for name field
+      normalizedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'email') {
+      // Auto-convert email to lowercase
+      normalizedValue = value.toLowerCase();
+    } else if (name === 'phone') {
+      // Only allow digits, max 10 characters
+      normalizedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: normalizedValue
     }));
   };
 
@@ -87,7 +122,7 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
             </h5>
             <button type="button" className="btn-close" onClick={onHide}></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="modal-body">
               <div className="row">
                 <div className="col-md-6 mb-3">
@@ -100,7 +135,12 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
                     onChange={handleChange}
                     required
                     placeholder="Enter full name"
+                    pattern="[A-Za-z\s]+"
+                    title="Name should only contain letters and spaces"
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed. Numbers and special characters are blocked.
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Email Address *</label>
@@ -112,7 +152,11 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
                     onChange={handleChange}
                     required
                     placeholder="Enter email address"
+                    autoComplete="off"
                   />
+                  <small className="form-text text-muted">
+                    Email will be automatically converted to lowercase.
+                  </small>
                 </div>
               </div>
 
@@ -121,27 +165,43 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
                   <label className="form-label">
                     {editingLeader ? 'New Password (leave blank to keep current)' : 'Password *'}
                   </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder={editingLeader ? "Enter new password" : "Enter password"}
-                    required={!editingLeader}
-                    minLength={6}
-                  />
+                  <div className="input-group">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="form-control"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder={editingLeader ? "Enter new password" : "Enter password"}
+                      required={!editingLeader}
+                      minLength={6}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      className="btn btn-outline-secondary"
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex="-1"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
+
                 </div>
                 <div className="col-md-6 mb-3">
-                  <label className="form-label">Phone Number</label>
+                  <label className="form-label">Mobile Number</label>
                   <input
                     type="tel"
                     className="form-control"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="Enter phone number"
+                    placeholder="Enter 10-digit mobile number"
+                    maxLength="10"
                   />
+                  <small className="form-text text-muted">
+                    Only digits allowed. Must be exactly 10 digits. ({formData.phone.length}/10)
+                  </small>
                 </div>
               </div>
 

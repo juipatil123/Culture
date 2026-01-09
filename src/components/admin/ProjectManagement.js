@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProjects, createProject, updateProject, deleteProject, getAllUsers } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
 import AddProjectModal from '../AddProjectModal';
 import './AdminComponents.css';
 
@@ -12,6 +13,8 @@ const ProjectManagement = () => {
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [filterByStatus, setFilterByStatus] = useState('all');
   const [projectManagers, setProjectManagers] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [notificationTitle, setNotificationTitle] = useState('Success');
 
   // Load projects and users (including PMs)
   const loadData = async () => {
@@ -27,13 +30,12 @@ const ProjectManagement = () => {
       const transformedProjects = (projectsData || []).map((project, index) => ({
         id: project._id || project.id || `proj-${index}`,
         name: project.name || 'Untitled Project',
-        date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
+        date: formatDate(project.startDate),
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track' || project.projectStatus === 'in progress') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -44,6 +46,8 @@ const ProjectManagement = () => {
         clientName: project.clientName || 'No Client',
         startDate: project.startDate,
         endDate: project.endDate,
+        createdAt: formatDate(project.createdAt),
+        updatedAt: formatDate(project.updatedAt),
         description: project.description,
         projectCost: project.projectCost,
         advancePayment: project.advancePayment,
@@ -75,15 +79,22 @@ const ProjectManagement = () => {
     try {
       if (editingProject) {
         await updateProject(editingProject.id || editingProject._id, projectData);
+        setNotificationTitle('Success');
+        setNotification('Project updated successfully!');
       } else {
         await createProject(projectData);
+        setNotificationTitle('Success');
+        setNotification('Project added successfully!');
       }
       setShowAddProjectModal(false);
       setEditingProject(null);
       loadData();
+      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('Failed to save project. Please try again.');
+      setNotificationTitle('Error');
+      setNotification('Failed to save project. Please try again.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -99,11 +110,14 @@ const ProjectManagement = () => {
       try {
         await deleteProject(projectId);
         setProjects(prev => prev.filter(p => p.id !== projectId));
-        alert(`Project "${projectName}" deleted successfully!`);
-        // loadData(); // Optional: if we want to refresh fully, but local update is faster
+        setNotificationTitle('Success');
+        setNotification(`Project "${projectName}" deleted successfully!`);
+        setTimeout(() => setNotification(null), 5000);
       } catch (error) {
         console.error('Error deleting project:', error);
-        alert('Failed to delete project. Please try again.');
+        setNotificationTitle('Error');
+        setNotification('Failed to delete project. Please try again.');
+        setTimeout(() => setNotification(null), 5000);
       }
     }
   };
@@ -132,13 +146,16 @@ const ProjectManagement = () => {
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'Assigned': { bg: '#6f42c1', text: 'white' },
+      'Pending': { bg: '#6f42c1', text: 'white' },
+      'Assigned': { bg: '#6f42c1', text: 'white' }, // Support legacy
       'Completed': { bg: '#28a745', text: 'white' },
-      'On Track': { bg: '#007bff', text: 'white' },
-      'At Risk': { bg: '#ffc107', text: 'black' },
-      'Delayed': { bg: '#dc3545', text: 'white' }
+      'In Progress': { bg: '#007bff', text: 'white' },
+      'Overdue': { bg: '#dc3545', text: 'white' },
+      'On Track': { bg: '#007bff', text: 'white' }, // Support legacy
+      'At Risk': { bg: '#dc3545', text: 'white' }, // Support legacy
+      'Delayed': { bg: '#dc3545', text: 'white' }  // Support legacy
     };
-    const config = statusConfig[status] || statusConfig['On Track'];
+    const config = statusConfig[status] || statusConfig['Pending'];
     return (
       <span className="badge rounded-pill" style={{
         backgroundColor: config.bg,
@@ -158,6 +175,17 @@ const ProjectManagement = () => {
     <div className="project-management">
       <div className="page-header">
         <h2>Project Management</h2>
+        <div className="header-stats">
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-layer-group text-primary"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total Projects</div>
+              <div className="h4 fw-bold mb-0 text-dark">{filteredProjects.length}</div>
+            </div>
+          </div>
+        </div>
         <button className="btn btn-primary" onClick={handleAddProject}>
           <i className="fas fa-plus me-2"></i>
           Add Project
@@ -178,10 +206,9 @@ const ProjectManagement = () => {
 
         <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
           <option value="all">All Status</option>
-          <option value="Assigned">Assigned</option>
-          <option value="On Track">On Track</option>
-          <option value="At Risk">At Risk</option>
-          <option value="Delayed">Delayed</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Overdue">Overdue</option>
           <option value="Completed">Completed</option>
         </select>
 
@@ -214,9 +241,10 @@ const ProjectManagement = () => {
         </div>
       ) : projectViewMode === 'card' ? (
         <div className="projects-grid">
-          {filteredProjects.map((project) => (
+          {filteredProjects.map((project, index) => (
             <div key={project.id} className="project-card">
               <div className="project-card-header">
+                <span className="badge bg-light text-dark border mb-2">#{index + 1}</span>
                 <h4>{project.name}</h4>
                 <div className="status-label">{project.status}</div>
               </div>
@@ -235,8 +263,12 @@ const ProjectManagement = () => {
                     <span><strong>Start Date:</strong> {project.date}</span>
                   </div>
                   <div className="proj-detail-item">
-                    <i className="fas fa-rupee-sign"></i>
-                    <span><strong>Costing:</strong> ₹{project.projectCost || 0}</span>
+                    <i className="fas fa-calendar-plus"></i>
+                    <span><strong>Created:</strong> {project.createdAt || 'N/A'}</span>
+                  </div>
+                  <div className="proj-detail-item">
+                    <i className="fas fa-history"></i>
+                    <span><strong>Updated:</strong> {project.updatedAt || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -291,9 +323,10 @@ const ProjectManagement = () => {
         <table className="projects-table">
           <thead>
             <tr>
+              <th>Sr. No.</th>
               <th>Project Name</th>
               <th>Client</th>
-              <th>PM</th>
+              <th>Email Id</th>
               <th>Status</th>
               <th>Progress</th>
               <th>Start Date</th>
@@ -302,11 +335,12 @@ const ProjectManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredProjects.map((project) => (
+            {filteredProjects.map((project, index) => (
               <tr key={project.id}>
+                <td>{index + 1}</td>
                 <td><div className="fw-bold text-dark">{project.name}</div></td>
                 <td><span className="text-secondary">{project.clientName}</span></td>
-                <td>{project.projectManager || 'Not Assigned'}</td>
+                <td>{project.projectManagerEmail || project.projectManager || 'Not Assigned'}</td>
                 <td>{getStatusBadge(project.status)}</td>
                 <td>
                   <div className="d-flex align-items-center gap-2" style={{ minWidth: '120px' }}>
@@ -357,6 +391,44 @@ const ProjectManagement = () => {
           editingProject={editingProject}
           availableEmployees={projectManagers}
         />
+      )}
+      {/* Styled Notification Popup */}
+      {notification && (
+        <div className="notification-pop animate__animated animate__fadeInDown" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '50%',
+          transform: 'translateX(50%)',
+          backgroundColor: notificationTitle === 'Success' ? '#28a745' : '#dc3545',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '10px',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          minWidth: '300px'
+        }}>
+          <i className={`fas ${notificationTitle === 'Success' ? 'fa-check-circle' : 'fa-exclamation-circle'} fa-lg`}></i>
+          <div>
+            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>{notificationTitle}</div>
+            <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>{notification}</div>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              marginLeft: 'auto',
+              cursor: 'pointer',
+              padding: '0 0 0 10px'
+            }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
       )}
     </div>
   );

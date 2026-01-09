@@ -344,6 +344,11 @@
     color: white;
 }
 
+.badge-admin {
+    background-color: #4361ee;
+    color: white;
+}
+
 .status-badge {
     padding: 0.35rem 0.75rem;
     border-radius: 20px;
@@ -449,9 +454,34 @@
     transition: all 0.3s ease;
 }
 
-.stat-card.total i {
+.stat-card.total .stat-icon i {
     background: rgba(67, 97, 238, 0.1);
     color: #4361ee;
+}
+
+.stat-card.employee .stat-icon i {
+    background: rgba(40, 199, 111, 0.1);
+    color: #28c76f;
+}
+
+.stat-card.team-leader .stat-icon i {
+    background: rgba(0, 207, 232, 0.1);
+    color: #00cfe8;
+}
+
+.stat-card.project-manager .stat-icon i {
+    background: rgba(111, 66, 193, 0.1);
+    color: #6f42c1;
+}
+
+.stat-card.admin .stat-icon i {
+    background: rgba(67, 97, 238, 0.1);
+    color: #4361ee;
+}
+
+.stat-card.other .stat-icon i {
+    background: rgba(140, 152, 164, 0.1);
+    color: #8c98a4;
 }
 
 .stat-card.pending i {
@@ -459,7 +489,7 @@
     color: #ff9f43;
 }
 
-.stat-card.progress i {
+.stat-card.in-progress i {
     background: rgba(0, 207, 232, 0.1);
     color: #00cfe8;
 }
@@ -469,20 +499,48 @@
     color: #28c76f;
 }
 
-.stat-card h3 {
+.stat-card .stat-value {
     margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: #1e2022;
+    line-height: 1;
 }
 
-.stat-card p {
-    margin: 0;
+.stat-card .stat-label {
+    margin: 0 0 4px 0;
     color: #8c98a4;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Compact versions for Role Stats Summary */
+.role-stats-summary .stat-card {
+    padding: 0.6rem 0.75rem !important;
+    min-height: auto !important;
+    border-radius: 10px;
+    gap: 0.5rem;
+    justify-content: flex-start;
+}
+
+.role-stats-summary .stat-icon i {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+.role-stats-summary .stat-value {
+    font-size: 1.25rem;
+    line-height: 1.1;
+}
+
+.role-stats-summary .stat-label {
+    font-size: 0.6rem;
+    line-height: 1;
+    margin-bottom: 2px;
 }
 
 /* PM & TL Card Redesign - match uploaded_image_2 & uploaded_image_3 */
@@ -506,6 +564,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.sr-no-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
+.header-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .pm-card-header {

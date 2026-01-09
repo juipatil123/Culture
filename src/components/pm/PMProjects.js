@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import './PMComponents.css';
 
 const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDeleteProject, userName, userEmail }) => {
@@ -28,14 +29,7 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
 
   const filteredProjects = getFilteredProjects();
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch (e) {
-      return dateStr;
-    }
-  };
+
 
   // Get status badge
   const getStatusBadge = (status) => {
@@ -215,48 +209,107 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
           ))}
         </div>
       ) : (
-        <table className="projects-table">
-          <thead>
-            <tr>
-              <th>Project Name</th>
-              <th>Client</th>
-              <th>Status</th>
-              <th>Progress</th>
-              <th>Start Date</th>
-              <th>Cost</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProjects.map((project) => (
-              <tr key={project.id}>
-                <td><strong>{project.name}</strong></td>
-                <td>{project.clientName}</td>
-                <td>{getStatusBadge(project.status)}</td>
-                <td>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div
-                      className="progress-bar"
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
-                  </div>
-                  <small>{project.progress}%</small>
-                </td>
-                <td>{project.date}</td>
-                <td>${project.projectCost || 0}</td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-outline-info"
-                    onClick={() => handleViewDetails(project)}
-                    title="View Details"
-                  >
-                    <i className="fas fa-eye"></i>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th className="ps-4">Project Details</th>
+                  <th>Client</th>
+                  <th>Team</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Dates</th>
+                  <th>Budget</th>
+                  <th className="pe-4 text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProjects.map((project) => (
+                  <tr key={project.id || project._id}>
+                    <td className="ps-4">
+                      <div className="fw-bold text-dark">{project.name}</div>
+                      <small className="text-muted">ID: {(project.id || project._id)?.substring(0, 8)}</small>
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="fas fa-building text-muted small"></i>
+                        <span className="small">{project.clientName || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="member-avatars d-flex align-items-center">
+                        {(() => {
+                          const assignedList = project.assignedMembers || project.assigned || [];
+                          const manager = project.projectManager;
+                          const uniqueMembers = [...new Set([
+                            ...assignedList.map(m => typeof m === 'object' ? m.name : m),
+                            ...(manager ? [manager] : [])
+                          ])].filter(Boolean);
+
+                          if (uniqueMembers.length > 0) {
+                            return (
+                              <>
+                                <div className="d-flex anonym-avatars" style={{ marginRight: '8px' }}>
+                                  {uniqueMembers.slice(0, 3).map((name, index) => (
+                                    <div key={index}
+                                      className="avatar-circle-sm bg-primary text-white border border-white rounded-circle d-flex align-items-center justify-content-center"
+                                      style={{ width: '28px', height: '28px', fontSize: '10px', marginLeft: index > 0 ? '-10px' : '0', zIndex: 10 - index }}
+                                      title={name}>
+                                      {name.charAt(0)}
+                                    </div>
+                                  ))}
+                                </div>
+                                {uniqueMembers.length > 3 && (
+                                  <span className="smaller text-muted" style={{ fontSize: '0.75rem', fontWeight: '500' }}>+{uniqueMembers.length - 3} others</span>
+                                )}
+                              </>
+                            );
+                          }
+                          return <span className="text-muted smaller italic" style={{ fontSize: '0.75rem' }}>Not Assigned</span>;
+                        })()}
+                      </div>
+                    </td>
+                    <td>{getStatusBadge(project.status)}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="progress flex-grow-1" style={{ height: '6px', width: '60px', borderRadius: '10px' }}>
+                          <div
+                            className={`progress-bar ${project.status === 'Completed' ? 'bg-success' : 'bg-primary'}`}
+                            style={{ width: `${project.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="small fw-bold">{project.progress}%</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="smaller">
+                        <div><i className="far fa-calendar-plus me-1"></i> {project.date}</div>
+                        <div className="text-muted"><i className="far fa-calendar-check me-1"></i> {formatDate(project.endDate)}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="fw-bold small text-dark">₹{(project.projectCost || 0).toLocaleString()}</div>
+                    </td>
+                    <td className="pe-4 text-end">
+                      <div className="d-flex justify-content-end gap-2">
+                        <button className="btn btn-xs btn-outline-info" onClick={() => handleViewDetails(project)} title="View Details">
+                          <i className="fas fa-eye"></i>
+                        </button>
+                        <button className="btn btn-xs btn-outline-primary" onClick={() => onEditProject(project)} title="Edit Project">
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button className="btn btn-xs btn-outline-danger" onClick={() => onDeleteProject(project.id || project._id)} title="Delete Project">
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Project Detail Modal */}
@@ -286,8 +339,9 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                       <p><strong>Start Date:</strong> {selectedProject.date}</p>
                     </div>
                     <div className="col-md-6">
-                      <p><strong>Project Cost:</strong> ${selectedProject.projectCost || 0}</p>
-                      <p><strong>Advance Payment:</strong> ${selectedProject.advancePayment || 0}</p>
+                      <p><strong>End Date:</strong> {formatDate(selectedProject.endDate)}</p>
+                      <p><strong>Project Cost:</strong> ₹{selectedProject.projectCost || 0}</p>
+                      <p><strong>Advance Payment:</strong> ₹{selectedProject.advancePayment || 0}</p>
                       <p><strong>Progress:</strong> {selectedProject.progress}%</p>
                     </div>
                   </div>
@@ -320,3 +374,4 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
 };
 
 export default PMProjects;
+

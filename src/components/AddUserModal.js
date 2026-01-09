@@ -6,12 +6,17 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
     name: '',
     email: '',
     phone: '',
-    department: 'Web Development',
+    department: '',
     role: '',
     password: '',
     assignedProject: '',
-    teamLeaderId: ''
+    teamLeaderId: '',
+    gender: '',
+    status: 'Active'
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+
 
   // Populate form when editing or reset when opening for new user
   useEffect(() => {
@@ -21,36 +26,45 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           name: editingUser.name || '',
           email: editingUser.email || '',
           phone: editingUser.phone || '',
-          department: editingUser.department || 'Web Development',
+          department: editingUser.department || '',
           role: editingUser.role || '',
           password: '', // Always blank - don't populate password when editing
-          assignedProject: editingUser.assignedProject || ''
+          assignedProject: editingUser.assignedProject || '',
+          teamLeaderId: editingUser.teamLeaderId || '',
+          gender: editingUser.gender || ''
         });
+
       } else {
         // Reset form completely for new user
         setFormData({
           name: '',
           email: '',
           phone: '',
-          department: 'Web Development',
+          department: '',
           role: '',
           password: '', // Explicitly blank for new users
-          assignedProject: ''
+          assignedProject: '',
+          teamLeaderId: '',
+          gender: ''
         });
+
       }
+      setShowPassword(false);
     }
   }, [editingUser, show]);
 
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    const normalizedValue = name === 'email' ? value.toLowerCase() : value;
     setFormData(prev => {
       const newData = {
         ...prev,
-        [name]: value
+        [name]: normalizedValue
       };
 
       // Clear project assignment if role is changed to project-manager or employee
-      if (name === 'role' && (value === 'project-manager' || value === 'employee')) {
+      if (name === 'role' && (normalizedValue === 'project-manager' || normalizedValue === 'employee')) {
         newData.assignedProject = '';
       }
 
@@ -60,6 +74,19 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validate email domain
+    if (!formData.email.toLowerCase().endsWith('@gmail.com')) {
+      alert('Only @gmail.com email addresses are allowed.');
+      return;
+    }
+
+    // Validate name (only letters and spaces allowed)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(formData.name)) {
+      alert('Name must contain only letters and spaces. Numbers and special characters are not allowed.');
+      return;
+    }
 
     // Validate phone number
     if (formData.phone && formData.phone.length !== 10) {
@@ -79,17 +106,29 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
       return;
     }
 
-    onSave(formData);
+    // Normalize "none" values to empty strings for database consistency
+    const dataToSave = { ...formData };
+    if (dataToSave.assignedProject === 'none') dataToSave.assignedProject = '';
+    if (dataToSave.teamLeaderId === 'none') dataToSave.teamLeaderId = '';
+
+    // Prevent overwriting existing password with an empty string during updates
+    if (editingUser && !dataToSave.password) {
+      delete dataToSave.password;
+    }
+
+    onSave(dataToSave);
     setFormData({
       name: '',
       email: '',
       phone: '',
-      department: 'Web Developer',
+      department: '',
       role: '',
       password: '',
       assignedProject: '',
-      teamLeaderId: ''
+      teamLeaderId: '',
+      status: 'Active'
     });
+
     handleClose();
   };
 
@@ -97,7 +136,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg">
+      <div className="modal-dialog modal-lg modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">
             <h5 className="modal-title">
@@ -118,6 +157,8 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="Enter full name"
+                    pattern="[A-Za-z\s]+"
+                    title="Name should only contain letters and spaces"
                     required
                   />
                 </div>
@@ -168,6 +209,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     onChange={handleInputChange}
                     required
                   >
+                    <option value="">Select Department</option>
                     <option value="Web Development">Web Development</option>
                     <option value="Android Development">Android Development</option>
                     <option value="iOS Development">iOS Development</option>
@@ -215,8 +257,36 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                 </div>
               </div>
 
-              {/* Only show project assignment for interns and team leaders */}
-              {formData.role && formData.role !== 'project-manager' && formData.role !== 'employee' && (
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Join Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    name="joinDate"
+                    value={formData.joinDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Status *</label>
+                  <select
+                    className="form-select"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                </div>
+              </div>
+
+
+              {/* Show project assignment for interns, employees, and team leaders */}
+              {formData.role && formData.role !== 'project-manager' && formData.role !== 'admin' && (
                 <div className="row">
                   <div className="col-md-12 mb-3">
                     <label className="form-label">Assign to Project</label>
@@ -226,15 +296,20 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                       value={formData.assignedProject}
                       onChange={handleInputChange}
                     >
-                      <option value="">No project assigned</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.name}>
-                          {project.name}
-                        </option>
-                      ))}
+                      <option value="">Select Project</option>
+                      <option value="none">No project assigned</option>
+                      {projects && projects.length > 0 ? (
+                        projects.map((project) => (
+                          <option key={project.id} value={project.name}>
+                            {project.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No projects available</option>
+                      )}
                     </select>
                     <small className="text-muted">
-                      Select a project to assign this user to. Leave blank for "Not Assigned" status.
+                      Select a project or choose "No project assigned".
                     </small>
                   </div>
                 </div>
@@ -251,15 +326,20 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                       value={formData.teamLeaderId}
                       onChange={handleInputChange}
                     >
-                      <option value="">No Team Leader</option>
-                      {teamLeaders.map((tl) => (
-                        <option key={tl.id || tl._id} value={tl.id || tl._id}>
-                          {tl.name} ({tl.department})
-                        </option>
-                      ))}
+                      <option value="">Select Team Leader</option>
+                      <option value="none">No Team Leader assigned</option>
+                      {teamLeaders && teamLeaders.length > 0 ? (
+                        teamLeaders.map((tl) => (
+                          <option key={tl.id || tl._id} value={tl.id || tl._id}>
+                            {tl.name} ({tl.department})
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No Team Leaders available</option>
+                      )}
                     </select>
                     <small className="text-muted">
-                      Assign this member to a team leader.
+                      Assign this member to a team leader or choose "No Team Leader".
                     </small>
                   </div>
                 </div>
@@ -270,23 +350,34 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                   <label className="form-label">
                     Password {!editingUser && <span className="text-danger">*</span>}
                   </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder={editingUser ? "Leave blank to keep current password" : "Enter password for the user"}
-                    required={!editingUser} // Required only for new users
-                    minLength="6"
-                    autoComplete="new-password"
-                    data-lpignore="true"
-                  />
+                  <div className="input-group">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="form-control"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder={editingUser ? "Leave blank to keep current password" : "Enter password for the user"}
+                      required={!editingUser} // Required only for new users
+                      minLength="6"
+                      autoComplete="new-password"
+                      data-lpignore="true"
+                    />
+                    <button
+                      className="btn btn-outline-secondary"
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex="-1"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
                   <small className="text-muted">
                     {editingUser
                       ? 'Leave blank to keep current password. Enter new password to change it.'
                       : 'Minimum 6 characters required. This field is mandatory for new users.'}
                   </small>
+
                 </div>
               </div>
 

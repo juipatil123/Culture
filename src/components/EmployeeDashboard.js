@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TeamLeaderNotice from './TeamLeaderNotice';
 import TeamLeaderSupport from './TeamLeaderSupport';
-import { subscribeToNotices } from '../firebase/firestoreService';
+import { subscribeToNotices, ProjectService } from '../firebase/firestoreService';
+import { formatDate } from '../utils/dateUtils';
 import './ProjectManagerDashboard.css'; // Reuse PM dashboard styles
 
 
@@ -28,6 +29,7 @@ const EmployeeDashboard = ({
     const [noteModalTask, setNoteModalTask] = useState(null);
     const [noteContent, setNoteContent] = useState('');
     const [notification, setNotification] = useState(null);
+    const [profileIsDirty, setProfileIsDirty] = useState(false);
 
     useEffect(() => {
         if (!userData?.id && !userData?._id) return;
@@ -48,6 +50,15 @@ const EmployeeDashboard = ({
 
     const userEmail = userData?.email || localStorage.getItem('userEmail');
     const userName = userData?.name || localStorage.getItem('userName');
+
+    const handleUpdateProjectStatus = async (projectId, newStatus) => {
+        try {
+            await ProjectService.update(projectId, { status: newStatus, projectStatus: newStatus });
+        } catch (error) {
+            console.error("Error updating project status:", error);
+            // Optional: Add toast notification here
+        }
+    };
 
     const handleStartTask = async (taskId) => {
         try {
@@ -90,6 +101,15 @@ const EmployeeDashboard = ({
         }
     };
 
+    const isOverdue = (task) => {
+        if (!task.dueDate || task.status === 'completed') return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(task.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return today > dueDate;
+    };
+
     const isUserAssignedToTask = (task, email, name) => {
         if (!task) return false;
 
@@ -118,9 +138,9 @@ const EmployeeDashboard = ({
     const getFilteredTasks = () => {
         switch (selectedTaskFilter) {
             case 'completed': return myTasks.filter(t => (t.status || '').toLowerCase() === 'completed');
-            case 'in-progress': return myTasks.filter(t => (t.status || '').toLowerCase() === 'in-progress');
-            case 'pending': return myTasks.filter(t => (t.status || '').toLowerCase() === 'pending' || (t.status || '').toLowerCase() === 'assigned');
-            case 'new': return myTasks.filter(t => (t.status || '').toLowerCase() === 'new' || !t.status); // specific for 'new'
+            case 'in-progress': return myTasks.filter(t => (t.status || '').toLowerCase() === 'in-progress' || (t.status || '').toLowerCase() === 'in progress');
+            case 'pending': return myTasks.filter(t => (t.status || '').toLowerCase() === 'pending' || (t.status || '').toLowerCase() === 'assigned' || (t.status || '').toLowerCase() === 'new' || !t.status);
+            case 'overdue': return myTasks.filter(t => (t.status || '').toLowerCase() === 'overdue' || (t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed'));
             default: return myTasks;
         }
     };
@@ -418,7 +438,7 @@ const EmployeeDashboard = ({
                                         <h5 className="fw-bold mb-0">My Tasks</h5>
                                         {/* Filter Tabs - Scrollable on mobile */}
                                         <div className="d-flex gap-2 overflow-auto" style={{ scrollbarWidth: 'none' }}>
-                                            {['all', 'new', 'pending', 'in-progress', 'completed'].map(f => (
+                                            {['all', 'pending', 'in-progress', 'completed', 'overdue'].map(f => (
                                                 <button
                                                     key={f}
                                                     className={`btn btn-sm rounded-pill px-3 ${selectedTaskFilter === f ? 'btn-primary' : 'btn-light border'}`}
@@ -492,12 +512,12 @@ const EmployeeDashboard = ({
                                     </div>
                                     <div className="card-body">
                                         {projects.length > 0 ? projects.slice(0, 3).map((p, i) => {
-                                            const deadline = p.endDate || p.dueDate ?
-                                                new Date(p.endDate || p.dueDate).toLocaleDateString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric'
-                                                }) : 'No deadline';
+                                            const d = p.endDate || p.dueDate ? new Date(p.endDate || p.dueDate) : null;
+                                            const deadline = d && !isNaN(d.getTime())
+                                                ? `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
+                                                : 'N/A';
+
+                                            const progress = Number(p.progress) || 0;
 
                                             return (
                                                 <div key={i} className="mb-3 pb-3" style={{ borderBottom: i < Math.min(projects.length, 3) - 1 ? '1px solid #e5e7eb' : 'none' }}>
@@ -506,10 +526,10 @@ const EmployeeDashboard = ({
                                                         <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '0.9rem' }}>
                                                             {p.name}
                                                         </h6>
-                                                        <span className={`badge ${(p.progress || 0) === 100 ? 'bg-success' :
-                                                            (p.progress || 0) >= 50 ? 'bg-primary' : 'bg-warning'
+                                                        <span className={`badge ${progress === 100 ? 'bg-success' :
+                                                            progress >= 50 ? 'bg-primary' : 'bg-warning'
                                                             }`} style={{ fontSize: '0.7rem' }}>
-                                                            {p.progress || 0}%
+                                                            {progress}%
                                                         </span>
                                                     </div>
 
@@ -524,11 +544,11 @@ const EmployeeDashboard = ({
                                                     {/* Progress Bar */}
                                                     <div className="progress" style={{ height: '8px', borderRadius: '10px', backgroundColor: '#e5e7eb' }}>
                                                         <div
-                                                            className={`progress-bar ${(p.progress || 0) === 100 ? 'bg-success' :
-                                                                (p.progress || 0) >= 50 ? 'bg-primary' : 'bg-warning'
+                                                            className={`progress-bar ${progress === 100 ? 'bg-success' :
+                                                                progress >= 50 ? 'bg-primary' : 'bg-warning'
                                                                 }`}
                                                             style={{
-                                                                width: `${p.progress || 0}%`,
+                                                                width: `${progress}%`,
                                                                 borderRadius: '10px',
                                                                 transition: 'width 0.6s ease'
                                                             }}
@@ -592,7 +612,7 @@ const EmployeeDashboard = ({
 
                         {/* Filter Tabs */}
                         <div className="d-flex gap-2 overflow-auto pb-3 mb-2" style={{ scrollbarWidth: 'none' }}>
-                            {['all', 'new', 'pending', 'in-progress', 'completed'].map(f => (
+                            {['all', 'pending', 'in-progress', 'completed', 'overdue'].map(f => (
                                 <button
                                     key={f}
                                     className={`btn rounded-pill px-4 fw-500 ${selectedTaskFilter === f ? 'btn-primary' : 'btn-light bg-white border'}`}
@@ -627,21 +647,23 @@ const EmployeeDashboard = ({
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
                                                             <span className="badge px-3 py-2 rounded-pill" style={{
                                                                 fontSize: '0.75rem',
-                                                                backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
-                                                                    ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
-                                                                        '#6c757d', // Grey (New/Assigned)
+                                                                backgroundColor: isOverdue(task) ? '#dc3545' :
+                                                                    (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
+                                                                        ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
+                                                                            '#6c757d', // Grey (New/Assigned)
                                                                 color: 'white'
                                                             }}>
-                                                                {((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
-                                                                    ? 'NEW'
-                                                                    : (task.status || 'NEW').toUpperCase()}
+                                                                {isOverdue(task) ? 'OVERDUE' :
+                                                                    ((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
+                                                                        ? 'NEW'
+                                                                        : (task.status || 'NEW').toUpperCase()}
                                                             </span>
                                                         </div>
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
-                                                            <small className="text-muted">
-                                                                <i className="far fa-calendar-alt me-1 text-danger"></i>
-                                                                {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date'}
-                                                            </small>
+                                                            <div className="small text-muted">
+                                                                <div><i className="fas fa-calendar-plus me-1"></i>S: {formatDate(task.startDate)}</div>
+                                                                <div><i className="fas fa-calendar-check me-1"></i>D: {formatDate(task.dueDate)}</div>
+                                                            </div>
                                                         </div>
                                                         <div className="col-lg-2 text-end">
                                                             <div className="d-flex justify-content-end gap-2">
@@ -696,14 +718,16 @@ const EmployeeDashboard = ({
                                                         <h5 className="fw-bold text-dark mb-0 me-2 text-truncate" style={{ maxWidth: '70%' }}>{task.title}</h5>
                                                         <span className="badge px-3 py-2 rounded-pill" style={{
                                                             fontSize: '0.75rem',
-                                                            backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
-                                                                ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
-                                                                    '#6c757d', // Grey (New/Assigned)
+                                                            backgroundColor: isOverdue(task) ? '#dc3545' :
+                                                                (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
+                                                                    ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
+                                                                        '#6c757d', // Grey (New/Assigned)
                                                             color: 'white'
                                                         }}>
-                                                            {((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
-                                                                ? 'NEW'
-                                                                : (task.status || 'NEW').toUpperCase()}
+                                                            {isOverdue(task) ? 'OVERDUE' :
+                                                                ((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
+                                                                    ? 'NEW'
+                                                                    : (task.status || 'NEW').toUpperCase()}
                                                         </span>
                                                     </div>
 
@@ -722,6 +746,17 @@ const EmployeeDashboard = ({
                                                     <hr className="bg-light my-3" />
 
                                                     {/* Middle Row: Points & Priority */}
+                                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                                        <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                                            <i className="fas fa-calendar-plus"></i>
+                                                            <span>Start: {formatDate(task.startDate)}</span>
+                                                        </div>
+                                                        <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                                            <i className="fas fa-calendar-check"></i>
+                                                            <span>Due: {formatDate(task.dueDate)}</span>
+                                                        </div>
+                                                    </div>
+
                                                     <div className="d-flex justify-content-between align-items-center mb-4">
                                                         <div className="d-flex align-items-center gap-1 text-warning fw-bold">
                                                             <i className="fas fa-star" style={{ fontSize: '1rem' }}></i>
@@ -824,6 +859,28 @@ const EmployeeDashboard = ({
                         {/* This state would typically be defined at the top of the functional component */}
                         {/* For example: const [projectViewMode, setProjectViewMode] = useState('card'); */}
                         {/* Assuming it's defined elsewhere, we'll use it here. */}
+                        {/* Project Statistics Wrapper */}
+                        <div className="row mb-4">
+                            <div className="col-md-4">
+                                <div className="card border-0 shadow-sm text-white overflow-hidden" style={{
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    borderRadius: '15px'
+                                }}>
+                                    <div className="card-body p-4 position-relative">
+                                        <div className="d-flex justify-content-between align-items-center position-relative" style={{ zIndex: 1 }}>
+                                            <div>
+                                                <h6 className="mb-1 text-white-50 text-uppercase fw-bold" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>Total Projects</h6>
+                                                <h2 className="fw-bold mb-0 display-4">{projects.length}</h2>
+                                            </div>
+                                            <div className="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
+                                                <i className="fas fa-project-diagram fa-2x text-white"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="d-flex justify-content-between align-items-center mb-4">
                             <div>
                                 <h3 className="fw-bold mb-1">My Projects</h3>
@@ -831,9 +888,6 @@ const EmployeeDashboard = ({
                             </div>
 
                             <div className="d-flex align-items-center gap-3">
-                                <span className="badge bg-primary px-3 py-2" style={{ fontSize: '0.9rem' }}>
-                                    {projects.length} {projects.length === 1 ? 'Project' : 'Projects'}
-                                </span>
 
                                 <div className="btn-group shadow-sm rounded-pill p-1 bg-light">
                                     <button
@@ -855,7 +909,7 @@ const EmployeeDashboard = ({
                         <div className={projectViewMode === 'card' ? "row g-4" : "d-flex flex-column gap-3"}>
                             {projects.length > 0 ? projects.map((project, i) => {
                                 // Calculate project metrics
-                                const progress = project.progress || 0;
+                                const progress = Number(project.progress) || 0;
                                 const status = project.status || project.projectStatus || 'Active';
                                 const isCompleted = status.toLowerCase() === 'completed';
                                 const isDelayed = status.toLowerCase() === 'delayed' || status.toLowerCase() === 'overdue';
@@ -864,9 +918,16 @@ const EmployeeDashboard = ({
                                 const statusBadgeColor = isCompleted ? '#10b981' : isDelayed ? '#fbbf24' : '#3b82f6';
                                 const statusBadgeText = isCompleted ? 'COMPLETED' : isDelayed ? 'DELAYED' : 'ON TRACK';
 
-                                // Format dates
-                                const startDate = project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : null;
-                                const endDate = project.endDate || project.dueDate ? new Date(project.endDate || project.dueDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : null;
+                                // Format dates DD/MM/YYYY
+                                const formatDateDDMMYYYY = (dateStr) => {
+                                    if (!dateStr) return 'N/A';
+                                    const d = new Date(dateStr);
+                                    if (isNaN(d.getTime())) return 'N/A';
+                                    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                };
+
+                                const startDate = formatDateDDMMYYYY(project.startDate);
+                                const endDate = formatDateDDMMYYYY(project.endDate || project.dueDate);
 
                                 // Calculate days remaining
                                 const daysRemaining = project.endDate || project.dueDate ?
@@ -921,13 +982,26 @@ const EmployeeDashboard = ({
                                                                 <div className="fw-bold small">{daysRemaining > 0 ? daysRemaining : 0}</div>
                                                                 <div className="text-muted" style={{ fontSize: '0.7rem' }}>Days</div>
                                                             </div>
-                                                            <span className="badge rounded-pill px-2 py-1" style={{
-                                                                backgroundColor: statusBadgeColor + '20',
-                                                                color: statusBadgeColor,
-                                                                fontSize: '0.7rem'
-                                                            }}>
-                                                                {statusBadgeText}
-                                                            </span>
+                                                            <div onClick={(e) => e.stopPropagation()}>
+                                                                <select
+                                                                    className="form-select form-select-sm border-0 fw-bold"
+                                                                    style={{
+                                                                        backgroundColor: statusBadgeColor + '20',
+                                                                        color: statusBadgeColor,
+                                                                        fontSize: '0.7rem',
+                                                                        borderRadius: '20px',
+                                                                        width: 'auto',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    value={status.toLowerCase()}
+                                                                    onChange={(e) => handleUpdateProjectStatus(project.id, e.target.value)}
+                                                                >
+                                                                    <option value="active">Active</option>
+                                                                    <option value="on track">On Track</option>
+                                                                    <option value="delayed">Delayed</option>
+                                                                    <option value="completed">Completed</option>
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -974,16 +1048,28 @@ const EmployeeDashboard = ({
                                                             <span style={{ fontSize: '0.85rem' }}>{project.clientName || project.client || 'WW'}</span>
                                                         </div>
                                                     </div>
-                                                    <span className="badge px-3 py-2" style={{
-                                                        backgroundColor: statusBadgeColor,
-                                                        color: isDelayed ? '#000' : '#fff',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: '700',
-                                                        letterSpacing: '0.5px',
-                                                        borderRadius: '20px'
-                                                    }}>
-                                                        {statusBadgeText}
-                                                    </span>
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <select
+                                                            className="form-select form-select-sm border-0 fw-bold shadow-none"
+                                                            style={{
+                                                                backgroundColor: statusBadgeColor,
+                                                                color: isDelayed ? '#000' : '#fff',
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: '700',
+                                                                letterSpacing: '0.5px',
+                                                                borderRadius: '20px',
+                                                                cursor: 'pointer',
+                                                                maxWidth: '120px'
+                                                            }}
+                                                            value={status.toLowerCase()}
+                                                            onChange={(e) => handleUpdateProjectStatus(project.id, e.target.value)}
+                                                        >
+                                                            <option value="active" style={{ color: '#000' }}>ACTIVE</option>
+                                                            <option value="on track" style={{ color: '#000' }}>ON TRACK</option>
+                                                            <option value="delayed" style={{ color: '#000' }}>DELAYED</option>
+                                                            <option value="completed" style={{ color: '#000' }}>COMPLETED</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1213,6 +1299,7 @@ const EmployeeDashboard = ({
                                                             type="text"
                                                             className="form-control bg-light border-0 py-2"
                                                             defaultValue={userName}
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         />
                                                     </div>
@@ -1224,6 +1311,7 @@ const EmployeeDashboard = ({
                                                             type="email"
                                                             className="form-control bg-light border-0 py-2"
                                                             defaultValue={userEmail}
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         />
                                                     </div>
@@ -1236,6 +1324,7 @@ const EmployeeDashboard = ({
                                                             className="form-control bg-light border-0 py-2"
                                                             defaultValue={userData?.phone || ''}
                                                             placeholder="Enter phone number"
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         />
                                                     </div>
@@ -1246,6 +1335,7 @@ const EmployeeDashboard = ({
                                                         <select
                                                             className="form-select bg-light border-0 py-2"
                                                             defaultValue={userData?.gender || 'Male'}
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         >
                                                             <option value="Male">Male</option>
@@ -1260,6 +1350,7 @@ const EmployeeDashboard = ({
                                                         <select
                                                             className="form-select bg-light border-0 py-2"
                                                             defaultValue={userData?.department || 'Marketing'}
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         >
                                                             <option value="Marketing">Marketing</option>
@@ -1280,21 +1371,24 @@ const EmployeeDashboard = ({
                                                             rows="4"
                                                             placeholder="Tell us about yourself..."
                                                             defaultValue={userData?.bio || ''}
+                                                            onChange={() => setProfileIsDirty(true)}
                                                             style={{ borderRadius: '8px' }}
                                                         ></textarea>
                                                     </div>
 
                                                     {/* Action Buttons */}
-                                                    <div className="col-12 mt-4">
-                                                        <div className="d-flex gap-2">
-                                                            <button type="submit" className="btn btn-primary px-4 py-2 rounded-pill">
-                                                                <i className="fas fa-save me-2"></i>
-                                                                Save Changes
-                                                            </button>
-                                                            <button type="button" className="btn btn-light px-4 py-2 rounded-pill">
-                                                                Cancel
-                                                            </button>
-                                                        </div>
+                                                    <div className="col-12 mt-4" style={{ minHeight: '50px' }}>
+                                                        {profileIsDirty && (
+                                                            <div className="d-flex gap-2 animate__animated animate__fadeIn">
+                                                                <button type="submit" className="btn btn-primary px-4 py-2 rounded-pill">
+                                                                    <i className="fas fa-save me-2"></i>
+                                                                    Update Profile
+                                                                </button>
+                                                                <button type="button" className="btn btn-light px-4 py-2 rounded-pill" onClick={() => setProfileIsDirty(false)}>
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </form>
@@ -1518,9 +1612,15 @@ const EmployeeDashboard = ({
                                 </div>
 
                                 <div className="bg-light p-3 rounded-3">
-                                    <div className="d-flex align-items-center text-muted">
-                                        <i className="far fa-calendar-alt text-danger me-2"></i>
-                                        <span className="small">Due Date: <strong>{selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : 'No Date'}</strong></span>
+                                    <div className="d-flex flex-column gap-2 text-muted">
+                                        <div className="d-flex align-items-center">
+                                            <i className="fas fa-calendar-plus text-primary me-2"></i>
+                                            <span className="small">Start Date: <strong>{selectedTask.startDate ? formatDate(selectedTask.startDate) : 'No Date'}</strong></span>
+                                        </div>
+                                        <div className="d-flex align-items-center">
+                                            <i className="fas fa-calendar-check text-danger me-2"></i>
+                                            <span className="small">Due Date: <strong>{selectedTask.dueDate ? formatDate(selectedTask.dueDate) : 'No Date'}</strong></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

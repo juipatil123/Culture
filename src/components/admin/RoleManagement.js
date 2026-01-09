@@ -85,10 +85,21 @@ const RoleManagement = () => {
     <div className="role-management">
       <div className="page-header">
         <h2>Role Management</h2>
-        <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
+        <div className="header-stats">
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-warning bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-user-shield text-warning"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total Custom Roles</div>
+              <div className="h4 fw-bold mb-0 text-dark">{customRoles.length}</div>
+            </div>
+          </div>
+        </div>
+        {/* <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
           <i className="fas fa-plus me-2"></i>
           Add Custom Role
-        </button>
+        </button> */}
       </div>
 
       {/* Default Roles */}
@@ -197,14 +208,24 @@ const RoleManagement = () => {
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Role Name</label>
+                  <label className="form-label">Role Name *</label>
                   <input
                     type="text"
                     className="form-control"
                     value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Restrict to letters and spaces only
+                      const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+                      setNewRoleName(filteredValue);
+                    }}
                     placeholder="Enter role name"
+                    autoComplete="off"
+                    required
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed. Numbers and special characters are blocked.
+                  </small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Permissions</label>

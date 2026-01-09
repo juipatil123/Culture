@@ -12,7 +12,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
     startDate: '',
     endDate: '',
     description: '',
-    projectStatus: 'available',
+    projectStatus: 'pending',
     assignmentStatus: 'available',
     progress: 0,
     assignedMembers: []
@@ -39,18 +39,20 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
 
   // Helper function to convert project status
   const convertProjectStatus = (status) => {
-    if (!status) return 'on-track';
+    if (!status) return 'pending';
     // Convert display status back to internal status
     const lowerStatus = status.toLowerCase();
     console.log('🔄 Converting project status:', status, '→', lowerStatus);
 
     switch (lowerStatus) {
-      case 'assigned': return 'assigned';
-      case 'on track': return 'on-track';
-      case 'at risk': return 'at-risk';
-      case 'delayed': return 'delayed';
+      case 'pending': return 'pending';
+      case 'in-progress': return 'in-progress';
+      case 'in progress': return 'in-progress';
       case 'completed': return 'completed';
-      case 'on-track': return 'on-track';
+      case 'overdue': return 'overdue';
+      case 'assigned': return 'pending'; // Map old 'assigned' to 'pending'
+      case 'on-track': return 'in-progress'; // Map old 'on-track' to 'in-progress'
+      case 'delayed': return 'overdue'; // Map old 'delayed' to 'overdue'
       case 'at-risk': return 'at-risk';
       default:
         console.log('⚠️ Unknown status, using as-is:', status);
@@ -120,9 +122,23 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let processedValue = value;
+
+    // Apply field-specific validations
+    if (name === 'name' || name === 'clientName') {
+      // Only allow letters and spaces
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'projectCost' || name === 'advancePayment') {
+      // Only allow positive numbers (including zero)
+      processedValue = value.replace(/[^0-9]/g, '');
+      if (processedValue !== '' && parseInt(processedValue) < 0) {
+        processedValue = '0';
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
   };
 
@@ -275,7 +291,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
             </h5>
             <button type="button" className="btn-close btn-close-white" onClick={handleClose}></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="modal-body">
               <div className="row">
                 <div className="col-md-6 mb-3">
@@ -301,6 +317,9 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     placeholder="Enter client name"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed.
+                  </small>
                 </div>
               </div>
               <div className="row">
@@ -317,9 +336,10 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                         value={managerSearchTerm || formData.projectManager}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setManagerSearchTerm(value);
-                          setFormData(prev => ({ ...prev, projectManager: value }));
-                          setShowManagerDropdown(value.length > 0);
+                          const restrictedValue = value.replace(/[^a-zA-Z\s]/g, '');
+                          setManagerSearchTerm(restrictedValue);
+                          setFormData(prev => ({ ...prev, projectManager: restrictedValue }));
+                          setShowManagerDropdown(restrictedValue.length > 0);
                         }}
                         onFocus={() => {
                           setManagerSearchTerm(formData.projectManager);
@@ -457,7 +477,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Project Cost *</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     name="projectCost"
                     value={formData.projectCost}
@@ -465,19 +485,25 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     placeholder="Enter project cost"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Only positive values or zero allowed.
+                  </small>
                 </div>
               </div>
               <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Advance Payment</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-control"
                     name="advancePayment"
                     value={formData.advancePayment}
                     onChange={handleInputChange}
                     placeholder="Enter advance payment"
                   />
+                  <small className="form-text text-muted">
+                    Only positive values or zero allowed.
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Project Status</label>
@@ -487,11 +513,10 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     value={formData.projectStatus}
                     onChange={handleInputChange}
                   >
-                    <option value="assigned">Assigned</option>
-                    <option value="on-track">On Track</option>
-                    <option value="at-risk">At Risk</option>
-                    <option value="delayed">Delayed</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
                     <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
                   </select>
                 </div>
               </div>
@@ -592,7 +617,8 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                         className="form-control"
                         value={searchTerm}
                         onChange={(e) => {
-                          setSearchTerm(e.target.value);
+                          const restrictedValue = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                          setSearchTerm(restrictedValue);
                           setShowEmployeeDropdown(true);
                         }}
                         onFocus={() => setShowEmployeeDropdown(true)}

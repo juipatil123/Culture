@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase/firebaseConfig';
+import { getAllUsers, NoticeService } from '../../firebase/firestoreService';
+import { formatDate } from '../../utils/dateUtils';
 
-const AdminNotice = () => {
+const AdminNotice = ({ userData }) => {
     const [employees, setEmployees] = useState([]);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [message, setMessage] = useState('');
@@ -19,14 +19,9 @@ const AdminNotice = () => {
 
     const fetchEmployees = async () => {
         try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('role', 'in', ['employee', 'team-leader', 'project-manager']));
-            const snapshot = await getDocs(q);
-            const employeeList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setEmployees(employeeList);
+            const users = await getAllUsers();
+            const filtered = users.filter(u => ['employee', 'team-leader', 'project-manager', 'intern'].includes(u.role));
+            setEmployees(filtered);
         } catch (error) {
             console.error('Error fetching employees:', error);
         }
@@ -34,14 +29,10 @@ const AdminNotice = () => {
 
     const fetchSentNotices = async () => {
         try {
-            const noticesRef = collection(db, 'notices');
-            const q = query(noticesRef, orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
-            const noticeList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setSentNotices(noticeList);
+            const notices = await NoticeService.getAll();
+            // Filter notices sent by admin to show in history
+            const adminSent = notices.filter(n => n.senderRole === 'admin' || n.sender === 'Admin');
+            setSentNotices(adminSent);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching notices:', error);
@@ -55,19 +46,26 @@ const AdminNotice = () => {
 
         setSending(true);
         try {
-            const selectedEmpData = employees.find(e => e.id === selectedEmployee);
+            const selectedEmpData = employees.find(e => (e.id || e._id) === selectedEmployee);
 
-            await addDoc(collection(db, 'notices'), {
+            const noticeData = {
                 recipientId: selectedEmployee,
                 recipientName: selectedEmpData?.name || 'Unknown',
                 recipientEmail: selectedEmpData?.email || 'Unknown',
+                recipientRole: selectedEmpData?.role || 'employee',
                 subject,
                 message,
                 severity,
+                priority: severity === 'danger' ? 'high' : 'normal',
                 sender: 'Admin',
-                createdAt: serverTimestamp(),
+                senderId: userData?.id || userData?._id || 'admin-id',
+                senderName: userData?.name || 'Admin',
+                senderRole: 'admin',
+                date: new Date().toISOString(),
                 read: false
-            });
+            };
+
+            await NoticeService.create(noticeData);
 
             setMessage('');
             setSubject('');
@@ -80,6 +78,34 @@ const AdminNotice = () => {
             alert('Failed to send notice.');
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleDownloadHistory = () => {
+        const headers = ['Recipient', 'Subject', 'Type', 'Date', 'Read Status'];
+        const rows = sentNotices.map(notice => [
+            notice.recipientName || 'Unknown',
+            notice.subject || '',
+            notice.severity || 'info',
+            notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : formatDate(new Date()),
+            notice.read ? 'Read' : 'Unread'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `notice_history_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     };
 
@@ -165,8 +191,15 @@ const AdminNotice = () => {
 
                 <div className="col-lg-7">
                     <div className="card border-0 shadow-sm rounded-3">
-                        <div className="card-header bg-white border-0 py-3">
+                        <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                             <h5 className="mb-0 fw-bold">Sent History</h5>
+                            <button
+                                className="btn btn-sm btn-outline-success"
+                                onClick={handleDownloadHistory}
+                                disabled={sentNotices.length === 0}
+                            >
+                                <i className="fas fa-download me-2"></i>Export CSV
+                            </button>
                         </div>
                         <div className="card-body p-0">
                             {loading ? (
@@ -194,11 +227,11 @@ const AdminNotice = () => {
                                                     <td>{notice.subject}</td>
                                                     <td>
                                                         <span className={`badge bg-${notice.severity === 'danger' ? 'danger' : notice.severity === 'warning' ? 'warning text-dark' : notice.severity === 'success' ? 'success' : 'info'}`}>
-                                                            {notice.severity.toUpperCase()}
+                                                            {(notice.severity || 'info').toUpperCase()}
                                                         </span>
                                                     </td>
                                                     <td className="small text-muted">
-                                                        {notice.createdAt?.seconds ? new Date(notice.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                        {notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : 'Just now'}
                                                     </td>
                                                     <td>
                                                         {notice.read ? (

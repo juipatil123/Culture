@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTasks, createTask, updateTask, deleteTask, getAllProjects, getAllUsers } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
 import AddTaskModal from '../AddTaskModal';
 import './AdminComponents.css';
 
@@ -14,6 +15,8 @@ const TaskManagement = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [projects, setProjects] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [notificationTitle, setNotificationTitle] = useState('Success');
 
 
   // Load tasks, projects and users
@@ -50,17 +53,24 @@ const TaskManagement = () => {
     try {
       if (editingTask) {
         await updateTask(editingTask.id || editingTask._id, taskData);
+        setNotificationTitle('Success');
+        setNotification('Task updated successfully!');
       } else {
         await createTask(taskData);
+        setNotificationTitle('Success');
+        setNotification('Task added successfully!');
       }
       setShowAddTaskModal(false);
       setEditingTask(null);
-      // Reload only tasks to be faster, or use loadInitialData to sync all
+      // Reload only tasks
       const tasks = await getAllTasks();
       setAssignedTasks(tasks);
+      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('Failed to save task. Please try again.');
+      setNotificationTitle('Error');
+      setNotification('Failed to save task. Please try again.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -76,11 +86,31 @@ const TaskManagement = () => {
       try {
         await deleteTask(taskId);
         setAssignedTasks(prev => prev.filter(t => t.id !== taskId && t._id !== taskId));
-        alert(`Task "${taskTitle}" deleted successfully!`);
+        setNotificationTitle('Success');
+        setNotification(`Task "${taskTitle}" deleted successfully!`);
+        setTimeout(() => setNotification(null), 5000);
       } catch (error) {
         console.error('Error deleting task:', error);
-        alert('Failed to delete task. Please try again.');
+        setNotificationTitle('Error');
+        setNotification('Failed to delete task. Please try again.');
+        setTimeout(() => setNotification(null), 5000);
       }
+    }
+  };
+
+  // Handle reassign
+  const handleReassign = async (taskId, newAssignee) => {
+    try {
+      await updateTask(taskId, { assignedTo: newAssignee });
+      setAssignedTasks(prev => prev.map(t => (t.id === taskId || t._id === taskId) ? { ...t, assignedTo: newAssignee } : t));
+      setNotificationTitle('Success');
+      setNotification(`Task reassigned to ${newAssignee} successfully!`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error) {
+      console.error('Error reassigning task:', error);
+      setNotificationTitle('Error');
+      setNotification('Failed to reassign task.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -97,7 +127,11 @@ const TaskManagement = () => {
     }
 
     if (filterByStatus !== 'all') {
-      filtered = filtered.filter(task => task.status === filterByStatus);
+      if (filterByStatus === 'pending') {
+        filtered = filtered.filter(task => task.status === 'pending' || task.status === 'assigned');
+      } else {
+        filtered = filtered.filter(task => task.status === filterByStatus);
+      }
     }
 
     if (filterByPriority !== 'all') {
@@ -109,15 +143,36 @@ const TaskManagement = () => {
 
   const filteredTasks = getFilteredTasks();
 
+  // Check if task is overdue
+  const isOverdue = (task) => {
+    if (!task.dueDate || task.status === 'completed') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(task.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    return today > dueDate;
+  };
+
   // Get status badge
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (task) => {
+    const status = task.status;
+    const overdue = isOverdue(task);
+
+    if (overdue) {
+      return <span className="badge bg-danger">Overdue</span>;
+    }
+
     const statusColors = {
       'completed': 'bg-success',
-      'in-progress': 'bg-info',
-      'pending': 'bg-warning',
-      'assigned': 'bg-secondary'
+      'in-progress': 'bg-warning text-dark', // Changed to warning/yellowish for in-progress usually or keep info
+      'pending': 'bg-secondary',
+      'overdue': 'bg-danger',
+      'assigned': 'bg-primary'
     };
-    return statusColors[status] || 'bg-secondary';
+    const color = statusColors[status] || 'bg-secondary';
+    const label = status === 'in-progress' ? 'In Progress' : status?.charAt(0).toUpperCase() + status?.slice(1) || 'Pending';
+
+    return <span className={`badge ${color}`}>{label}</span>;
   };
 
   // Get priority badge
@@ -134,6 +189,12 @@ const TaskManagement = () => {
     <div className="task-management">
       <div className="page-header">
         <h2>Task Management</h2>
+        <div className="header-stats">
+          {/* <span className="badge bg-primary p-2 me-1">Total: {assignedTasks.length}</span>
+          <span className="badge bg-warning text-dark p-2 me-1">Pending: {assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</span>
+          <span className="badge bg-info p-2 me-1">In Progress: {assignedTasks.filter(t => t.status === 'in-progress').length}</span>
+          <span className="badge bg-success p-2">Completed: {assignedTasks.filter(t => t.status === 'completed').length}</span> */}
+        </div>
         <button className="btn btn-primary" onClick={handleAddTask}>
           <i className="fas fa-plus me-2"></i>
           Add Task
@@ -141,76 +202,108 @@ const TaskManagement = () => {
       </div>
 
       {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
-          <i className="fas fa-search"></i>
+      <div className="filters-section d-flex justify-content-between align-items-center mb-4 gap-3 bg-white p-3 rounded-4 shadow-sm border">
+        <div className="search-box flex-grow-1" style={{ maxWidth: '400px', position: 'relative' }}>
+          <i className="fas fa-search position-absolute" style={{ left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}></i>
           <input
             type="text"
+            className="form-control ps-5 py-2"
             placeholder="Search tasks..."
             value={taskSearchTerm}
             onChange={(e) => setTaskSearchTerm(e.target.value)}
+            style={{ borderRadius: '10px' }}
           />
         </div>
 
-        <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
-          <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="assigned">Assigned</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
-        </select>
+        <div className="d-flex align-items-center gap-2">
+          <div className="position-relative">
+            <select
+              className="form-select py-2 pe-5"
+              value={filterByStatus}
+              onChange={(e) => setFilterByStatus(e.target.value)}
+              style={{ borderRadius: '10px', minWidth: '180px', appearance: 'none', cursor: 'pointer' }}
+            >
+              <option value="all">All Task Status</option>
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+            <i className="fas fa-chevron-down position-absolute top-50 end-0 translate-middle-y me-3 text-secondary" style={{ pointerEvents: 'none', fontSize: '0.8rem' }}></i>
+          </div>
 
-        <select value={filterByPriority} onChange={(e) => setFilterByPriority(e.target.value)}>
-          <option value="all">All Priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
+          <div className="position-relative">
+            <select
+              className="form-select py-2 pe-5"
+              value={filterByPriority}
+              onChange={(e) => setFilterByPriority(e.target.value)}
+              style={{ borderRadius: '10px', minWidth: '150px', appearance: 'none', cursor: 'pointer' }}
+            >
+              <option value="all">All Priority</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <i className="fas fa-chevron-down position-absolute top-50 end-0 translate-middle-y me-3 text-secondary" style={{ pointerEvents: 'none', fontSize: '0.8rem' }}></i>
+          </div>
 
-        <div className="view-toggle">
-          <button
-            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setViewMode('list')}
-          >
-            <i className="fas fa-list"></i>
-          </button>
-          <button
-            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setViewMode('grid')}
-          >
-            <i className="fas fa-th"></i>
-          </button>
+          <div className="view-toggle btn-group">
+            <button
+              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setViewMode('grid')}
+              style={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }}
+            >
+              <i className="fas fa-th-large"></i>
+            </button>
+            <button
+              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setViewMode('list')}
+              style={{ borderTopRightRadius: '10px', borderBottomRightRadius: '10px' }}
+            >
+              <i className="fas fa-list"></i>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Task Stats */}
-      <div className="task-stats">
-        <div className="stat-card total">
-          <i className="fas fa-tasks"></i>
-          <div>
-            <h3>{assignedTasks.length}</h3>
-            <p>Total Tasks</p>
+      {/* Task Stats - Redesigned to match UserManagement */}
+      <div className="role-stats-summary mb-4">
+        <div className="row g-3">
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card total">
+              <div className="stat-icon"><i className="fas fa-tasks"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Total Tasks</div>
+                <div className="stat-value">{assignedTasks.length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card pending">
-          <i className="fas fa-clock"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</h3>
-            <p>Pending</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card pending">
+              <div className="stat-icon"><i className="fas fa-clock"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Pending</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card progress">
-          <i className="fas fa-spinner"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'in-progress').length}</h3>
-            <p>In Progress</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card in-progress">
+              <div className="stat-icon"><i className="fas fa-spinner"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">In Progress</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'in-progress').length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card completed">
-          <i className="fas fa-check-circle"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'completed').length}</h3>
-            <p>Completed</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card completed">
+              <div className="stat-icon"><i className="fas fa-check-circle"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Completed</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'completed').length}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -228,14 +321,13 @@ const TaskManagement = () => {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="tasks-grid">
-          {filteredTasks.map((task) => (
+          {filteredTasks.map((task, index) => (
             <div key={task.id || task._id} className={`task-card priority-${(task.priority || 'medium').toLowerCase()}`}>
               <div className="task-card-header">
+                <span className="badge bg-light text-dark border mb-2">#{index + 1}</span>
                 <h4 style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title || 'Untitled Task'}</h4>
                 <div className="task-badges">
-                  <span className={`badge ${getStatusBadge(task.status)} rounded-pill`}>
-                    {task.status || 'Pending'}
-                  </span>
+                  {getStatusBadge(task)}
                   <span className={`badge ${getPriorityBadge(task.priority)} rounded-pill`}>
                     {task.priority || 'Medium'}
                   </span>
@@ -253,8 +345,12 @@ const TaskManagement = () => {
                     <span><strong>Project:</strong> {task.project || task.projectName || 'General'}</span>
                   </div>
                   <div className="detail-item">
-                    <i className="fas fa-calendar-alt"></i>
-                    <span><strong>Due Date:</strong> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
+                    <i className="fas fa-calendar-plus"></i>
+                    <span><strong>Start Date:</strong> {formatDate(task.startDate)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <i className="fas fa-calendar-check"></i>
+                    <span><strong>Due Date:</strong> {formatDate(task.dueDate)}</span>
                   </div>
                   {task.assignedBy && (
                     <div className="detail-item">
@@ -301,36 +397,49 @@ const TaskManagement = () => {
         <table className="tasks-table">
           <thead>
             <tr>
-              <th>Task</th>
-              <th>Project</th>
-              <th>Assigned To</th>
-              <th>Due Date</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th style={{ width: '60px' }}>Sr. No.</th>
+              <th style={{ minWidth: '200px' }}>Task</th>
+              <th style={{ minWidth: '150px' }}>Project</th>
+              <th style={{ minWidth: '120px' }}>Assigned To</th>
+              <th style={{ width: '120px' }}>Dates</th>
+              <th style={{ width: '90px' }}>Priority</th>
+              <th style={{ width: '100px' }}>Status</th>
+              <th style={{ width: '100px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredTasks.map((task) => (
+            {filteredTasks.map((task, index) => (
               <tr key={task.id || task._id}>
+                <td className="text-center fw-bold">{index + 1}</td>
                 <td>
                   <div className="fw-bold text-dark">{task.title || 'Untitled'}</div>
-                  <small className="text-muted d-block" style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <small className="text-muted d-block" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {task.description || 'No description'}
                   </small>
                 </td>
-                <td><span className="text-secondary fw-semibold">{task.project || task.projectName || 'General'}</span></td>
-                <td>{task.assignedTo || 'Unassigned'}</td>
-                <td><i className="far fa-calendar-alt me-1 text-muted"></i> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                  <span className="text-secondary fw-semibold" style={{ display: 'block', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.project || task.projectName || 'General'}
+                  </span>
+                </td>
+                <td>
+                  <span style={{ display: 'block', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.assignedTo || 'Unassigned'}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ fontSize: '0.8rem' }}>
+                    <div className="text-nowrap"><i className="fas fa-calendar-plus me-1 text-muted"></i>S: {formatDate(task.startDate)}</div>
+                    <div className="text-nowrap"><i className="fas fa-calendar-check me-1 text-muted"></i>D: {formatDate(task.dueDate)}</div>
+                  </div>
+                </td>
                 <td>
                   <span className={`badge ${getPriorityBadge(task.priority)} rounded-pill px-3`}>
                     {task.priority || 'Medium'}
                   </span>
                 </td>
                 <td>
-                  <span className={`badge ${getStatusBadge(task.status)} rounded-pill px-3`}>
-                    {task.status || 'Pending'}
-                  </span>
+                  {getStatusBadge(task)}
                 </td>
                 <td>
                   <div className="action-btn-group">
@@ -357,20 +466,62 @@ const TaskManagement = () => {
       )}
 
       {/* Add/Edit Task Modal */}
-      {showAddTaskModal && (
-        <AddTaskModal
-          show={showAddTaskModal}
-          onHide={() => {
-            setShowAddTaskModal(false);
-            setEditingTask(null);
-          }}
-          onSave={handleSaveTask}
-          editingTask={editingTask}
-          projects={projects}
-          allUsers={allUsers}
-        />
-      )}
-    </div>
+      {
+        showAddTaskModal && (
+          <AddTaskModal
+            show={showAddTaskModal}
+            onHide={() => {
+              setShowAddTaskModal(false);
+              setEditingTask(null);
+            }}
+            onSave={handleSaveTask}
+            editingTask={editingTask}
+            projects={projects}
+            allUsers={allUsers}
+          />
+        )
+      }
+      {/* Styled Notification Popup */}
+      {
+        notification && (
+          <div className="notification-pop animate__animated animate__fadeInDown" style={{
+            position: 'fixed',
+            top: '20px',
+            right: '50%',
+            transform: 'translateX(50%)',
+            backgroundColor: notificationTitle === 'Success' ? '#28a745' : '#dc3545',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '10px',
+            boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            minWidth: '300px'
+          }}>
+            <i className={`fas ${notificationTitle === 'Success' ? 'fa-check-circle' : 'fa-exclamation-circle'} fa-lg`}></i>
+            <div>
+              <div className="fw-bold" style={{ fontSize: '0.9rem' }}>{notificationTitle}</div>
+              <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>{notification}</div>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                marginLeft: 'auto',
+                cursor: 'pointer',
+                padding: '0 0 0 10px'
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
