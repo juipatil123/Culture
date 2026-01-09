@@ -123,8 +123,8 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
     let processedValue = value;
 
     // Apply field-specific validations
-    if (name === 'clientName') {
-      // Only allow letters and spaces for client name
+    if (name === 'name' || name === 'clientName') {
+      // Only allow letters and spaces
       processedValue = value.replace(/[^a-zA-Z\s]/g, '');
     } else if (name === 'projectCost' || name === 'advancePayment') {
       // Only allow positive numbers (including zero)
@@ -334,9 +334,10 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                         value={managerSearchTerm || formData.projectManager}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setManagerSearchTerm(value);
-                          setFormData(prev => ({ ...prev, projectManager: value }));
-                          setShowManagerDropdown(value.length > 0);
+                          const restrictedValue = value.replace(/[^a-zA-Z\s]/g, '');
+                          setManagerSearchTerm(restrictedValue);
+                          setFormData(prev => ({ ...prev, projectManager: restrictedValue }));
+                          setShowManagerDropdown(restrictedValue.length > 0);
                         }}
                         onFocus={() => {
                           setManagerSearchTerm(formData.projectManager);
@@ -615,7 +616,8 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                         className="form-control"
                         value={searchTerm}
                         onChange={(e) => {
-                          setSearchTerm(e.target.value);
+                          const restrictedValue = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                          setSearchTerm(restrictedValue);
                           setShowEmployeeDropdown(true);
                         }}
                         onFocus={() => setShowEmployeeDropdown(true)}

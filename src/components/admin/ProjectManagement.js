@@ -13,6 +13,8 @@ const ProjectManagement = () => {
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [filterByStatus, setFilterByStatus] = useState('all');
   const [projectManagers, setProjectManagers] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [notificationTitle, setNotificationTitle] = useState('Success');
 
   // Load projects and users (including PMs)
   const loadData = async () => {
@@ -45,6 +47,8 @@ const ProjectManagement = () => {
         clientName: project.clientName || 'No Client',
         startDate: project.startDate,
         endDate: project.endDate,
+        createdAt: formatDate(project.createdAt),
+        updatedAt: formatDate(project.updatedAt),
         description: project.description,
         projectCost: project.projectCost,
         advancePayment: project.advancePayment,
@@ -76,17 +80,22 @@ const ProjectManagement = () => {
     try {
       if (editingProject) {
         await updateProject(editingProject.id || editingProject._id, projectData);
-        alert('Project updated successfully!');
+        setNotificationTitle('Success');
+        setNotification('Project updated successfully!');
       } else {
         await createProject(projectData);
-        alert('Project added successfully!');
+        setNotificationTitle('Success');
+        setNotification('Project added successfully!');
       }
       setShowAddProjectModal(false);
       setEditingProject(null);
       loadData();
+      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('Failed to save project. Please try again.');
+      setNotificationTitle('Error');
+      setNotification('Failed to save project. Please try again.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -102,11 +111,14 @@ const ProjectManagement = () => {
       try {
         await deleteProject(projectId);
         setProjects(prev => prev.filter(p => p.id !== projectId));
-        alert(`Project "${projectName}" deleted successfully!`);
-        // loadData(); // Optional: if we want to refresh fully, but local update is faster
+        setNotificationTitle('Success');
+        setNotification(`Project "${projectName}" deleted successfully!`);
+        setTimeout(() => setNotification(null), 5000);
       } catch (error) {
         console.error('Error deleting project:', error);
-        alert('Failed to delete project. Please try again.');
+        setNotificationTitle('Error');
+        setNotification('Failed to delete project. Please try again.');
+        setTimeout(() => setNotification(null), 5000);
       }
     }
   };
@@ -242,8 +254,12 @@ const ProjectManagement = () => {
                     <span><strong>Start Date:</strong> {project.date}</span>
                   </div>
                   <div className="proj-detail-item">
-                    <i className="fas fa-rupee-sign"></i>
-                    <span><strong>Costing:</strong> ₹{project.projectCost || 0}</span>
+                    <i className="fas fa-calendar-plus"></i>
+                    <span><strong>Created:</strong> {project.createdAt || 'N/A'}</span>
+                  </div>
+                  <div className="proj-detail-item">
+                    <i className="fas fa-history"></i>
+                    <span><strong>Updated:</strong> {project.updatedAt || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -366,6 +382,44 @@ const ProjectManagement = () => {
           editingProject={editingProject}
           availableEmployees={projectManagers}
         />
+      )}
+      {/* Styled Notification Popup */}
+      {notification && (
+        <div className="notification-pop animate__animated animate__fadeInDown" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '50%',
+          transform: 'translateX(50%)',
+          backgroundColor: notificationTitle === 'Success' ? '#28a745' : '#dc3545',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '10px',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          minWidth: '300px'
+        }}>
+          <i className={`fas ${notificationTitle === 'Success' ? 'fa-check-circle' : 'fa-exclamation-circle'} fa-lg`}></i>
+          <div>
+            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>{notificationTitle}</div>
+            <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>{notification}</div>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              marginLeft: 'auto',
+              cursor: 'pointer',
+              padding: '0 0 0 10px'
+            }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
       )}
     </div>
   );

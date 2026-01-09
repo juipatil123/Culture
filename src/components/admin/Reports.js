@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProjects, getAllUsers, updateProject } from '../../services/api';
+import { getAllProjects, getAllUsers, updateProject, getAllTasks } from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
 import AddProjectModal from '../AddProjectModal';
 import './Reports.css';
@@ -7,6 +7,7 @@ import './Reports.css';
 const Reports = () => {
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
@@ -21,16 +22,19 @@ const Reports = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [projectsData, usersData] = await Promise.all([
+            const [projectsData, usersData, tasksData] = await Promise.all([
                 getAllProjects(),
-                getAllUsers()
+                getAllUsers(),
+                getAllTasks()
             ]);
             setProjects(projectsData || []);
             setUsers(usersData || []);
+            setTasks(tasksData || []);
         } catch (error) {
             console.error('Error loading data:', error);
             setProjects([]);
             setUsers([]);
+            setTasks([]);
         } finally {
             setLoading(false);
         }
@@ -117,11 +121,29 @@ const Reports = () => {
             projects.flatMap(p => p.assignedMembers || [])
         ).size;
 
-        return { totalProjects, totalCost, totalAdvance, totalTeamMembers };
+        const totalTasksCount = tasks.length;
+        const completedTasksCount = tasks.filter(t => t.status === 'completed').length;
+        const tasksProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+        return { totalProjects, totalCost, totalAdvance, totalTeamMembers, totalTasksCount, completedTasksCount, tasksProgress };
     };
 
     const filteredProjects = getFilteredAndSortedProjects();
     const stats = calculateStats();
+
+    // Get task stats for a project
+    const getProjectTaskStats = (projectName) => {
+        const projectTasks = tasks.filter(t =>
+            t.project === projectName ||
+            t.projectName === projectName ||
+            (typeof projectName === 'string' && t.project?.toLowerCase() === projectName.toLowerCase())
+        );
+        const completed = projectTasks.filter(t => t.status === 'completed').length;
+        const count = projectTasks.length;
+        const progress = count > 0 ? Math.round((completed / count) * 100) : 0;
+
+        return { count, completed, progress };
+    };
 
     // Handle Edit Project
     const handleEditProject = (project) => {
@@ -146,19 +168,25 @@ const Reports = () => {
     // Handle Download Report
     const handleDownloadReport = () => {
         // Define CSV headers
-        const headers = ['Project Name', 'Client', 'Manager', 'Status', 'Cost', 'Advance', 'Start Date', 'End Date'];
+        const headers = ['Project Name', 'Client', 'Manager', 'Status', 'Cost', 'Advance', 'Tasks Total', 'Tasks Done', 'Execution %', 'Start Date', 'End Date'];
 
         // Map project data to CSV rows
-        const rows = filteredProjects.map(p => [
-            p.name || '',
-            p.clientName || '',
-            p.projectManager || '',
-            p.projectStatus || '',
-            p.projectCost || '0',
-            p.advancePayment || '0',
-            formatDate(p.startDate),
-            formatDate(p.endDate)
-        ]);
+        const rows = filteredProjects.map(p => {
+            const taskStats = getProjectTaskStats(p.name);
+            return [
+                p.name || '',
+                p.clientName || '',
+                p.projectManager || '',
+                p.projectStatus || '',
+                p.projectCost || '0',
+                p.advancePayment || '0',
+                taskStats.count,
+                taskStats.completed,
+                `${taskStats.progress}%`,
+                formatDate(p.startDate),
+                formatDate(p.endDate)
+            ];
+        });
 
         // Combine headers and rows
         const csvContent = [
@@ -227,9 +255,9 @@ const Reports = () => {
                     <div className="col-md-3">
                         <div className="summary-card bg-grad-yellow shadow-sm">
                             <div className="summary-card-circle"></div>
-                            <div className="summary-card-title">Team Members</div>
-                            <div className="summary-card-value text-white">{stats.totalTeamMembers}</div>
-                            <div className="summary-card-pill">Active Staff</div>
+                            <div className="summary-card-title">Task Completion</div>
+                            <div className="summary-card-value text-white">{stats.tasksProgress}%</div>
+                            <div className="summary-card-pill">{stats.completedTasksCount}/{stats.totalTasksCount} Tasks Done</div>
                         </div>
                     </div>
                 </div>
@@ -359,6 +387,30 @@ const Reports = () => {
                                                     {formatDate(project.endDate)}
                                                 </span >
                                             </div >
+
+                                            {/* Task Management Sync */}
+                                            {(() => {
+                                                const taskStats = getProjectTaskStats(project.name);
+                                                return (
+                                                    <div className="task-sync-stats mt-3 p-3 bg-light rounded-3">
+                                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                                            <span className="small fw-bold text-muted">Execution Progress</span>
+                                                            <span className="badge bg-primary rounded-pill">{taskStats.progress}%</span>
+                                                        </div>
+                                                        <div className="progress mb-2" style={{ height: '8px' }}>
+                                                            <div
+                                                                className={`progress-bar bg-primary ${taskStats.progress === 100 ? 'bg-success' : ''}`}
+                                                                role="progressbar"
+                                                                style={{ width: `${taskStats.progress}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <div className="d-flex justify-content-between small text-muted">
+                                                            <span>Tasks Completed:</span>
+                                                            <span className="fw-bold">{taskStats.completed} / {taskStats.count}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div >
 
                                         <div className="financial-summary">
