@@ -1,4 +1,16 @@
 import axios from 'axios';
+import {
+  AdminService,
+  PMService,
+  TLService,
+  MemberService,
+  ProjectService,
+  TaskService,
+  PointsService,
+  RoleService,
+  DailyWorkService
+} from '../firebase/firestoreService';
+import { AuthService } from '../firebase/authService';
 
 // Use CRA proxy (package.json proxy -> http://localhost:5000)
 const API_URL =
@@ -226,9 +238,20 @@ export const getTasksByUser = async (userId) => {
   return allTasks.filter(task => task.assignedTo === userId || (task.assignedMembers && task.assignedMembers.includes(userId)));
 };
 
-// Task Notes Management
-export { subscribeToTasks };
+// Subscribe to tasks for real-time updates
+export const subscribeToTasks = (callback) => {
+  const { onSnapshot, collection } = require('firebase/firestore');
+  const { db } = require('../firebase/firebaseConfig');
+  
+  const colRef = collection(db, 'CULTUREDB', 'TASK', 'items');
+  
+  return onSnapshot(colRef, (snapshot) => {
+    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(tasks);
+  });
+};
 
+// Task Notes Management
 export const addNoteToTask = async (taskId, noteData) => {
   const task = await TaskService.getById(taskId);
   const notes = task.notes || [];

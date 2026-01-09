@@ -10,7 +10,8 @@ import {
     query,
     where,
     serverTimestamp,
-    setDoc
+    setDoc,
+    onSnapshot
 } from 'firebase/firestore';
 
 /**
@@ -135,4 +136,55 @@ export const getMemberByEmail = async (email) => {
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
     return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+};
+
+// Notice Service
+export const NoticeService = createCrud('NOTICES');
+
+// Get all users from unified users collection
+export const getAllUsers = async () => {
+    const colRef = collection(db, 'users');
+    const snapshot = await getDocs(colRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Subscribe to notices for a specific user
+export const subscribeToNotices = (userId, callback) => {
+    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+    const q = query(colRef, where("targetUsers", "array-contains", userId));
+    
+    return onSnapshot(q, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(notices);
+    });
+};
+
+// Subscribe to all notices (admin view)
+export const subscribeToAllNotices = (callback) => {
+    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+    
+    return onSnapshot(colRef, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(notices);
+    });
+};
+
+// Subscribe to all users
+export const subscribeToAllUsers = (callback) => {
+    const colRef = collection(db, 'users');
+    
+    return onSnapshot(colRef, (snapshot) => {
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(users);
+    });
+};
+
+// Subscribe to projects
+export const subscribeToProjects = (callback) => {
+    const colRef = collection(db, BASE_COLLECTION, 'PROJECTS', 'items');
+    
+    return onSnapshot(colRef, (snapshot) => {
+        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(projects);
+    });
 };
