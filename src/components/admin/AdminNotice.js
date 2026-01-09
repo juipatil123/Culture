@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase/firebaseConfig';
+import { getAllUsers, NoticeService } from '../../firebase/firestoreService';
 import { formatDate } from '../../utils/dateUtils';
 
-const AdminNotice = () => {
+const AdminNotice = ({ userData }) => {
     const [employees, setEmployees] = useState([]);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [message, setMessage] = useState('');
@@ -20,14 +19,9 @@ const AdminNotice = () => {
 
     const fetchEmployees = async () => {
         try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('role', 'in', ['employee', 'team-leader', 'project-manager']));
-            const snapshot = await getDocs(q);
-            const employeeList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setEmployees(employeeList);
+            const users = await getAllUsers();
+            const filtered = users.filter(u => ['employee', 'team-leader', 'project-manager', 'intern'].includes(u.role));
+            setEmployees(filtered);
         } catch (error) {
             console.error('Error fetching employees:', error);
         }
@@ -35,14 +29,10 @@ const AdminNotice = () => {
 
     const fetchSentNotices = async () => {
         try {
-            const noticesRef = collection(db, 'notices');
-            const q = query(noticesRef, orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
-            const noticeList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setSentNotices(noticeList);
+            const notices = await NoticeService.getAll();
+            // Filter notices sent by admin to show in history
+            const adminSent = notices.filter(n => n.senderRole === 'admin' || n.sender === 'Admin');
+            setSentNotices(adminSent);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching notices:', error);
@@ -56,19 +46,26 @@ const AdminNotice = () => {
 
         setSending(true);
         try {
-            const selectedEmpData = employees.find(e => e.id === selectedEmployee);
+            const selectedEmpData = employees.find(e => (e.id || e._id) === selectedEmployee);
 
-            await addDoc(collection(db, 'notices'), {
+            const noticeData = {
                 recipientId: selectedEmployee,
                 recipientName: selectedEmpData?.name || 'Unknown',
                 recipientEmail: selectedEmpData?.email || 'Unknown',
+                recipientRole: selectedEmpData?.role || 'employee',
                 subject,
                 message,
                 severity,
+                priority: severity === 'danger' ? 'high' : 'normal',
                 sender: 'Admin',
-                createdAt: serverTimestamp(),
+                senderId: userData?.id || userData?._id || 'admin-id',
+                senderName: userData?.name || 'Admin',
+                senderRole: 'admin',
+                date: new Date().toISOString(),
                 read: false
-            });
+            };
+
+            await NoticeService.create(noticeData);
 
             setMessage('');
             setSubject('');
@@ -230,7 +227,7 @@ const AdminNotice = () => {
                                                     <td>{notice.subject}</td>
                                                     <td>
                                                         <span className={`badge bg-${notice.severity === 'danger' ? 'danger' : notice.severity === 'warning' ? 'warning text-dark' : notice.severity === 'success' ? 'success' : 'info'}`}>
-                                                            {notice.severity.toUpperCase()}
+                                                            {(notice.severity || 'info').toUpperCase()}
                                                         </span>
                                                     </td>
                                                     <td className="small text-muted">

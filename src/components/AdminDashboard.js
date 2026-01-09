@@ -1027,9 +1027,9 @@ const AdminDashboard = ({ userData, onLogout }) => {
         )}
 
         {activeView === 'notice' && (
-          <AdminNotice />
+          <AdminNotice userData={safeUserData} />
         )}
-      </div>
+      </div >
 
       {/* Modals */}
       {

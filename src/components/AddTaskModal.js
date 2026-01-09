@@ -9,6 +9,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     status: 'pending', // Default status for new tasks
     priority: 'medium',
     dueDate: '',
+    startDate: '',
     assignedBy: '',
     project: '',
     assignedTo: '', // Single string for legacy/individual selection
@@ -46,11 +47,6 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
         ['employee', 'intern', 'team leader', 'project manager'].includes(type);
     });
 
-    if (currentUserRole === 'project-manager') {
-      // Optional: Prioritize or filter by PM's projects if needed, but for now allow searching all 
-      // to ensure "Assigned To" search works broadly as requested.
-    }
-
     if (!searchTerm) return baseList.slice(0, 5);
 
     return baseList.filter(user =>
@@ -74,6 +70,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           status: editingTask.status || 'pending',
           priority: editingTask.priority || 'medium',
           dueDate: editingTask.dueDate || '',
+          startDate: editingTask.startDate || '',
           assignedBy: editingTask.assignedBy || currentUserName,
           project: editingTask.project || '',
           assignedTo: members.length > 0 ? members[0] : '',
@@ -90,6 +87,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           status: 'pending',
           priority: 'medium',
           dueDate: '',
+          startDate: '',
           assignedBy: currentUserName,
           project: '',
           assignedTo: '',
@@ -106,6 +104,11 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
+
+    // Restrict Title to alphabets and spaces only
+    if (name === 'title') {
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
 
     // Validate points - only positive values
     if (name === 'points') {
@@ -126,10 +129,6 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
       ...prev,
       [name]: processedValue
     }));
-
-    if (name === 'project') {
-      // Logic could be added here to auto-filter users based on project
-    }
   };
 
   const handleAddMember = (user) => {
@@ -143,6 +142,15 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     }
     setSearchTerm('');
     setShowUserDropdown(false);
+  };
+
+  const handleQuickReassign = (userName) => {
+    if (!userName) return;
+    setFormData(prev => ({
+      ...prev,
+      assignedMembers: [userName],
+      assignedTo: userName
+    }));
   };
 
   const handleRemoveMember = (name) => {
@@ -213,10 +221,6 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                       </option>
                     ))}
                   </select>
-                  <small className="text-muted">
-                    <i className="fas fa-info-circle me-1"></i>
-                    Showing your managed projects
-                  </small>
                 </div>
               </div>
 
@@ -256,6 +260,16 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
 
               <div className="row">
                 <div className="col-md-6 mb-3">
+                  <label className="form-label fw-bold small">Start Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Due Date</label>
                   <input
                     type="date"
@@ -265,6 +279,9 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     onChange={handleInputChange}
                   />
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Assigned By</label>
                   <input
@@ -274,9 +291,6 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     readOnly
                   />
                 </div>
-              </div>
-
-              <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Points (Story Points)</label>
                   <input
@@ -287,10 +301,10 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     onChange={handleInputChange}
                     placeholder="e.g., 5"
                   />
-                  <small className="form-text text-muted">
-                    Only positive values allowed.
-                  </small>
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Progress (%)</label>
                   <div className="d-flex align-items-center gap-2">
@@ -308,7 +322,6 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                 </div>
               </div>
 
-              {/* Multiple Users Assignment */}
               <div className="mb-3">
                 <label className="form-label fw-bold small">Assigned To (Multiple Select)</label>
                 <div className="position-relative">
@@ -322,20 +335,20 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                       placeholder="Type to search and add multiple members..."
                       value={searchTerm}
                       onChange={(e) => {
-                        setSearchTerm(e.target.value);
+                        const restrictedValue = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                        setSearchTerm(restrictedValue);
                         setShowUserDropdown(true);
                       }}
                       onFocus={() => setShowUserDropdown(true)}
                     />
                   </div>
 
-                  {/* Selected Members Chips */}
                   <div className="d-flex flex-wrap gap-2 mt-2 mb-1">
                     {formData.assignedMembers.map((name, index) => (
                       <span key={index} className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 d-flex align-items-center gap-2 p-2">
                         <i className="fas fa-user-circle small"></i>
                         {name}
-                        <i className="fas fa-times cursor-pointer ms-1" onClick={() => handleRemoveMember(name)} style={{ cursor: 'pointer' }}></i>
+                        <i className="fas fa-times ms-1" onClick={() => handleRemoveMember(name)} style={{ cursor: 'pointer' }}></i>
                       </span>
                     ))}
                     {formData.assignedMembers.length === 0 && (
@@ -343,36 +356,29 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     )}
                   </div>
 
-                  {/* User Dropdown */}
                   {showUserDropdown && (searchTerm || showUserDropdown) && (
                     <div className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 overflow-auto" style={{ zIndex: 1100, maxHeight: '200px' }}>
-                      {availableEmployees.length > 0 ? (
-                        availableEmployees.map((user, index) => (
-                          <div
-                            key={user.id || user._id || index}
-                            className="p-3 border-bottom hover-bg-light cursor-pointer d-flex align-items-center justify-content-between"
-                            onClick={() => handleAddMember(user)}
-                            onMouseEnter={(e) => e.target.closest('div').style.backgroundColor = '#f8f9fa'}
-                            onMouseLeave={(e) => e.target.closest('div').style.backgroundColor = 'transparent'}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <div className="d-flex align-items-center gap-3">
-                              <div className="avatar-circle-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '30px', height: '30px', fontSize: '12px' }}>
-                                {user.name?.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="fw-bold small">{user.name}</div>
-                                <div className="text-muted" style={{ fontSize: '0.75rem' }}>{user.email}</div>
-                              </div>
+                      {availableEmployees.map((user, index) => (
+                        <div
+                          key={user.id || user._id || index}
+                          className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                          onClick={() => handleAddMember(user)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="avatar-circle-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '30px', height: '30px', fontSize: '12px' }}>
+                              {user.name?.charAt(0).toUpperCase()}
                             </div>
-                            {formData.assignedMembers.includes(user.name) && (
-                              <i className="fas fa-check text-success"></i>
-                            )}
+                            <div>
+                              <div className="fw-bold small">{user.name}</div>
+                              <div className="text-muted" style={{ fontSize: '0.75rem' }}>{user.email}</div>
+                            </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="p-3 text-center text-muted small">No users found</div>
-                      )}
+                          {formData.assignedMembers.includes(user.name) && (
+                            <i className="fas fa-check text-success"></i>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -392,26 +398,26 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-bold small text-primary">Task Requirement (Changes/Updates)</label>
+                <label className="form-label fw-bold small text-primary">Task Requirement</label>
                 <textarea
                   className="form-control"
                   name="requirement"
                   value={formData.requirement}
                   onChange={handleInputChange}
                   rows="2"
-                  placeholder="Specify task requirements or change requests..."
+                  placeholder="Specify task requirements..."
                 ></textarea>
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-bold small text-success">Working Notes (What's working / Progress)</label>
+                <label className="form-label fw-bold small text-success">Working Notes</label>
                 <textarea
                   className="form-control border-success border-opacity-10"
                   name="workingNotes"
                   value={formData.workingNotes}
                   onChange={handleInputChange}
                   rows="2"
-                  placeholder="Note down current progress, what is working, logs etc."
+                  placeholder="Note down current progress..."
                 ></textarea>
               </div>
             </div>
@@ -426,8 +432,8 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
             </div>
           </form>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

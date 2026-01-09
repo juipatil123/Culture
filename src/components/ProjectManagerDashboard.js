@@ -25,10 +25,13 @@ import {
   deleteProject,
   createUser,
   updateUser,
+  deleteUser,
   createTeamLeader,
   updateTeamLeader,
+  deleteTeamLeader,
   createProjectManager,
   updateProjectManager,
+  deleteProjectManager,
   getAllTeamLeaders,
   getAllProjectManagers,
   getDashboardStats
@@ -61,6 +64,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   });
   const [unreadCount, setUnreadCount] = useState(0);
   const [notification, setNotification] = useState(null);
+  const [notificationTitle, setNotificationTitle] = useState('New Message');
+  const [overdueProjectsList, setOverdueProjectsList] = useState([]);
+  const [overdueTasksList, setOverdueTasksList] = useState([]);
+  const [showOverdueCard, setShowOverdueCard] = useState(false);
 
   useEffect(() => {
     if (!safeUserData.id && !safeUserData._id) return;
@@ -70,6 +77,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
 
       if (!isFirstLoad && count > unreadCount) {
         const newest = notices[0];
+        setNotificationTitle('New Message');
         setNotification(`New Message from ${newest.senderName}: ${newest.subject}`);
         setTimeout(() => setNotification(null), 5000);
       }
@@ -79,12 +87,39 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     return () => unsubscribe();
   }, [safeUserData, unreadCount]);
 
+  // Check for overdue projects and tasks
+  useEffect(() => {
+    if (loadingProjects || loadingTasks) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const overdueP = projects.filter(p => {
+      const status = (p.status || '').toLowerCase();
+      return status !== 'completed' && p.endDate && p.endDate < today;
+    });
+
+    const overdueT = assignedTasks.filter(t => {
+      const status = (t.status || '').toLowerCase();
+      return status !== 'completed' && t.dueDate && t.dueDate < today;
+    });
+
+    setOverdueProjectsList(overdueP);
+    setOverdueTasksList(overdueT);
+
+    if (overdueP.length > 0 || overdueT.length > 0) {
+      setShowOverdueCard(true);
+    } else {
+      setShowOverdueCard(false);
+    }
+  }, [projects, assignedTasks, loadingProjects, loadingTasks]);
+
   // State for Quick Task Assignment (Ported from MultiRoleDashboard/PMDashboardSidebar)
   const [selectedEmployeeForTask, setSelectedEmployeeForTask] = useState('');
   const [selectedProjectForTask, setSelectedProjectForTask] = useState('');
   const [newTaskName, setNewTaskName] = useState('');
   const [taskPriority, setTaskPriority] = useState('medium');
   const [taskDueDate, setTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [taskStartDate, setTaskStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [allUsersList, setAllUsersList] = useState([]);
   const [recentActivities, setRecentActivities] = useState([
     { id: 1, type: 'task', title: 'Task Completed', desc: 'Review development team implementation completed', user: 'Jane Smith', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'check', color: 'success' },
@@ -146,6 +181,8 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         clientName: project.clientName,
         startDate: project.startDate,
         endDate: project.endDate,
+        createdAt: formatDate(project.createdAt),
+        updatedAt: formatDate(project.updatedAt),
         description: project.description,
         projectCost: project.projectCost,
         advancePayment: project.advancePayment,
@@ -223,40 +260,67 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       const allCombinedUsers = Array.from(allUsersMap.values());
       setAllUsersList(allCombinedUsers);
 
-      // Get unique team members from all projects
-      const memberNames = new Set();
-      currentProjects.forEach(project => {
-        project.assigned?.forEach(member => {
-          if (typeof member === 'object') {
-            if (member.name) memberNames.add(member.name.toString().toLowerCase().trim());
-            if (member.email) memberNames.add(member.email.toString().toLowerCase().trim());
-          } else if (member) {
-            memberNames.add(member.toString().toLowerCase().trim());
+      // Filter team members to only those associated with this PM's projects or tasks
+      const myProjectNames = currentProjects.map(p => p.name.toLowerCase().trim());
+      const myMemberIdentifiers = new Set();
+
+      // Collect identifiers from projects
+      currentProjects.forEach(p => {
+        const assigned = p.assignedMembers || p.assigned || [];
+        assigned.forEach(m => {
+          if (typeof m === 'object') {
+            if (m.name) myMemberIdentifiers.add(m.name.toLowerCase().trim());
+            if (m.email) myMemberIdentifiers.add(m.email.toLowerCase().trim());
+            if (m.id || m._id) myMemberIdentifiers.add((m.id || m._id).toString());
+          } else if (typeof m === 'string' && m.trim()) {
+            myMemberIdentifiers.add(m.trim().toLowerCase());
           }
         });
       });
 
-      const members = allCombinedUsers.filter(user => {
-        const uName = user.name?.toString().toLowerCase().trim();
-        const uEmail = user.email?.toString().toLowerCase().trim();
+      // Collect identifiers from tasks
+      currentTasks.forEach(t => {
+        const assignedTo = t.assignedTo;
+        const processMember = (m) => {
+          if (typeof m === 'object') {
+            if (m.name) myMemberIdentifiers.add(m.name.toLowerCase().trim());
+            if (m.email) myMemberIdentifiers.add(m.email.toLowerCase().trim());
+            if (m.id || m._id) myMemberIdentifiers.add((m.id || m._id).toString());
+          } else if (typeof m === 'string' && m.trim()) {
+            myMemberIdentifiers.add(m.trim().toLowerCase());
+          }
+        };
 
-        return memberNames.has(uName) ||
-          memberNames.has(uEmail) ||
-          currentTasks.some(t => {
-            const assignedTo = t.assignedTo;
-            if (Array.isArray(assignedTo)) {
-              return assignedTo.some(e => {
-                const eStr = (typeof e === 'object' ? e.name : e)?.toString().toLowerCase().trim();
-                return eStr === uName || eStr === uEmail;
-              });
-            }
-            const to = (typeof assignedTo === 'object' ? assignedTo.name : assignedTo)?.toString().toLowerCase().trim();
-            return to === uName || to === uEmail;
-          });
+        if (Array.isArray(assignedTo)) {
+          assignedTo.forEach(processMember);
+        } else if (assignedTo) {
+          processMember(assignedTo);
+        }
       });
 
-      setTeamMembers(members);
-      return members;
+      const meName = (userName || '').toLowerCase().trim();
+      const meEmail = (userEmail || '').toLowerCase().trim();
+      const meId = (safeUserData?.id || safeUserData?._id || '').toString();
+
+      const filteredTeam = allCombinedUsers.filter(u => {
+        if (u.role === 'admin') return false;
+
+        const name = (u.name || '').toLowerCase().trim();
+        const email = (u.email || '').toLowerCase().trim();
+        const id = (u._id || u.id || '').toString();
+
+        // Don't include current PM in their own team count
+        if ((name && name === meName) || (email && email === meEmail) || (id && id === meId)) {
+          return false;
+        }
+
+        return myMemberIdentifiers.has(name) ||
+          myMemberIdentifiers.has(email) ||
+          (id && myMemberIdentifiers.has(id));
+      });
+
+      setTeamMembers(filteredTeam);
+      return allCombinedUsers;
     } catch (error) {
       console.error('Error loading team members:', error);
       return [];
@@ -280,11 +344,17 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           assignedBy: userName || 'Project Manager'
         });
       }
+      setNotificationTitle('Success');
+      setNotification(editingTask ? 'Task updated successfully!' : 'Task added successfully!');
+      setTimeout(() => setNotification(null), 5000);
       setShowAddTaskModal(false);
       setEditingTask(null);
       reloadAll();
     } catch (error) {
       console.error('Error saving task:', error);
+      setNotificationTitle('Error');
+      setNotification('Failed to save task. Please try again.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -313,6 +383,9 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         }
       }
 
+      setNotificationTitle('Success');
+      setNotification(`User ${isEditing ? 'updated' : 'added'} successfully!`);
+      setTimeout(() => setNotification(null), 5000);
       setShowAddUserModal(false);
       setEditingUser(null);
       reloadAll();
@@ -327,11 +400,40 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     setShowAddUserModal(true);
   };
 
+  const handleDeleteUser = async (user) => {
+    const userId = user.id || user._id;
+    const userName = user.name;
+    const role = (user.role || '').toLowerCase();
+
+    if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
+      try {
+        if (role === 'team-leader') {
+          await deleteTeamLeader(userId);
+        } else if (role === 'project-manager') {
+          await deleteProjectManager(userId);
+        } else {
+          await deleteUser(userId);
+        }
+        setNotificationTitle('Success');
+        setNotification(`User ${userName} deleted successfully!`);
+        setTimeout(() => setNotification(null), 5000);
+        reloadAll();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        setNotificationTitle('Error');
+        setNotification('Failed to delete user. Please try again.');
+        setTimeout(() => setNotification(null), 5000);
+      }
+    }
+  };
+
   // Handle save/update project
   const handleSaveProject = async (projectData) => {
     try {
       if (editingProject) {
         await updateProject(editingProject.id || editingProject._id, projectData);
+        setNotificationTitle('Success');
+        setNotification('Project updated successfully!');
       } else {
         // Ensure project manager is set to this PM correctly
         const projectWithPM = {
@@ -339,7 +441,10 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           projectManager: userEmail || userName || localStorage.getItem('userEmail') || localStorage.getItem('userName')
         };
         await createProject(projectWithPM);
+        setNotificationTitle('Success');
+        setNotification('Project added successfully!');
       }
+      setTimeout(() => setNotification(null), 5000);
       setShowAddProjectModal(false);
       setEditingProject(null);
       reloadAll();
@@ -353,10 +458,15 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
       try {
         await deleteProject(projectId);
+        setNotificationTitle('Success');
+        setNotification('Project deleted successfully!');
+        setTimeout(() => setNotification(null), 5000);
         reloadAll();
       } catch (error) {
         console.error('Error deleting project:', error);
-        alert('Failed to delete project');
+        setNotificationTitle('Error');
+        setNotification('Failed to delete project. Please try again.');
+        setTimeout(() => setNotification(null), 5000);
       }
     }
   };
@@ -400,6 +510,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         assignedBy: userName,
         project: selectedProjectForTask || 'General',
         priority: taskPriority,
+        startDate: taskStartDate,
         dueDate: taskDueDate,
         status: 'assigned',
         createdAt: new Date().toISOString(),
@@ -413,13 +524,18 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       setSelectedProjectForTask('');
       setNewTaskName('');
       setTaskPriority('medium');
+      setTaskStartDate(new Date().toISOString().split('T')[0]);
       setTaskDueDate(new Date().toISOString().split('T')[0]);
 
-      alert(`Task "${taskData.title}" has been assigned successfully!`);
+      setNotificationTitle('Success');
+      setNotification(`Task "${taskData.title}" has been assigned successfully!`);
+      setTimeout(() => setNotification(null), 5000);
       loadTasks();
     } catch (error) {
       console.error('Error in quick task assignment:', error);
-      alert('Failed to assign task. Please try again.');
+      setNotificationTitle('Error');
+      setNotification('Failed to assign task. Please try again.');
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -522,7 +638,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           position: 'fixed',
           top: '20px',
           right: '20px',
-          backgroundColor: '#007bff',
+          backgroundColor: notificationTitle === 'Success' ? '#28a745' : notificationTitle === 'Overdue Reminder' ? '#dc3545' : '#007bff',
           color: 'white',
           padding: '15px 25px',
           borderRadius: '10px',
@@ -535,7 +651,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         }}>
           <i className="fas fa-bell fa-lg"></i>
           <div>
-            <strong style={{ display: 'block', fontSize: '0.9rem' }}>New Message</strong>
+            <strong style={{ display: 'block', fontSize: '0.9rem' }}>{notificationTitle}</strong>
             <span style={{ fontSize: '0.85rem' }}>{notification}</span>
           </div>
           <button
@@ -627,9 +743,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       <div className="dashboard-content">
         {activeView === 'dashboard' && (
           <div className="dashboard-view">
-            <h3 className="mb-4">Dashboard Overview</h3>
-
-            {/* Dashboard Cards */}
+            <h3 className="mb-4">Dashboard Overview</h3>            {/* Dashboard Cards */}
             <div className="row g-4 mb-4">
               {getDashboardCards().map((card, index) => (
                 <div key={index} className="col-md-6 col-lg-3">
@@ -645,6 +759,87 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                 </div>
               ))}
             </div>
+
+            {/* Overdue Items Alert Card */}
+            {showOverdueCard && (
+              <div className="card mb-4 border-start border-danger border-4 shadow-sm animate__animated animate__fadeIn" style={{ backgroundColor: 'rgba(255, 245, 245, 0.5)', borderRadius: '15px', border: '1px solid #fee2e2' }}>
+                <div className="card-body p-4 position-relative">
+                  <button
+                    className="btn-close position-absolute top-0 end-0 m-3"
+                    style={{ fontSize: '0.8rem', opacity: 0.5 }}
+                    onClick={() => setShowOverdueCard(false)}
+                  ></button>
+
+                  <div className="d-flex align-items-start">
+                    <div className="text-danger me-4 mt-1">
+                      <i className="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <div className="flex-grow-1">
+                      <div className="d-flex align-items-center mb-1">
+                        <i className="fas fa-bell me-2 text-dark small"></i>
+                        <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: '1.1rem' }}>Overdue Items Detected!</h6>
+                      </div>
+                      <p className="text-muted small mb-3">You have {overdueProjectsList.length + overdueTasksList.length} overdue item(s) that require immediate attention.</p>
+
+                      {/* Projects List */}
+                      {overdueProjectsList.length > 0 && (
+                        <div className="mb-3">
+                          <h6 className="fw-bold small mb-2 text-dark">
+                            <i className="fas fa-project-diagram me-2"></i>
+                            Overdue Projects ({overdueProjectsList.length}):
+                          </h6>
+                          <div className="ps-4">
+                            {overdueProjectsList.map((p, i) => (
+                              <div key={i} className="mb-2 d-flex align-items-center gap-2">
+                                <span className="fw-bold text-dark small">{p.name}</span>
+                                <span className="text-muted smaller"> - Due: {formatDate(p.endDate)}</span>
+                                <span className="badge bg-danger rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>OVERDUE</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tasks List */}
+                      {overdueTasksList.length > 0 && (
+                        <div className="mb-3">
+                          <h6 className="fw-bold small mb-2 text-dark">
+                            <i className="fas fa-list-ul me-2"></i>
+                            Overdue Tasks ({overdueTasksList.length}):
+                          </h6>
+                          <div className="ps-4">
+                            {overdueTasksList.map((t, i) => (
+                              <div key={i} className="mb-2 d-flex align-items-center gap-2">
+                                <span className="fw-bold text-dark small">{t.title}</span>
+                                <span className="text-muted smaller"> - Due: {formatDate(t.dueDate)}</span>
+                                <span className="badge bg-danger rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>OVERDUE</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-4 d-flex gap-2">
+                        <button
+                          className="btn btn-danger btn-sm px-3 fw-bold d-flex align-items-center gap-2"
+                          style={{ borderRadius: '6px' }}
+                          onClick={() => overdueProjectsList.length > 0 ? setActiveView('projects') : setActiveView('tasks')}
+                        >
+                          <i className="fas fa-eye small"></i> View Details
+                        </button>
+                        <button
+                          className="btn btn-outline-secondary btn-sm px-3 fw-bold"
+                          style={{ borderRadius: '6px', backgroundColor: '#f8fafc' }}
+                          onClick={() => setShowOverdueCard(false)}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="row mb-4">
               {/* Recent Activity Section */}
@@ -761,13 +956,17 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                             className="form-control form-control-sm"
                             placeholder="What needs to be done?"
                             value={newTaskName}
-                            onChange={(e) => setNewTaskName(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const restrictedValue = value.replace(/[^a-zA-Z\s]/g, '');
+                              setNewTaskName(restrictedValue);
+                            }}
                           />
                         </div>
 
                         <div className="row g-2 mb-3">
-                          <div className="col-6">
-                            <label className="form-label small fw-bold">Priority</label>
+                          <div className="col-12 mb-2">
+                            <label className="form-label small fw-bold text-start w-100">Priority</label>
                             <select className="form-select form-select-sm" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
                               <option value="low">Low</option>
                               <option value="medium">Medium</option>
@@ -775,7 +974,16 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
                             </select>
                           </div>
                           <div className="col-6">
-                            <label className="form-label small fw-bold">Due Date</label>
+                            <label className="form-label small fw-bold text-start w-100">Start Date</label>
+                            <input
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={taskStartDate}
+                              onChange={(e) => setTaskStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label small fw-bold text-start w-100">Due Date</label>
                             <input
                               type="date"
                               className="form-control form-control-sm"
@@ -880,6 +1088,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           <PMTasks
             tasks={assignedTasks}
             projects={projects}
+            users={teamMembers}
             onRefresh={reloadAll}
             onAddTask={() => {
               setEditingTask(null);
@@ -897,7 +1106,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
         {activeView === 'team' && (
           <PMTeam
             teamMembers={teamMembers}
-            allUsers={allUsersList}
+            allUsers={teamMembers}
             projects={projects}
             onRefresh={reloadAll}
             onAddMember={() => {
@@ -905,6 +1114,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
               setShowAddUserModal(true);
             }}
             onEditMember={handleEditUser}
+            onDeleteMember={handleDeleteUser}
           />
         )}
 

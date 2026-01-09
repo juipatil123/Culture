@@ -101,6 +101,15 @@ const EmployeeDashboard = ({
         }
     };
 
+    const isOverdue = (task) => {
+        if (!task.dueDate || task.status === 'completed') return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(task.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return today > dueDate;
+    };
+
     const isUserAssignedToTask = (task, email, name) => {
         if (!task) return false;
 
@@ -638,21 +647,23 @@ const EmployeeDashboard = ({
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
                                                             <span className="badge px-3 py-2 rounded-pill" style={{
                                                                 fontSize: '0.75rem',
-                                                                backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
-                                                                    ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
-                                                                        '#6c757d', // Grey (New/Assigned)
+                                                                backgroundColor: isOverdue(task) ? '#dc3545' :
+                                                                    (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
+                                                                        ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
+                                                                            '#6c757d', // Grey (New/Assigned)
                                                                 color: 'white'
                                                             }}>
-                                                                {((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
-                                                                    ? 'NEW'
-                                                                    : (task.status || 'NEW').toUpperCase()}
+                                                                {isOverdue(task) ? 'OVERDUE' :
+                                                                    ((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
+                                                                        ? 'NEW'
+                                                                        : (task.status || 'NEW').toUpperCase()}
                                                             </span>
                                                         </div>
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
-                                                            <small className="text-muted">
-                                                                <i className="far fa-calendar-alt me-1 text-danger"></i>
-                                                                {formatDate(task.dueDate)}
-                                                            </small>
+                                                            <div className="small text-muted">
+                                                                <div><i className="fas fa-calendar-plus me-1"></i>S: {formatDate(task.startDate)}</div>
+                                                                <div><i className="fas fa-calendar-check me-1"></i>D: {formatDate(task.dueDate)}</div>
+                                                            </div>
                                                         </div>
                                                         <div className="col-lg-2 text-end">
                                                             <div className="d-flex justify-content-end gap-2">
@@ -707,14 +718,16 @@ const EmployeeDashboard = ({
                                                         <h5 className="fw-bold text-dark mb-0 me-2 text-truncate" style={{ maxWidth: '70%' }}>{task.title}</h5>
                                                         <span className="badge px-3 py-2 rounded-pill" style={{
                                                             fontSize: '0.75rem',
-                                                            backgroundColor: (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
-                                                                ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
-                                                                    '#6c757d', // Grey (New/Assigned)
+                                                            backgroundColor: isOverdue(task) ? '#dc3545' :
+                                                                (task.status || '').toLowerCase() === 'completed' ? '#10b981' : // Green
+                                                                    ((task.status || '').toLowerCase() === 'in-progress' || (task.status || '').toLowerCase() === 'in progress') ? '#6f42c1' : // Purple
+                                                                        '#6c757d', // Grey (New/Assigned)
                                                             color: 'white'
                                                         }}>
-                                                            {((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
-                                                                ? 'NEW'
-                                                                : (task.status || 'NEW').toUpperCase()}
+                                                            {isOverdue(task) ? 'OVERDUE' :
+                                                                ((task.status || '').toLowerCase() === 'assigned' || (task.status || '').toLowerCase() === 'pending' || (task.status || '').toLowerCase() === 'new' || !(task.status))
+                                                                    ? 'NEW'
+                                                                    : (task.status || 'NEW').toUpperCase()}
                                                         </span>
                                                     </div>
 
@@ -733,6 +746,17 @@ const EmployeeDashboard = ({
                                                     <hr className="bg-light my-3" />
 
                                                     {/* Middle Row: Points & Priority */}
+                                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                                        <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                                            <i className="fas fa-calendar-plus"></i>
+                                                            <span>Start: {formatDate(task.startDate)}</span>
+                                                        </div>
+                                                        <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                                            <i className="fas fa-calendar-check"></i>
+                                                            <span>Due: {formatDate(task.dueDate)}</span>
+                                                        </div>
+                                                    </div>
+
                                                     <div className="d-flex justify-content-between align-items-center mb-4">
                                                         <div className="d-flex align-items-center gap-1 text-warning fw-bold">
                                                             <i className="fas fa-star" style={{ fontSize: '1rem' }}></i>
@@ -1588,9 +1612,15 @@ const EmployeeDashboard = ({
                                 </div>
 
                                 <div className="bg-light p-3 rounded-3">
-                                    <div className="d-flex align-items-center text-muted">
-                                        <i className="far fa-calendar-alt text-danger me-2"></i>
-                                        <span className="small">Due Date: <strong>{selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : 'No Date'}</strong></span>
+                                    <div className="d-flex flex-column gap-2 text-muted">
+                                        <div className="d-flex align-items-center">
+                                            <i className="fas fa-calendar-plus text-primary me-2"></i>
+                                            <span className="small">Start Date: <strong>{selectedTask.startDate ? formatDate(selectedTask.startDate) : 'No Date'}</strong></span>
+                                        </div>
+                                        <div className="d-flex align-items-center">
+                                            <i className="fas fa-calendar-check text-danger me-2"></i>
+                                            <span className="small">Due Date: <strong>{selectedTask.dueDate ? formatDate(selectedTask.dueDate) : 'No Date'}</strong></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
