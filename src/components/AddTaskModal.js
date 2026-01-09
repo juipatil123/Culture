@@ -6,7 +6,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    status: 'assigned', // Default status for new tasks
+    status: 'pending', // Default status for new tasks
     priority: 'medium',
     dueDate: '',
     assignedBy: '',
@@ -87,7 +87,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
         setFormData({
           title: '',
           description: '',
-          status: 'assigned',
+          status: 'pending',
           priority: 'medium',
           dueDate: '',
           assignedBy: currentUserName,
@@ -245,11 +245,11 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     required
                   >
                     <option value="">Select Status</option>
-                    <option value="assigned">Assigned</option>
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
-                    <option value="on-hold">On Hold</option>
                     <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="assigned">Assigned</option>
                   </select>
                 </div>
               </div>

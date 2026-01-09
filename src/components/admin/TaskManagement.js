@@ -116,9 +116,10 @@ const TaskManagement = () => {
   const getStatusBadge = (status) => {
     const statusColors = {
       'completed': 'bg-success',
-      'in-progress': 'bg-info',
-      'pending': 'bg-warning',
-      'assigned': 'bg-secondary'
+      'in-progress': 'bg-warning text-dark', // Changed to warning/yellowish for in-progress usually or keep info
+      'pending': 'bg-secondary',
+      'overdue': 'bg-danger',
+      'assigned': 'bg-primary'
     };
     return statusColors[status] || 'bg-secondary';
   };
@@ -138,10 +139,10 @@ const TaskManagement = () => {
       <div className="page-header">
         <h2>Task Management</h2>
         <div className="header-stats">
-          <span className="badge bg-primary p-2 me-1">Total: {assignedTasks.length}</span>
+          {/* <span className="badge bg-primary p-2 me-1">Total: {assignedTasks.length}</span>
           <span className="badge bg-warning text-dark p-2 me-1">Pending: {assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</span>
           <span className="badge bg-info p-2 me-1">In Progress: {assignedTasks.filter(t => t.status === 'in-progress').length}</span>
-          <span className="badge bg-success p-2">Completed: {assignedTasks.filter(t => t.status === 'completed').length}</span>
+          <span className="badge bg-success p-2">Completed: {assignedTasks.filter(t => t.status === 'completed').length}</span> */}
         </div>
         <button className="btn btn-primary" onClick={handleAddTask}>
           <i className="fas fa-plus me-2"></i>
@@ -193,33 +194,44 @@ const TaskManagement = () => {
       </div>
 
       {/* Task Stats */}
-      <div className="task-stats">
-        <div className="stat-card total">
-          <i className="fas fa-tasks"></i>
-          <div>
-            <h3>{assignedTasks.length}</h3>
-            <p>Total Tasks</p>
+      {/* Task Stats - Redesigned to match UserManagement */}
+      <div className="role-stats-summary mb-4">
+        <div className="row g-3">
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card total">
+              <div className="stat-icon"><i className="fas fa-tasks"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Total Tasks</div>
+                <div className="stat-value">{assignedTasks.length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card pending">
-          <i className="fas fa-clock"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</h3>
-            <p>Pending</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card pending">
+              <div className="stat-icon"><i className="fas fa-clock"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Pending</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'pending' || t.status === 'assigned').length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card progress">
-          <i className="fas fa-spinner"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'in-progress').length}</h3>
-            <p>In Progress</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card in-progress">
+              <div className="stat-icon"><i className="fas fa-spinner"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">In Progress</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'in-progress').length}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stat-card completed">
-          <i className="fas fa-check-circle"></i>
-          <div>
-            <h3>{assignedTasks.filter(t => t.status === 'completed').length}</h3>
-            <p>Completed</p>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card completed">
+              <div className="stat-icon"><i className="fas fa-check-circle"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Completed</div>
+                <div className="stat-value">{assignedTasks.filter(t => t.status === 'completed').length}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -240,7 +252,7 @@ const TaskManagement = () => {
           {filteredTasks.map((task, index) => (
             <div key={task.id || task._id} className={`task-card priority-${(task.priority || 'medium').toLowerCase()}`}>
               <div className="task-card-header">
-                <span className="sr-no-badge">#{index + 1}</span>
+                <span className="badge bg-light text-dark border mb-2">#{index + 1}</span>
                 <h4 style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title || 'Untitled Task'}</h4>
                 <div className="task-badges">
                   <span className={`badge ${getStatusBadge(task.status)} rounded-pill`}>

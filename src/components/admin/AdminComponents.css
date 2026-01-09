@@ -489,7 +489,7 @@
     color: #ff9f43;
 }
 
-.stat-card.progress i {
+.stat-card.in-progress i {
     background: rgba(0, 207, 232, 0.1);
     color: #00cfe8;
 }

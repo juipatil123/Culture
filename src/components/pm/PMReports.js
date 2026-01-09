@@ -59,9 +59,9 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
   const stats = {
     totalProjects: filteredProjects.length,
     completedProjects: filteredProjects.filter(p => p.status === 'Completed').length,
-    onTrackProjects: filteredProjects.filter(p => p.status === 'On Track').length,
-    atRiskProjects: filteredProjects.filter(p => p.status === 'At Risk').length,
-    delayedProjects: filteredProjects.filter(p => p.status === 'Delayed').length,
+    inProgressProjects: filteredProjects.filter(p => p.status === 'In Progress' || p.status === 'On Track').length,
+    pendingProjects: filteredProjects.filter(p => p.status === 'Pending' || p.status === 'Assigned').length,
+    overdueProjects: filteredProjects.filter(p => p.status === 'Overdue' || p.status === 'At Risk' || p.status === 'Delayed').length,
     totalTasks: filteredTasks.length,
     completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
     inProgressTasks: filteredTasks.filter(t => t.status === 'in-progress').length,
@@ -151,9 +151,9 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                 <div className="status-distribution">
                   {[
                     { label: 'Completed', count: stats.completedProjects, color: 'bg-success' },
-                    { label: 'On Track', count: stats.onTrackProjects, color: 'bg-info' },
-                    { label: 'At Risk', count: stats.atRiskProjects, color: 'bg-warning' },
-                    { label: 'Delayed', count: stats.delayedProjects, color: 'bg-danger' }
+                    { label: 'In Progress', count: stats.inProgressProjects, color: 'bg-info' },
+                    { label: 'Pending', count: stats.pendingProjects, color: 'bg-warning' },
+                    { label: 'Overdue', count: stats.overdueProjects, color: 'bg-danger' }
                   ].map((item, idx) => (
                     <div key={idx} className="mb-4">
                       <div className="d-flex justify-content-between align-items-center mb-1">

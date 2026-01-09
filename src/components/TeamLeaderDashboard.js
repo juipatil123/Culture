@@ -608,7 +608,7 @@ const TeamLeaderDashboard = ({
       .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
       .slice(0, 5)
       .map(task => {
-        const isNew = task.status === 'assigned' || task.status === 'Assigned' ||
+        const isNew = task.status === 'assigned' || task.status === 'pending' || task.status === 'Assigned' ||
           (task.createdAt && new Date().getTime() - new Date(task.createdAt).getTime() < 86400000); // Created within 24h
 
         return {

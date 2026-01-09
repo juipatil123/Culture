@@ -180,7 +180,15 @@ const ProjectManagerManagement = () => {
       <div className="page-header">
         <h2>Project Manager Management</h2>
         <div className="header-stats">
-          <span className="badge bg-info p-2">Total PMs: {filteredPMs.length}</span>
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-user-tie text-primary"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total PMs</div>
+              <div className="h4 fw-bold mb-0 text-dark">{filteredPMs.length}</div>
+            </div>
+          </div>
         </div>
         <button className="btn btn-primary" onClick={handleAddProjectManager}>
           <i className="fas fa-user-tie me-2"></i>

@@ -223,12 +223,31 @@ const UserManagement = ({ onUserAdded }) => {
     return filtered;
   };
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
+
   const filteredUsers = getFilteredAndSortedUsers();
+
+  // Pagination Logic
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+  const nextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
 
   return (
     <div className="user-management">
       <div className="page-header">
-        <h2>User Management</h2>
+        <h2>User Management ({allUsers.length})</h2>
         <button className="btn btn-primary" onClick={handleAddUser}>
           <i className="fas fa-user-plus me-2"></i>
           Add User
@@ -237,6 +256,7 @@ const UserManagement = ({ onUserAdded }) => {
 
       {/* Role Statistics Summary */}
       <div className="role-stats-summary mb-4">
+        {/* ... stats code remains same ... */}
         <div className="row g-3">
           <div className="col-xl-2 col-md-4 col-sm-6">
             <div className="stat-card total">
@@ -247,6 +267,7 @@ const UserManagement = ({ onUserAdded }) => {
               </div>
             </div>
           </div>
+          {/* ... other stat cards ... */}
           <div className="col-xl-2 col-md-4 col-sm-6">
             <div className="stat-card employee">
               <div className="stat-icon"><i className="fas fa-user-md"></i></div>
@@ -335,10 +356,10 @@ const UserManagement = ({ onUserAdded }) => {
           </select>
 
           <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="On Leave">On Leave</option>
+            <option value="all">All Status ({allUsers.length})</option>
+            <option value="Active">Active ({allUsers.filter(u => u.status === 'Active').length})</option>
+            <option value="Inactive">Inactive ({allUsers.filter(u => u.status === 'Inactive').length})</option>
+            <option value="On Leave">On Leave ({allUsers.filter(u => u.status === 'On Leave').length})</option>
           </select>
 
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -389,6 +410,7 @@ const UserManagement = ({ onUserAdded }) => {
             <table className="users-table">
               <thead>
                 <tr>
+                  <th>Sr. No.</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
@@ -399,8 +421,9 @@ const UserManagement = ({ onUserAdded }) => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {currentUsers.map((user, index) => (
                   <tr key={user.id || user._id}>
+                    <td><span className="fw-bold text-muted">{indexOfFirstUser + index + 1}</span></td>
                     <td>
                       <div className="user-info">
                         <div className="user-avatar">
@@ -417,9 +440,26 @@ const UserManagement = ({ onUserAdded }) => {
                     </td>
                     <td>{user.department}</td>
                     <td>
-                      <span className={`status-badge status-${user.status?.toLowerCase().replace(' ', '-')}`}>
-                        {user.status}
-                      </span>
+                      <select
+                        className={`form-select form-select-sm border-0 fw-bold status-${user.status?.toLowerCase().replace(' ', '-')}`}
+                        style={{ width: 'auto', padding: '0.25rem 1.5rem 0.25rem 0.5rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '20px' }}
+                        value={user.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value;
+                          try {
+                            await updateUser(user.id || user._id, { status: newStatus });
+                            setAllUsers(prev => prev.map(u => (u.id === user.id || u._id === user._id) ? { ...u, status: newStatus } : u));
+                            if (onUserAdded) onUserAdded(`Status updated to ${newStatus} for ${user.name}`);
+                          } catch (err) {
+                            console.error("Failed to update status", err);
+                            alert("Failed to update status");
+                          }
+                        }}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="On Leave">On Leave</option>
+                      </select>
                     </td>
                     <td>{formatDate(user.joinDate)}</td>
                     <td>
@@ -453,7 +493,7 @@ const UserManagement = ({ onUserAdded }) => {
             </table>
           ) : (
             <div className="users-grid">
-              {filteredUsers.map((user) => (
+              {currentUsers.map((user) => (
                 <div key={user.id || user._id} className="user-card">
                   <div className="user-card-header">
                     <div className="user-avatar-large">
@@ -503,6 +543,34 @@ const UserManagement = ({ onUserAdded }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredUsers.length > usersPerPage && (
+            <div className="pagination-controls d-flex justify-content-between align-items-center mt-4">
+              <span className="text-muted">
+                Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
+              </span>
+              <div className="btn-group">
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={prevPage}
+                  disabled={currentPage === 1}
+                >
+                  <i className="fas fa-chevron-left me-1"></i> Previous
+                </button>
+                <button className="btn btn-outline-primary btn-sm" disabled>
+                  Page {currentPage} of {totalPages}
+                </button>
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next <i className="fas fa-chevron-right ms-1"></i>
+                </button>
+              </div>
             </div>
           )}
         </div>

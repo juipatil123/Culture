@@ -7,6 +7,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     const [loading, setLoading] = useState(true);
     const [replyMessage, setReplyMessage] = useState('');
     const [sendingReply, setSendingReply] = useState(false);
+    const [activeTab, setActiveTab] = useState('received'); // 'received' or 'sent'
 
     useEffect(() => {
         if (!userData) return;
@@ -38,10 +39,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 date: new Date().toISOString()
             };
 
-            console.log("Sending reply:", replyData);
             await NoticeService.create(replyData);
-
-            // Show success and clear message
             alert('Reply sent successfully!');
             setReplyMessage('');
         } catch (error) {
@@ -53,9 +51,10 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     };
 
     const handleNoticeClick = async (notice) => {
-        if (compact) return; // In compact mode, clicking shouldn't trigger detail view switch (usually handled by parent)
+        if (compact) return;
         setSelectedNotice(notice);
-        if (!notice.read) {
+        // Mark as read only if it's a received message
+        if (!notice.read && notice.senderId !== (userData.id || userData._id)) {
             try {
                 await NoticeService.update(notice.id, { read: true });
                 setNotices(prev => prev.map(n => n.id === notice.id ? { ...n, read: true } : n));
@@ -78,6 +77,13 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
         }
     };
 
+    const formatDateDDMMYYYY = (dateVal) => {
+        if (!dateVal) return 'N/A';
+        const d = new Date(dateVal.seconds ? dateVal.seconds * 1000 : dateVal);
+        if (isNaN(d.getTime())) return 'N/A';
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
     const getPriorityBadge = (priority) => {
         switch (priority) {
             case 'high': return <span className="badge bg-danger">High Priority</span>;
@@ -96,6 +102,12 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
         }
     };
 
+    const sentNotices = notices.filter(n => n.senderId === (userData?.id || userData?._id));
+    const receivedNotices = notices.filter(n => n.senderId !== (userData?.id || userData?._id));
+    const unreadCount = receivedNotices.filter(n => !n.read).length;
+
+    const currentList = activeTab === 'received' ? receivedNotices : sentNotices;
+
     if (loading) {
         return (
             <div className="d-flex justify-content-center p-3">
@@ -112,14 +124,14 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 {notices.length > 0 ? notices.slice(0, 5).map(notice => (
                     <div
                         key={notice.id}
-                        className={`list-group-item p-3 border-0 border-bottom ${!notice.read ? 'bg-light bg-opacity-50 fw-bold' : ''}`}
+                        className={`list-group-item p-3 border-0 border-bottom ${!notice.read && notice.senderId !== (userData.id || userData._id) ? 'bg-light bg-opacity-50 fw-bold' : ''}`}
                     >
                         <div className="d-flex justify-content-between align-items-center mb-1">
                             <div className="d-flex align-items-center">
                                 <i className={`fas ${getSenderIcon(notice.senderRole)} me-2 small`}></i>
                                 <span className="smaller text-uppercase opacity-75" style={{ fontSize: '0.65rem' }}>{notice.senderRole}</span>
                             </div>
-                            <small className="text-muted smaller">{new Date(notice.date || notice.createdAt?.seconds * 1000).toLocaleDateString()}</small>
+                            <small className="text-muted smaller">{formatDateDDMMYYYY(notice.date || notice.createdAt)}</small>
                         </div>
                         <h6 className="mb-1 text-truncate small fw-bold">{notice.subject}</h6>
                         <p className="mb-0 smaller text-muted text-truncate" style={{ fontSize: '0.75rem' }}>{notice.message}</p>
@@ -136,29 +148,53 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     return (
         <div className="container-fluid p-0">
             <div className="row h-100">
-                {/* Notices List */}
+                {/* Notices List Sidebar */}
                 <div className="col-md-5 col-lg-4 mb-4 mb-md-0">
                     <div className="card shadow-sm border-0 h-100" style={{ maxHeight: '80vh' }}>
-                        <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                            <h5 className="mb-0 fw-bold">Inbox</h5>
-                            <span className="badge bg-primary rounded-pill">
-                                {notices.filter(n => !n.read).length} New
-                            </span>
+                        {/* Header with Tabs */}
+                        <div className="card-header bg-white border-bottom p-0">
+                            <div className="d-flex">
+                                <button
+                                    className={`btn flex-grow-1 rounded-0 py-3 fw-bold ${activeTab === 'received' ? 'text-primary border-bottom border-primary border-3 bg-light' : 'text-muted'}`}
+                                    onClick={() => setActiveTab('received')}
+                                >
+                                    Received
+                                    <span className={`badge rounded-pill ms-2 ${activeTab === 'received' ? 'bg-primary' : 'bg-secondary'}`}>
+                                        {receivedNotices.length}
+                                    </span>
+                                    {unreadCount > 0 && (
+                                        <span className="badge bg-danger rounded-circle ms-1 p-1" style={{ width: '8px', height: '8px' }}> </span>
+                                    )}
+                                </button>
+                                <button
+                                    className={`btn flex-grow-1 rounded-0 py-3 fw-bold ${activeTab === 'sent' ? 'text-primary border-bottom border-primary border-3 bg-light' : 'text-muted'}`}
+                                    onClick={() => setActiveTab('sent')}
+                                >
+                                    Sent
+                                    <span className={`badge rounded-pill ms-2 ${activeTab === 'sent' ? 'bg-primary' : 'bg-secondary'}`}>
+                                        {sentNotices.length}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Search/Filter Bar (Optional placeholder) */}
+                        {/* <div className="p-2 bg-light border-bottom"><input ... /></div> */}
+
                         <div className="list-group list-group-flush overflow-auto" style={{ height: '600px' }}>
-                            {notices.length > 0 ? notices.map(notice => (
+                            {currentList.length > 0 ? currentList.map(notice => (
                                 <button
                                     key={notice.id}
-                                    className={`list-group-item list-group-item-action p-3 border-0 border-bottom ${selectedNotice?.id === notice.id ? 'bg-light' : ''} ${!notice.read ? 'fw-bold' : ''}`}
+                                    className={`list-group-item list-group-item-action p-3 border-0 border-bottom ${selectedNotice?.id === notice.id ? 'bg-light' : ''} ${!notice.read && activeTab === 'received' ? 'fw-bold bg-white' : ''}`}
                                     onClick={() => handleNoticeClick(notice)}
+                                    style={{ borderLeft: !notice.read && activeTab === 'received' ? '4px solid #0d6efd' : '4px solid transparent' }}
                                 >
                                     <div className="d-flex justify-content-between align-items-start mb-1">
                                         <div className="d-flex align-items-center">
-                                            {notice.senderId === (userData?.id || userData?._id) ? (
+                                            {activeTab === 'sent' ? (
                                                 <>
                                                     <i className="fas fa-paper-plane text-muted me-2" style={{ fontSize: '0.8rem' }}></i>
-                                                    <span className="badge bg-secondary me-2" style={{ fontSize: '0.65rem' }}>SENT</span>
-                                                    <span className="small text-uppercase text-muted" style={{ fontSize: '0.75rem' }}>To: {notice.recipientRole} ({notice.recipientName || 'Unknown'})</span>
+                                                    <span className="small text-uppercase text-muted" style={{ fontSize: '0.75rem' }}>To: {notice.recipientRole}</span>
                                                 </>
                                             ) : (
                                                 <>
@@ -167,14 +203,24 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                                 </>
                                             )}
                                         </div>
-                                        <small className="text-muted">{new Date(notice.date || notice.createdAt?.seconds * 1000).toLocaleDateString()}</small>
+                                        <small className="text-muted fw-normal" style={{ fontSize: '0.75rem' }}>{formatDateDDMMYYYY(notice.date || notice.createdAt)}</small>
                                     </div>
-                                    <h6 className="mb-1 text-truncate">{notice.subject}</h6>
+                                    <h6 className="mb-1 text-truncate" style={{ color: '#2c3e50' }}>{notice.subject}</h6>
                                     <p className="mb-0 small text-muted text-truncate">{notice.message}</p>
+
+                                    {/* Unread Indicator for Received */}
+                                    {!notice.read && activeTab === 'received' && (
+                                        <div className="mt-2">
+                                            <span className="badge bg-danger rounded-pill" style={{ fontSize: '0.6rem' }}>NEW</span>
+                                        </div>
+                                    )}
                                 </button>
                             )) : (
                                 <div className="text-center py-5">
-                                    <p className="text-muted">No messages found.</p>
+                                    <div className="mb-3 opacity-25">
+                                        <i className={`fas ${activeTab === 'received' ? 'fa-inbox' : 'fa-paper-plane'} fa-3x`}></i>
+                                    </div>
+                                    <p className="text-muted">No {activeTab} messages.</p>
                                 </div>
                             )}
                         </div>
@@ -185,7 +231,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 <div className="col-md-7 col-lg-8">
                     <div className="card shadow-sm border-0 h-100" style={{ minHeight: '60vh' }}>
                         {selectedNotice ? (
-                            <div className="card-body p-4 d-flex flex-column">
+                            <div className="card-body p-4 d-flex flex-column animate__animated animate__fadeIn">
                                 <div className="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
                                     <div>
                                         <h3 className="fw-bold mb-2">{selectedNotice.subject}</h3>
@@ -201,10 +247,11 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                                     <>
                                                         <i className="fas fa-user me-2"></i>
                                                         From: <strong>{selectedNotice.senderName || selectedNotice.sender}</strong>
+                                                        <span className="ms-2 badge bg-secondary">{selectedNotice.senderRole}</span>
                                                     </>
                                                 )}
                                             </span>
-                                            <span>|</span>
+                                            <span className="opacity-50">|</span>
                                             <span>
                                                 <i className="far fa-clock me-2"></i>
                                                 {new Date(selectedNotice.date || selectedNotice.createdAt?.seconds * 1000).toLocaleString()}
@@ -214,7 +261,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                     <div className="d-flex flex-column align-items-end gap-2">
                                         {getPriorityBadge(selectedNotice.priority)}
                                         <button
-                                            className="btn btn-outline-danger btn-sm rounded-circle"
+                                            className="btn btn-outline-danger btn-sm rounded-circle shadow-sm"
                                             title="Delete Notice"
                                             onClick={(e) => handleDeleteNotice(selectedNotice.id, e)}
                                         >
@@ -224,46 +271,50 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                 </div>
 
                                 <div className="notice-content flex-grow-1">
-                                    <p className="lead" style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+                                    <p className="lead text-dark" style={{ fontSize: '1.05rem', lineHeight: '1.7', whiteSpace: 'pre-line' }}>
                                         {selectedNotice.message}
                                     </p>
                                 </div>
 
+                                {/* Reply Section only for Received Messages */}
                                 {selectedNotice.senderId !== (userData?.id || userData?._id) && (
-                                    <div className="mt-4 pt-3 border-top">
-                                        <h6 className="fw-bold text-muted mb-3">Quick Reply</h6>
-                                        <textarea
-                                            className="form-control mb-3"
-                                            rows="3"
-                                            placeholder="Type your reply here..."
-                                            value={replyMessage}
-                                            onChange={(e) => setReplyMessage(e.target.value)}
-                                            disabled={sendingReply}
-                                        ></textarea>
-                                        <div className="text-end">
-                                            <button
-                                                className="btn btn-primary px-4"
-                                                onClick={handleReply}
-                                                disabled={sendingReply || !replyMessage.trim()}
-                                            >
-                                                {sendingReply ? (
-                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                ) : (
-                                                    <i className="fas fa-reply me-2"></i>
-                                                )}
-                                                Reply
-                                            </button>
+                                    <div className="mt-4 pt-4 border-top">
+                                        <h6 className="fw-bold text-muted mb-3"><i className="fas fa-reply me-2"></i>Quick Reply</h6>
+                                        <div className="position-relative">
+                                            <textarea
+                                                className="form-control mb-3 shadow-none bg-light"
+                                                rows="3"
+                                                placeholder="Type your reply here..."
+                                                value={replyMessage}
+                                                onChange={(e) => setReplyMessage(e.target.value)}
+                                                disabled={sendingReply}
+                                                style={{ borderRadius: '10px' }}
+                                            ></textarea>
+                                            <div className="text-end">
+                                                <button
+                                                    className="btn btn-primary px-4 rounded-pill fw-bold"
+                                                    onClick={handleReply}
+                                                    disabled={sendingReply || !replyMessage.trim()}
+                                                >
+                                                    {sendingReply ? (
+                                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    ) : (
+                                                        <i className="fas fa-paper-plane me-2"></i>
+                                                    )}
+                                                    Send Reply
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <div className="d-flex flex-column align-items-center justify-content-center h-100 text-center p-5">
-                                <div className="bg-light rounded-circle p-4 mb-3">
+                                <div className="bg-light rounded-circle p-4 mb-3 animate__animated animate__pulse animate__infinite infinite">
                                     <i className="fas fa-envelope-open-text fa-4x text-muted opacity-50"></i>
                                 </div>
-                                <h4 className="text-muted fw-bold">Select a notice to view</h4>
-                                <p className="text-muted">Messages from Admins, PMs, and your Team will appear here.</p>
+                                <h4 className="text-muted fw-bold">Select a message</h4>
+                                <p className="text-muted">Choose a message from the list to view details.</p>
                             </div>
                         )}
                     </div>

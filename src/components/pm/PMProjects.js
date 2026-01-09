@@ -34,13 +34,17 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'assigned': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Assigned' },
+      'pending': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Pending' },
+      'assigned': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Pending' }, // Map to Pending
       'completed': { bg: '#f0fdf4', color: '#16a34a', border: '#dcfce7', label: 'Completed' },
-      'on track': { bg: '#eff6ff', color: '#1d4ed8', border: '#dbeafe', label: 'On Track' },
-      'at risk': { bg: '#fff7ed', color: '#9a3412', border: '#ffedd5', label: 'At Risk' },
-      'delayed': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Delayed' }
+      'in-progress': { bg: '#eff6ff', color: '#1d4ed8', border: '#dbeafe', label: 'In Progress' },
+      'in progress': { bg: '#eff6ff', color: '#1d4ed8', border: '#dbeafe', label: 'In Progress' },
+      'on track': { bg: '#eff6ff', color: '#1d4ed8', border: '#dbeafe', label: 'In Progress' }, // Map to In Progress
+      'overdue': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Overdue' },
+      'at risk': { bg: '#fff7ed', color: '#9a3412', border: '#ffedd5', label: 'Overdue' }, // Map to Overdue
+      'delayed': { bg: '#fef2f2', color: '#991b1b', border: '#fee2e2', label: 'Overdue' }  // Map to Overdue
     };
-    const config = statusConfig[status?.toLowerCase()] || statusConfig['on track'];
+    const config = statusConfig[status?.toLowerCase()] || statusConfig['pending'];
     return (
       <span className="badge" style={{
         backgroundColor: config.bg,
@@ -99,11 +103,10 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
             style={{ borderRadius: '10px', minWidth: '150px' }}
           >
             <option value="all">All Project Status</option>
-            <option value="Assigned">Assigned</option>
-            <option value="On Track">On Track</option>
-            <option value="At Risk">At Risk</option>
-            <option value="Delayed">Delayed</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
+            <option value="Overdue">Overdue</option>
           </select>
 
           <div className="view-toggle btn-group">

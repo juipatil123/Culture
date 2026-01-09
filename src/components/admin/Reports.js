@@ -153,7 +153,10 @@ const Reports = () => {
             p.name || '',
             p.clientName || '',
             p.projectManager || '',
-            p.projectStatus || '',
+            (p.projectStatus === 'assigned' ? 'Pending' :
+                p.projectStatus === 'on-track' ? 'In Progress' :
+                    p.projectStatus === 'at-risk' || p.projectStatus === 'delayed' ? 'Overdue' :
+                        p.projectStatus) || '',
             p.projectCost || '0',
             p.advancePayment || '0',
             formatDate(p.startDate),
@@ -257,10 +260,9 @@ const Reports = () => {
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
                             <option value="all">All Status</option>
-                            <option value="assigned">Assigned</option>
-                            <option value="on-track">On Track</option>
-                            <option value="at-risk">At Risk</option>
-                            <option value="delayed">Delayed</option>
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="overdue">Overdue</option>
                             <option value="completed">Completed</option>
                         </select>
                     </div>
@@ -314,12 +316,15 @@ const Reports = () => {
                                                 <i className="fas fa-project-diagram me-2"></i>
                                                 {project.name || 'Untitled Project'}
                                             </h5>
-                                            <span className={`status-badge status-${project.projectStatus || 'on-track'}`}>
-                                                {project.projectStatus === 'assigned' ? 'Assigned' :
-                                                    project.projectStatus === 'on-track' ? 'On Track' :
-                                                        project.projectStatus === 'at-risk' ? 'At Risk' :
-                                                            project.projectStatus === 'delayed' ? 'Delayed' :
-                                                                project.projectStatus === 'completed' ? 'Completed' : 'On Track'}
+                                            <span className={`badge rounded-pill ${project.projectStatus === 'completed' ? 'bg-success' :
+                                                project.projectStatus === 'in-progress' || project.projectStatus === 'on-track' ? 'bg-primary' :
+                                                    project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed' ? 'bg-danger' : 'bg-warning text-dark'
+                                                }`} style={{ fontSize: '0.75rem' }}>
+                                                {project.projectStatus === 'assigned' ? 'Pending' :
+                                                    project.projectStatus === 'on-track' ? 'In Progress' :
+                                                        project.projectStatus === 'at-risk' ? 'Overdue' :
+                                                            project.projectStatus === 'delayed' ? 'Overdue' :
+                                                                project.projectStatus || 'Pending'}
                                             </span>
                                         </div>
                                         <div className="project-cost-badge">
@@ -354,8 +359,7 @@ const Reports = () => {
                                                 <i className="fas fa-calendar me-2"></i>Duration:
                                             </span>
                                             <span className="detail-value">
-                                                {formatDate(project.startDate)} -
-                                                {formatDate(project.endDate)}
+                                                {formatDate(project.startDate)} TO {formatDate(project.endDate)}
                                             </span>
                                         </div>
                                     </div>

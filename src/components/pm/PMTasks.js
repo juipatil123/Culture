@@ -37,11 +37,12 @@ const PMTasks = ({ tasks, projects, onRefresh, onAddTask, onEditTask, userName, 
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'completed': { label: 'Done', bg: '#f0fdf4', color: '#16a34a', border: '#dcfce7' },
+      'completed': { label: 'Completed', bg: '#f0fdf4', color: '#16a34a', border: '#dcfce7' },
       'in-progress': { label: 'In Progress', bg: '#eff6ff', color: '#1d4ed8', border: '#dbeafe' },
       'in-review': { label: 'In Review', bg: '#fefce8', color: '#a16207', border: '#fef9c3' },
-      'assigned': { label: 'Assigned', bg: '#f5f3ff', color: '#5b21b6', border: '#ede9fe' },
-      'pending': { label: 'To Do', bg: '#f9fafb', color: '#374151', border: '#f3f4f6' }
+      'assigned': { label: 'Pending', bg: '#f5f3ff', color: '#5b21b6', border: '#ede9fe' }, // Map to Pending
+      'pending': { label: 'Pending', bg: '#f9fafb', color: '#374151', border: '#f3f4f6' },
+      'overdue': { label: 'Overdue', bg: '#fef2f2', color: '#ef4444', border: '#fee2e2' }
     };
     const config = statusConfig[status?.toLowerCase()] || statusConfig['pending'];
     return (
@@ -84,9 +85,10 @@ const PMTasks = ({ tasks, projects, onRefresh, onAddTask, onEditTask, userName, 
   // Status Tabs Configuration
   const statusTabs = [
     { id: 'all', label: 'All', icon: 'list' },
-    { id: 'assigned', label: 'Assigned', icon: 'user-plus' },
+    { id: 'pending', label: 'Pending', icon: 'clock' },
     { id: 'in-progress', label: 'In Progress', icon: 'spinner' },
-    { id: 'completed', label: 'Done', icon: 'check-circle' }
+    { id: 'completed', label: 'Completed', icon: 'check-circle' },
+    { id: 'overdue', label: 'Overdue', icon: 'exclamation-circle' }
   ];
 
   const handleDelete = async (id) => {

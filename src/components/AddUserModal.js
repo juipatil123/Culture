@@ -32,7 +32,8 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           assignedProject: editingUser.assignedProject || '',
           teamLeaderId: editingUser.teamLeaderId || '',
           gender: editingUser.gender || '',
-          status: editingUser.status || 'Active'
+          status: editingUser.status || 'Active',
+          joinDate: editingUser.joinDate || editingUser.joiningDate || new Date().toISOString().split('T')[0]
         });
 
       } else {
@@ -47,7 +48,8 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
           assignedProject: '',
           teamLeaderId: '',
           gender: '',
-          status: 'Active'
+          status: 'Active',
+          joinDate: new Date().toISOString().split('T')[0]
         });
 
       }
@@ -138,7 +140,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg">
+      <div className="modal-dialog modal-lg modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">
             <h5 className="modal-title">
@@ -256,6 +258,19 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Join Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    name="joinDate"
+                    value={formData.joinDate}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Status *</label>
