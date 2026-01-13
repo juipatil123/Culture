@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [], projects = [] }) => {
+const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [], projects = [], assignedTasks = [] }) => {
   const handleClose = onClose || onHide;
 
   const [formData, setFormData] = useState({
@@ -384,6 +384,47 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                 </div>
                 <div onClick={() => setShowUserDropdown(false)} style={{ display: showUserDropdown ? 'block' : 'none', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1090 }}></div>
               </div>
+
+              {/* Show existing tasks for selected members */}
+              {formData.assignedMembers.length > 0 && assignedTasks.length > 0 && (() => {
+                const memberTasks = assignedTasks.filter(t => {
+                  // Exclude current task if editing
+                  if (editingTask && (t.id === editingTask.id || t._id === editingTask._id)) return false;
+                  if (t.status === 'completed') return false;
+
+                  const assigned = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
+                  return assigned.some(u => {
+                    const uName = (typeof u === 'object' ? (u.name || u.email) : u)?.toString();
+                    return formData.assignedMembers.includes(uName);
+                  });
+                });
+
+                if (memberTasks.length === 0) return null;
+
+                return (
+                  <div className="mb-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <h6 className="mb-0 fw-bold text-warning-emphasis small">
+                        <i className="fas fa-exclamation-circle me-2"></i>
+                        Active Tasks for Selected Member{formData.assignedMembers.length > 1 ? 's' : ''} ({memberTasks.length})
+                      </h6>
+                    </div>
+                    <div className="d-flex flex-column gap-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                      {memberTasks.map((t, i) => (
+                        <div key={i} className="d-flex justify-content-between align-items-center bg-white bg-opacity-50 p-2 rounded border border-warning border-opacity-10">
+                          <div className="text-truncate me-2" style={{ maxWidth: '70%' }}>
+                            <div className="fw-bold smaller text-dark text-truncate">{t.title}</div>
+                            <div className="smaller text-muted">{t.projectName}</div>
+                          </div>
+                          <span className={`badge rounded-pill bg-${t.status === 'in-progress' ? 'primary' : 'secondary'} text-white small`} style={{ fontSize: '0.65rem' }}>
+                            {t.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="mb-3">
                 <label className="form-label fw-bold small">Task Description</label>

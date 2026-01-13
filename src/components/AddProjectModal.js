@@ -169,8 +169,10 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
     })));
 
     const registeredProjectManagers = availableEmployees.filter(employee => {
-      // Only show users who are actually registered as project managers
-      const isProjectManager = employee.role === 'project-manager' || employee.userType === 'Project Manager';
+      // Show project managers, and also team leaders (since they can also manage projects)
+      const isProjectManager = employee.role === 'project-manager' ||
+        employee.userType === 'Project Manager' ||
+        employee.role === 'team-leader';
 
       // Safe access to properties with fallbacks
       const name = employee?.name || '';
