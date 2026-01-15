@@ -59,9 +59,9 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
   const stats = {
     totalProjects: filteredProjects.length,
     completedProjects: filteredProjects.filter(p => p.status === 'Completed').length,
-    onTrackProjects: filteredProjects.filter(p => p.status === 'On Track').length,
-    atRiskProjects: filteredProjects.filter(p => p.status === 'At Risk').length,
-    delayedProjects: filteredProjects.filter(p => p.status === 'Delayed').length,
+    inProgressProjects: filteredProjects.filter(p => p.status === 'In Progress' || p.status === 'On Track').length,
+    pendingProjects: filteredProjects.filter(p => p.status === 'Pending' || p.status === 'Assigned').length,
+    overdueProjects: filteredProjects.filter(p => p.status === 'Overdue' || p.status === 'At Risk' || p.status === 'Delayed').length,
     totalTasks: filteredTasks.length,
     completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
     inProgressTasks: filteredTasks.filter(t => t.status === 'in-progress').length,
@@ -112,32 +112,50 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
           {/* Summary Cards */}
           <div className="row g-4 mb-4">
             <div className="col-md-4">
-              <div className="summary-card bg-grad-purple shadow-sm">
-                <div className="summary-card-circle"></div>
-                <div className="summary-card-title">Active Projects</div>
-                <div className="summary-card-value">{stats.totalProjects}</div>
-                <div className="summary-card-pill">
-                  Avg: {stats.avgProjectProgress}% Progress
+              <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-gradient-primary text-white" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="mb-0 opacity-75 small">Active Projects</p>
+                    <h2 className="fw-bold mb-0">{stats.totalProjects}</h2>
+                  </div>
+                  <div className="bg-white bg-opacity-20 rounded-circle p-2">
+                    <i className="fas fa-project-diagram fa-lg"></i>
+                  </div>
+                </div>
+                <div className="mt-3 small">
+                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">Avg: {stats.avgProjectProgress}% Progress</span>
                 </div>
               </div>
             </div>
             <div className="col-md-4">
-              <div className="summary-card bg-grad-green shadow-sm">
-                <div className="summary-card-circle"></div>
-                <div className="summary-card-title">Tasks Completed</div>
-                <div className="summary-card-value">{stats.completedTasks}</div>
-                <div className="summary-card-pill">
-                  {stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}% Rate
+              <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-gradient-success text-white" style={{ background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)' }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="mb-0 opacity-75 small">Tasks Completed</p>
+                    <h2 className="fw-bold mb-0">{stats.completedTasks}</h2>
+                  </div>
+                  <div className="bg-white bg-opacity-20 rounded-circle p-2">
+                    <i className="fas fa-check-double fa-lg"></i>
+                  </div>
+                </div>
+                <div className="mt-3 small">
+                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">{stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}% Completion Rate</span>
                 </div>
               </div>
             </div>
             <div className="col-md-4">
-              <div className="summary-card bg-grad-pink shadow-sm">
-                <div className="summary-card-circle"></div>
-                <div className="summary-card-title">Team Members</div>
-                <div className="summary-card-value">{stats.teamSize}</div>
-                <div className="summary-card-pill">
-                  {stats.teamSize > 0 ? (stats.totalTasks / stats.teamSize).toFixed(1) : 0} tasks/member
+              <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-gradient-info text-white" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #ec4899 100%)' }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="mb-0 opacity-75 small">Team Members</p>
+                    <h2 className="fw-bold mb-0">{stats.teamSize}</h2>
+                  </div>
+                  <div className="bg-white bg-opacity-20 rounded-circle p-2">
+                    <i className="fas fa-users fa-lg"></i>
+                  </div>
+                </div>
+                <div className="mt-3 small">
+                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">{stats.teamSize > 0 ? (stats.totalTasks / stats.teamSize).toFixed(1) : 0} tasks/member</span>
                 </div>
               </div>
             </div>
@@ -151,9 +169,9 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                 <div className="status-distribution">
                   {[
                     { label: 'Completed', count: stats.completedProjects, color: 'bg-success' },
-                    { label: 'On Track', count: stats.onTrackProjects, color: 'bg-info' },
-                    { label: 'At Risk', count: stats.atRiskProjects, color: 'bg-warning' },
-                    { label: 'Delayed', count: stats.delayedProjects, color: 'bg-danger' }
+                    { label: 'In Progress', count: stats.inProgressProjects, color: 'bg-info' },
+                    { label: 'Pending', count: stats.pendingProjects, color: 'bg-warning' },
+                    { label: 'Overdue', count: stats.overdueProjects, color: 'bg-danger' }
                   ].map((item, idx) => (
                     <div key={idx} className="mb-4">
                       <div className="d-flex justify-content-between align-items-center mb-1">

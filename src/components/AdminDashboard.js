@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminDashboard.css';
+import { AuthService } from '../firebase/authService';
 import AddProjectManagerModal from './AddProjectManagerModal';
 import AddUserModal from './AddUserModal';
 import AddTaskModal from './AddTaskModal';
@@ -53,11 +54,14 @@ import {
 
 // Global project status configuration
 const PROJECT_STATUS_CONFIG = {
-  'Assigned': { bg: '#6f42c1', text: 'white', label: 'Assigned' },
+  'Pending': { bg: '#6f42c1', text: 'white', label: 'Pending' },
+  'Assigned': { bg: '#6f42c1', text: 'white', label: 'Pending' }, // Legacy mapping
   'Completed': { bg: '#28a745', text: 'white', label: 'Completed' },
-  'On Track': { bg: '#007bff', text: 'white', label: 'On Track' },
-  'At Risk': { bg: '#ffc107', text: 'black', label: 'At Risk' },
-  'Delayed': { bg: '#dc3545', text: 'white', label: 'Delayed' }
+  'In Progress': { bg: '#007bff', text: 'white', label: 'In Progress' },
+  'On Track': { bg: '#007bff', text: 'white', label: 'In Progress' }, // Legacy mapping
+  'Overdue': { bg: '#dc3545', text: 'white', label: 'Overdue' },
+  'At Risk': { bg: '#dc3545', text: 'white', label: 'Overdue' }, // Legacy mapping
+  'Delayed': { bg: '#dc3545', text: 'white', label: 'Overdue' }  // Legacy mapping
 };
 
 const AdminDashboard = ({ userData, onLogout }) => {
@@ -183,7 +187,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
 
   // Helper function to get project status badge
   const getProjectStatusBadge = (status) => {
-    const config = PROJECT_STATUS_CONFIG[status] || PROJECT_STATUS_CONFIG['On Track'];
+    const config = PROJECT_STATUS_CONFIG[status] || PROJECT_STATUS_CONFIG['Pending'];
     return (
       <span style={{
         backgroundColor: config.bg,
@@ -374,11 +378,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         name: project.name || 'Untitled Project',
         date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -467,11 +470,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
         name: project.name || 'Untitled Project',
         date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -526,6 +528,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
       setEditingUser(null);
     } catch (error) {
       console.error('Error saving user:', error);
+      alert(error.message || 'Failed to save user.');
     }
   };
 
@@ -543,23 +546,49 @@ const AdminDashboard = ({ userData, onLogout }) => {
       loadDashboardStats();
     } catch (error) {
       console.error('Error saving project manager:', error);
+      alert(error.message || 'Failed to save project manager.');
     }
   };
 
   // Handler for saving/updating team leaders
   const handleSaveTeamLeader = async (tlData) => {
+    console.log('🚀 handleSaveTeamLeader called with:', tlData);
+    console.log('🛠️ AuthService status:', AuthService);
+
+    if (!tlData.password && !editingTeamLeader) {
+      alert("Debug: Password is missing in tlData!");
+      return;
+    }
+
     try {
       if (editingTeamLeader) {
         await updateTeamLeader(editingTeamLeader.id || editingTeamLeader._id, tlData);
       } else {
-        await createTeamLeader(tlData);
+        // Direct save to Firebase via AuthService (bypassing api.js wrapper)
+        const result = await AuthService.registerUser({ ...tlData, role: 'team-leader' });
+        console.log('✅ Team Leader created successfully:', result);
       }
       setShowAddTeamLeaderModal(false);
       setEditingTeamLeader(null);
       loadTeamLeaders();
       loadDashboardStats();
     } catch (error) {
-      console.error('Error saving team leader:', error);
+      console.error('❌ Error saving team leader:', error);
+
+      // Detailed error extraction
+      let errorMsg = 'Failed to save team leader.';
+      if (typeof error === 'string') errorMsg = error;
+      else if (error.message) errorMsg = error.message;
+      else if (error.code) errorMsg = `Error Code: ${error.code}`;
+      else {
+        try {
+          errorMsg = 'Full Error: ' + JSON.stringify(error);
+        } catch (e) {
+          errorMsg = 'Unknown error object';
+        }
+      }
+
+      alert(errorMsg);
     }
   };
 
@@ -576,6 +605,12 @@ const AdminDashboard = ({ userData, onLogout }) => {
     } catch (error) {
       console.error('Error saving project:', error);
     }
+  };
+
+  // Handler for viewing project details
+  const handleViewProject = (project) => {
+    setEditingProject(project);
+    setShowAddProjectModal(true);
   };
 
   // Handler for saving/updating tasks
@@ -899,7 +934,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
                       <div className="dashboard-card-icon-container">
                         <i className={`${card.icon} text-white fs-5`}></i>
                       </div>
-                      <span className="dashboard-card-status">{card.trend}</span>
+                      {/* <span className="dashboard-card-status">{card.trend}</span> */}
                     </div>
                     <div>
                       <h3 className="text-white">{card.value}</h3>
@@ -919,6 +954,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
                 setShowAddProjectModal(true);
               }}
               onCardClick={handleMenuClick}
+              onViewProject={handleViewProject}
             />
           </div>
         )}

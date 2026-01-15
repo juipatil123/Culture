@@ -32,11 +32,10 @@ const ProjectManagement = () => {
         name: project.name || 'Untitled Project',
         date: formatDate(project.startDate),
         progress: project.progress || 0,
-        status: project.projectStatus === 'assigned' ? 'Assigned' :
-          project.projectStatus === 'on-track' ? 'On Track' :
-            project.projectStatus === 'at-risk' ? 'At Risk' :
-              project.projectStatus === 'delayed' ? 'Delayed' :
-                project.projectStatus === 'completed' ? 'Completed' : 'On Track',
+        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
+          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track' || project.projectStatus === 'in progress') ? 'In Progress' :
+            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
+              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
         assigned: project.assignedMembers && project.assignedMembers.length > 0
           ? project.assignedMembers.map((member, i) => ({
             name: typeof member === 'object' ? member.name : member,
@@ -147,13 +146,16 @@ const ProjectManagement = () => {
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'Assigned': { bg: '#6f42c1', text: 'white' },
+      'Pending': { bg: '#6f42c1', text: 'white' },
+      'Assigned': { bg: '#6f42c1', text: 'white' }, // Support legacy
       'Completed': { bg: '#28a745', text: 'white' },
-      'On Track': { bg: '#007bff', text: 'white' },
-      'At Risk': { bg: '#ffc107', text: 'black' },
-      'Delayed': { bg: '#dc3545', text: 'white' }
+      'In Progress': { bg: '#007bff', text: 'white' },
+      'Overdue': { bg: '#dc3545', text: 'white' },
+      'On Track': { bg: '#007bff', text: 'white' }, // Support legacy
+      'At Risk': { bg: '#dc3545', text: 'white' }, // Support legacy
+      'Delayed': { bg: '#dc3545', text: 'white' }  // Support legacy
     };
-    const config = statusConfig[status] || statusConfig['On Track'];
+    const config = statusConfig[status] || statusConfig['Pending'];
     return (
       <span className="badge rounded-pill" style={{
         backgroundColor: config.bg,
@@ -174,7 +176,15 @@ const ProjectManagement = () => {
       <div className="page-header">
         <h2>Project Management</h2>
         <div className="header-stats">
-          <span className="badge bg-info p-2">Total Projects: {filteredProjects.length}</span>
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-layer-group text-primary"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total Projects</div>
+              <div className="h4 fw-bold mb-0 text-dark">{filteredProjects.length}</div>
+            </div>
+          </div>
         </div>
         <button className="btn btn-primary" onClick={handleAddProject}>
           <i className="fas fa-plus me-2"></i>
@@ -196,10 +206,9 @@ const ProjectManagement = () => {
 
         <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
           <option value="all">All Status</option>
-          <option value="Assigned">Assigned</option>
-          <option value="On Track">On Track</option>
-          <option value="At Risk">At Risk</option>
-          <option value="Delayed">Delayed</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Overdue">Overdue</option>
           <option value="Completed">Completed</option>
         </select>
 
@@ -235,7 +244,7 @@ const ProjectManagement = () => {
           {filteredProjects.map((project, index) => (
             <div key={project.id} className="project-card">
               <div className="project-card-header">
-                <span className="sr-no-badge">#{index + 1}</span>
+                <span className="badge bg-light text-dark border mb-2">#{index + 1}</span>
                 <h4>{project.name}</h4>
                 <div className="status-label">{project.status}</div>
               </div>

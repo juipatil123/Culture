@@ -86,12 +86,20 @@ const RoleManagement = () => {
       <div className="page-header">
         <h2>Role Management</h2>
         <div className="header-stats">
-          <span className="badge bg-info p-2">Total Custom Roles: {customRoles.length}</span>
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-warning bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-user-shield text-warning"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total Custom Roles</div>
+              <div className="h4 fw-bold mb-0 text-dark">{customRoles.length}</div>
+            </div>
+          </div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
+        {/* <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
           <i className="fas fa-plus me-2"></i>
           Add Custom Role
-        </button>
+        </button> */}
       </div>
 
       {/* Default Roles */}

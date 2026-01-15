@@ -1,6 +1,10 @@
 export const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
+
+    // Handle Firebase Timestamp objects
+    const dateVal = dateString.seconds ? dateString.seconds * 1000 : dateString;
+    const date = new Date(dateVal);
+
     if (isNaN(date.getTime())) return 'N/A';
 
     const day = String(date.getDate()).padStart(2, '0');
@@ -14,7 +18,11 @@ export const formatDateTime = (dateString) => {
 
 export const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
+
+    // Handle Firebase Timestamp objects
+    const dateVal = dateString.seconds ? dateString.seconds * 1000 : dateString;
+    const date = new Date(dateVal);
+
     if (isNaN(date.getTime())) return 'N/A';
 
     const day = String(date.getDate()).padStart(2, '0');

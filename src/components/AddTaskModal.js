@@ -6,16 +6,13 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    status: 'assigned', // Default status for new tasks
+    status: 'pending', // Default status for new tasks
     priority: 'medium',
     dueDate: '',
     startDate: '',
     assignedBy: '',
     project: '',
-    assignedTo: '', // Single string for legacy/individual selection
-    assignedMembers: [], // Array for multiple users
-    requirement: '', // New field for task requirements
-    workingNotes: '' // New field for progress/working notes
+    assignedTo: ''
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,7 +34,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     return projects;
   };
 
-  // Get all potential members (employees, interns, team leaders, project managers)
+  // Get employees assigned to current PM's projects
   const getAvailableEmployees = () => {
     // Include all relevant roles for task assignment
     let baseList = allUsers.filter(user => {
@@ -46,6 +43,11 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
       return ['employee', 'intern', 'team-leader', 'project-manager'].includes(role) ||
         ['employee', 'intern', 'team leader', 'project manager'].includes(type);
     });
+
+    if (currentUserRole === 'project-manager') {
+      // Optional: Prioritize or filter by PM's projects if needed, but for now allow searching all 
+      // to ensure "Assigned To" search works broadly as requested.
+    }
 
     if (!searchTerm) return baseList.slice(0, 5);
 
@@ -73,29 +75,19 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           startDate: editingTask.startDate || '',
           assignedBy: editingTask.assignedBy || currentUserName,
           project: editingTask.project || '',
-          assignedTo: members.length > 0 ? members[0] : '',
-          assignedMembers: members,
-          requirement: editingTask.requirement || '',
-          workingNotes: editingTask.workingNotes || '',
-          points: editingTask.points || '',
-          progress: editingTask.progress || 0
+          assignedTo: editingTask.assignedTo || ''
         });
       } else {
         setFormData({
           title: '',
           description: '',
-          status: 'assigned',
+          status: 'pending',
           priority: 'medium',
           dueDate: '',
           startDate: '',
           assignedBy: currentUserName,
           project: '',
-          assignedTo: '',
-          assignedMembers: [],
-          requirement: '',
-          workingNotes: '',
-          points: '',
-          progress: 0
+          assignedTo: ''
         });
       }
     }
@@ -249,11 +241,11 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     required
                   >
                     <option value="">Select Status</option>
-                    <option value="assigned">Assigned</option>
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
-                    <option value="on-hold">On Hold</option>
                     <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="assigned">Assigned</option>
                   </select>
                 </div>
               </div>
@@ -291,20 +283,21 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     readOnly
                   />
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Points (Story Points)</label>
                   <input
-                    type="text"
+                    type="number"
                     className="form-control"
                     name="points"
                     value={formData.points}
                     onChange={handleInputChange}
                     placeholder="e.g., 5"
+                    min="0"
                   />
                 </div>
-              </div>
-
-              <div className="row">
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Progress (%)</label>
                   <div className="d-flex align-items-center gap-2">

@@ -32,7 +32,7 @@ const Revenue = () => {
                                 project.projectStatus === 'completed' ? 'Completed' : 'On Track',
                 startDate: project.startDate,
                 endDate: project.endDate,
-                progress: project.progress || 0
+                progress: (project.projectStatus === 'completed' || project.status === 'Completed') ? 100 : (Number(project.progress) || 0)
             }));
             setProjects(transformedProjects);
         } catch (error) {
@@ -57,9 +57,9 @@ const Revenue = () => {
 
     // Calculate total revenue statistics
     const calculateStats = () => {
-        const totalRevenue = projects.reduce((sum, project) => sum + (project.projectCost || 0), 0);
-        const totalAdvance = projects.reduce((sum, project) => sum + (project.advancePayment || 0), 0);
-        const totalRemaining = projects.reduce((sum, project) => sum + (project.remainingPayment || 0), 0);
+        const totalRevenue = projects.reduce((sum, project) => sum + (Number(project.projectCost) || 0), 0);
+        const totalAdvance = projects.reduce((sum, project) => sum + (Number(project.advancePayment) || 0), 0);
+        const totalRemaining = projects.reduce((sum, project) => sum + (Number(project.remainingPayment) || 0), 0);
 
         return {
             totalRevenue,

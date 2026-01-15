@@ -117,7 +117,15 @@ const TeamLeaderManagement = ({ onTLAdded }) => {
       <div className="page-header">
         <h2>Team Leader Management</h2>
         <div className="header-stats">
-          <span className="badge bg-info p-2">Total TLs: {filteredTeamLeaders.length}</span>
+          <div className="d-flex align-items-center bg-white px-3 py-2 rounded-3 shadow-sm border border-light">
+            <div className="rounded-circle bg-info bg-opacity-10 p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+              <i className="fas fa-users text-info"></i>
+            </div>
+            <div>
+              <div className="text-muted small fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Total TLs</div>
+              <div className="h4 fw-bold mb-0 text-dark">{filteredTeamLeaders.length}</div>
+            </div>
+          </div>
         </div>
         <button className="btn btn-primary" onClick={handleAddTeamLeader}>
           <i className="fas fa-user-plus me-2"></i>

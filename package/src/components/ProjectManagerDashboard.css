@@ -1,0 +1,330 @@
+/* Project Manager Dashboard Main Layout */
+.pm-dashboard {
+    min-height: 100vh;
+    background-color: #f8fafc;
+    position: relative;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.dashboard-header,
+.dashboard-content {
+    margin-left: 260px;
+    /* Shift content to make room for fixed sidebar */
+}
+
+@media (max-width: 992px) {
+
+    .dashboard-header,
+    .dashboard-content {
+        margin-left: 0;
+    }
+}
+
+/* Header */
+.dashboard-header {
+    height: 75px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    width: calc(100% - 260px);
+    border-bottom: 1px solid rgba(231, 234, 243, 0.7);
+}
+
+.header-left h2 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0;
+    color: #1a233a;
+    letter-spacing: -0.5px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.user-info:hover {
+    background: #f1f5f9;
+}
+
+.user-name {
+    font-weight: 700;
+    color: #1a233a;
+    font-size: 0.95rem;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.user-role {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sidebar */
+.dashboard-sidebar {
+    width: 260px;
+    height: 100vh;
+    background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
+    color: #fff;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 6px 0 25px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-header {
+    height: 75px;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-header h3 {
+    font-size: 1.2rem;
+    font-weight: 900;
+    margin: 0;
+    color: #ffffff;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.sidebar-nav {
+    padding: 2rem 0;
+    flex-grow: 1;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li {
+    padding: 0.35rem 1rem;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    padding: 0.85rem 1.25rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.925rem;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-nav li:hover a {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    transform: translateX(5px);
+}
+
+.sidebar-nav li.active a {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border-left-color: #818cf8;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-nav li a i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.15rem;
+    opacity: 0.8;
+}
+
+.sidebar-nav li.active a i {
+    opacity: 1;
+    color: #818cf8;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    padding: 2rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logout-btn:hover {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+}
+
+.logout-btn i {
+    font-size: 1.1rem;
+}
+
+/* Main Content */
+.dashboard-content {
+    padding: 2rem;
+    flex-grow: 1;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.card-content h4 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.card-content p {
+    font-size: 0.875rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Quick Task Card */
+.quick-task-card {
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.bg-light-primary {
+    background-color: #f0f9ff !important;
+}
+
+/* Activity Items */
+.activity-item {
+    transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+    background-color: #f8fafc;
+}
+
+/* Mobile Responsiveness */
+.mobile-menu-toggle,
+.mobile-menu-toggle {
+    display: none;
+}
+
+.mobile-close {
+    display: none;
+}
+
+@media (max-width: 992px) {
+    .pm-dashboard {
+        padding-left: 0;
+    }
+
+    .dashboard-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .dashboard-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .mobile-menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        margin-right: 1rem;
+        cursor: pointer;
+    }
+
+    .mobile-close {
+        display: block;
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.25rem;
+        cursor: pointer;
+    }
+
+    .dashboard-header,
+    .dashboard-content {
+        margin-left: 0;
+    }
+
+    .dashboard-header {
+        width: 100%;
+        padding: 0 1rem;
+    }
+}

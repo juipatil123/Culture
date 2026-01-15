@@ -171,6 +171,8 @@ const Reports = () => {
         const headers = ['Project Name', 'Client', 'Manager', 'Status', 'Cost', 'Advance', 'Tasks Total', 'Tasks Done', 'Execution %', 'Start Date', 'End Date'];
 
         // Map project data to CSV rows
+
+
         const rows = filteredProjects.map(p => {
             const taskStats = getProjectTaskStats(p.name);
             return [
@@ -188,10 +190,23 @@ const Reports = () => {
             ];
         });
 
+
         // Combine headers and rows
         const csvContent = [
             headers.join(','),
-            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ...(filteredProjects.map(p => [
+                p.name || '',
+                p.clientName || '',
+                p.projectManager || '',
+                (p.projectStatus === 'assigned' ? 'Pending' :
+                    p.projectStatus === 'on-track' ? 'In Progress' :
+                        p.projectStatus === 'at-risk' || p.projectStatus === 'delayed' ? 'Overdue' :
+                            p.projectStatus) || '',
+                p.projectCost || '0',
+                p.advancePayment || '0',
+                formatDate(p.startDate),
+                formatDate(p.endDate)
+            ])).map(row => row.map(cell => `"${cell}"`).join(','))
         ].join('\n');
 
         // Create download link
@@ -285,10 +300,9 @@ const Reports = () => {
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
                             <option value="all">All Status</option>
-                            <option value="assigned">Assigned</option>
-                            <option value="on-track">On Track</option>
-                            <option value="at-risk">At Risk</option>
-                            <option value="delayed">Delayed</option>
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="overdue">Overdue</option>
                             <option value="completed">Completed</option>
                         </select>
                     </div>
@@ -335,6 +349,8 @@ const Reports = () => {
                                 const advancePayment = parseFloat(project.advancePayment) || 0;
                                 const pending = projectCost - advancePayment;
 
+
+
                                 return (
                                     <div key={project._id || project.id || index} className="project-report-card">
                                         <div className="project-header">
@@ -355,6 +371,7 @@ const Reports = () => {
                                                 <i className="fas fa-rupee-sign me-1"></i>
                                                 {formatCurrency(projectCost)}
                                             </div>
+
                                         </div>
                                         <div className="border-bottom pb-2 mb-2 d-flex justify-content-end">
                                             <button
@@ -364,6 +381,8 @@ const Reports = () => {
                                                 <i className="fas fa-edit me-1"></i> Edit Details
                                             </button>
                                         </div>
+
+
 
                                         <div className="project-details">
                                             <div className="detail-row">
@@ -387,6 +406,7 @@ const Reports = () => {
                                                     {formatDate(project.endDate)}
                                                 </span >
                                             </div >
+
 
                                             {/* Task Management Sync */}
                                             {(() => {

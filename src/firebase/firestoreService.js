@@ -121,7 +121,6 @@ export const MemberService = createUserCrud(['employee', 'intern', 'web-develope
 export const PointsService = createCrud('POINTSSCHEMES');
 export const RoleService = createCrud('CUSTOMERROLES');
 export const DailyWorkService = createCrud('DAILYWORKS');
-export const NoticeService = createCrud('NOTICES');
 
 // Example of a conditional query
 export const getTasksByProject = async (projectId) => {
@@ -139,91 +138,76 @@ export const getMemberByEmail = async (email) => {
     return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
 };
 
-export const getNoticesForUser = async (userId, role) => {
-    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
-    // For now, let's just get all and filter in JS to keep it simple, 
-    // or we can use multiple queries if needed.
-    // Ideally, we want messages where recipientId == userId OR recipientRole == role OR recipientId == 'all'
-    const snapshot = await getDocs(colRef);
-    return snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(notice =>
-            notice.recipientId === userId ||
-            notice.recipientRole === role ||
-            notice.recipientId === 'all' ||
-            notice.senderId === userId
-        )
-        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-};
+// Notice Service
+export const NoticeService = createCrud('NOTICES');
 
-export const getAllNotices = async () => {
-    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
-    const snapshot = await getDocs(colRef);
-    return snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-};
-
+// Get all users from unified users collection
 export const getAllUsers = async () => {
     const colRef = collection(db, 'users');
     const snapshot = await getDocs(colRef);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
+// Subscribe to notices for a specific user
 export const subscribeToNotices = (userId, role, callback) => {
-    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+    // Handle optional role argument
+    let actualCallback = callback;
+    if (typeof role === 'function') {
+        actualCallback = role;
+    }
 
-    // We can't easily do (id == userId OR role == role) in a single Firestore query with OR
-    // So we'll just listen to all and filter in the callback for now, 
-    // or we could set up multiple listeners.
-    // For simplicity, let's just listen to the whole collection and filter.
-    return onSnapshot(colRef, (snapshot) => {
-        const notices = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(notice =>
-                notice.recipientId === userId ||
-                notice.recipientRole === role ||
-                notice.recipientId === 'all' ||
-                notice.senderId === userId
-            )
-            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        callback(notices);
+    if (typeof actualCallback !== 'function') {
+        console.error('subscribeToNotices: Callback is not a function', { userId, role, callback });
+        return () => { };
+    }
+
+    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+    const q = query(colRef, where("targetUsers", "array-contains", userId));
+
+    return onSnapshot(q, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        actualCallback(notices);
     });
 };
 
+// Subscribe to all notices (admin view)
 export const subscribeToAllNotices = (callback) => {
+    if (typeof callback !== 'function') return () => { };
     const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+
     return onSnapshot(colRef, (snapshot) => {
-        const notices = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .sort((a, b) => {
-                const timeA = a.date ? new Date(a.date).getTime() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
-                const timeB = b.date ? new Date(b.date).getTime() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
-                return timeB - timeA;
-            });
+        const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(notices);
     });
 };
 
-export const subscribeToProjects = (callback) => {
-    const colRef = collection(db, BASE_COLLECTION, 'PROJECTS', 'items');
-    return onSnapshot(colRef, (snapshot) => {
-        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(projects);
-    });
-};
-
-
+// Subscribe to all users
 export const subscribeToAllUsers = (callback) => {
+    if (typeof callback !== 'function') return () => { };
     const colRef = collection(db, 'users');
+
     return onSnapshot(colRef, (snapshot) => {
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(users);
     });
 };
 
+// Subscribe to projects
+export const subscribeToProjects = (callback) => {
+    if (typeof callback !== 'function') return () => { };
+    const colRef = collection(db, BASE_COLLECTION, 'PROJECTS', 'items');
+
+    return onSnapshot(colRef, (snapshot) => {
+        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(projects);
+    });
+};
+
+// Subscribe to tasks
 export const subscribeToTasks = (callback) => {
+    if (typeof callback !== 'function') return () => { };
     const colRef = collection(db, BASE_COLLECTION, 'TASK', 'items');
+
     return onSnapshot(colRef, (snapshot) => {
         const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(tasks);

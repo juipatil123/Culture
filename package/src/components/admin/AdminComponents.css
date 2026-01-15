@@ -1,0 +1,1163 @@
+/* Admin Components Shared Styles */
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.page-header h2 {
+    margin: 0;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Filters Section */
+.filters-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.filter-controls select,
+.filters-section select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-controls select:focus,
+.filters-section select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Loading and Empty States */
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #999;
+}
+
+.loading-state i,
+.empty-state i {
+    color: #ddd;
+    margin-bottom: 1rem;
+}
+
+.loading-state p,
+.empty-state p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Dashboard Cards (Stat Cards) - Redesigned to match uploaded_image_0 */
+.dashboard-card {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem !important;
+    border-radius: 12px !important;
+    border: none !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    min-height: 160px;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dashboard-card-status {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.dashboard-card-icon-container {
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-card h3 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 1rem 0 0.2rem 0;
+    color: white !important;
+}
+
+.dashboard-card p {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.bg-purple {
+    background: #7c4dff !important;
+}
+
+.bg-green {
+    background: #2ecc71 !important;
+}
+
+.bg-teal {
+    background: #22a6b3 !important;
+}
+
+.bg-orange {
+    background: #f9ca24 !important;
+}
+
+/* Base Tables & Shared Table Styles */
+.users-table,
+.pm-table,
+.tl-table,
+.tasks-table,
+.projects-table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.users-table thead,
+.pm-table thead,
+.tl-table thead,
+.tasks-table thead,
+.projects-table thead {
+    background-color: #f8f9fa;
+}
+
+.users-table th,
+.pm-table th,
+.tl-table th,
+.tasks-table th,
+.projects-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.users-table td,
+.pm-table td,
+.tl-table td,
+.tasks-table td,
+.projects-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.users-table tbody tr:hover,
+.pm-table tbody tr:hover,
+.tl-table tbody tr:hover,
+.tasks-table tbody tr:hover,
+.projects-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar,
+.user-avatar-large {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #4361ee;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.user-avatar-large {
+    width: 85px;
+    height: 85px;
+    font-size: 1.8rem;
+    border: 5px solid white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    background: #4361ee;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* User Management Redesign - match uploaded_image_1 */
+.users-table td {
+    padding: 1.25rem 1rem;
+    color: #444;
+}
+
+.action-btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #4361ee;
+    transition: all 0.2s;
+}
+
+.btn-action.edit {
+    color: #4361ee;
+    border-color: #4361ee;
+}
+
+.btn-action.password {
+    color: #ff9f43;
+    border-color: #ff9f43;
+}
+
+.btn-action.delete {
+    color: #ea5455;
+    border-color: #ea5455;
+}
+
+.btn-action:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Badges */
+.badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-employee {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-intern {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.badge-team-leader {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-project-manager,
+.badge-pm {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.badge-admin {
+    background-color: #4361ee;
+    color: white;
+}
+
+.status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-inactive {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.status-on-leave {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Grids */
+.users-grid,
+.pm-grid,
+.tl-grid,
+.tasks-grid,
+.projects-grid,
+.schemes-grid,
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.project-card {
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.project-card-header {
+    background: white;
+    padding: 1.25rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    color: #333;
+}
+
+.project-card-header h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    color: #2c3e50;
+    line-height: 1.4;
+    margin-right: 0.5rem;
+}
+
+/* Task Stats */
+.task-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    /* Ensure full width */
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(231, 234, 243, 0.7);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card i {
+    font-size: 1.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.stat-card.total .stat-icon i {
+    background: rgba(67, 97, 238, 0.1);
+    color: #4361ee;
+}
+
+.stat-card.employee .stat-icon i {
+    background: rgba(40, 199, 111, 0.1);
+    color: #28c76f;
+}
+
+.stat-card.team-leader .stat-icon i {
+    background: rgba(0, 207, 232, 0.1);
+    color: #00cfe8;
+}
+
+.stat-card.project-manager .stat-icon i {
+    background: rgba(111, 66, 193, 0.1);
+    color: #6f42c1;
+}
+
+.stat-card.admin .stat-icon i {
+    background: rgba(67, 97, 238, 0.1);
+    color: #4361ee;
+}
+
+.stat-card.other .stat-icon i {
+    background: rgba(140, 152, 164, 0.1);
+    color: #8c98a4;
+}
+
+.stat-card.pending i {
+    background: rgba(255, 159, 67, 0.1);
+    color: #ff9f43;
+}
+
+.stat-card.progress i {
+    background: rgba(0, 207, 232, 0.1);
+    color: #00cfe8;
+}
+
+.stat-card.completed i {
+    background: rgba(40, 199, 111, 0.1);
+    color: #28c76f;
+}
+
+.stat-card .stat-value {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e2022;
+    line-height: 1;
+}
+
+.stat-card .stat-label {
+    margin: 0 0 4px 0;
+    color: #8c98a4;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Compact versions for Role Stats Summary */
+.role-stats-summary .stat-card {
+    padding: 0.6rem 0.75rem !important;
+    min-height: auto !important;
+    border-radius: 10px;
+    gap: 0.5rem;
+    justify-content: flex-start;
+}
+
+.role-stats-summary .stat-icon i {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+.role-stats-summary .stat-value {
+    font-size: 1.25rem;
+    line-height: 1.1;
+}
+
+.role-stats-summary .stat-label {
+    font-size: 0.6rem;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+/* PM & TL Card Redesign - match uploaded_image_2 & uploaded_image_3 */
+.tl-card,
+.pm-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid #eee;
+}
+
+.tl-card-header,
+.pm-card-header {
+    height: 120px;
+    position: relative;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-no-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
+.header-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pm-card-header {
+    background: #7c4dff;
+}
+
+.tl-card-header {
+    background: #22a6b3;
+}
+
+.header-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 20px;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tl-card-body,
+.pm-card-body {
+    padding: 1.5rem;
+    text-align: center;
+    padding-top: 2.5rem;
+}
+
+.tl-card-body h4,
+.pm-card-body h4 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #333;
+}
+
+.tl-card-body p.text-muted,
+.pm-card-body p.text-muted {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem !important;
+}
+
+.card-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.card-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.1rem;
+    color: #666;
+    width: 100%;
+    max-width: 200px;
+    justify-content: flex-start;
+}
+
+.card-detail-item i {
+    width: 24px;
+    color: #777;
+    font-size: 1.2rem;
+}
+
+.tl-card-footer,
+.pm-card-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    background: white;
+    border-top: 1px solid #eee;
+}
+
+.btn-card-outline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 5px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: white;
+    transition: all 0.3s ease;
+    height: 75px;
+}
+
+.btn-card-outline i {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+}
+
+.btn-card-outline.info {
+    border: 1px solid #00cfe8;
+    color: #00cfe8;
+}
+
+.btn-card-outline.primary {
+    border: 1px solid #4361ee;
+    color: #4361ee;
+}
+
+.btn-card-outline.danger {
+    border: 1px solid #ea5455;
+    color: #ea5455;
+}
+
+.btn-card-outline:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Details within cards */
+.user-details,
+.pm-details,
+.tl-details {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Center items since text-align is center */
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Task Card Styling */
+.task-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+.task-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.task-card-header {
+    padding: 1.5rem;
+    background: white;
+    border-bottom: 1px solid rgba(231, 234, 243, 0.7);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+}
+
+.task-card.priority-high {
+    border-top: 4px solid #ea5455;
+}
+
+.task-card.priority-medium {
+    border-top: 4px solid #ff9f43;
+}
+
+.task-card.priority-low {
+    border-top: 4px solid #4361ee;
+}
+
+.task-card-header h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e2022;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.task-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-end;
+}
+
+.task-card-body {
+    padding: 1.5rem;
+    flex: 1;
+}
+
+.task-description {
+    font-size: 0.9rem;
+    color: #5d6d7e;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.task-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-card .detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: #4a5568;
+}
+
+.task-card .detail-item i {
+    width: 20px;
+    color: #cbd5e0;
+}
+
+.progress-section {
+    margin-top: 1.5rem;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+.progress {
+    height: 8px;
+    background-color: #f0f2f5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4361ee, #4cc9f0);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.task-card-footer {
+    padding: 1.25rem;
+    background: #fcfcfc;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* Project Management Redesign - match uploaded_image_4 */
+.project-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.project-card-header {
+    height: 80px;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #4361ee 0%, #4cc9f0 100%);
+    color: white;
+}
+
+.project-card-header h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.status-label {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.project-card-body {
+    padding: 1.5rem;
+}
+
+.proj-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.proj-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #555;
+    font-size: 1rem;
+}
+
+.proj-detail-item i {
+    width: 20px;
+    color: #888;
+}
+
+.proj-detail-item strong {
+    min-width: 60px;
+    color: #333;
+}
+
+.proj-progress-bar-container {
+    height: 12px;
+    background: #eee;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.proj-progress-bar {
+    height: 100%;
+    background: #4361ee;
+    border-radius: 20px;
+}
+
+.team-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.avatar-stack {
+    display: flex;
+}
+
+.stack-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #7c4dff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid white;
+    margin-left: -10px;
+}
+
+.stack-avatar:first-child {
+    margin-left: 0;
+}
+
+.project-card-footer {
+    padding: 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+
+
+/* Role Management */
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.role-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.role-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+}
+
+/* Points Scheme */
+.schemes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.scheme-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.scheme-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scheme-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-box {
+        min-width: 100%;
+    }
+
+    .filter-controls {
+        flex-direction: column;
+    }
+
+    .users-grid,
+    .pm-grid,
+    .tl-grid,
+    .projects-grid,
+    .tasks-grid,
+    .schemes-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .page-header .btn {
+        width: 100%;
+    }
+
+    .projects-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* User Card Styling */
+.user-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid #eee;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.user-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.user-card-header {
+    height: 100px;
+    background: #f8f9fa;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-card-header .user-avatar-large {
+    position: absolute;
+    top: 57.5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+}
+
+.user-card-body {
+    padding: 1.5rem;
+    text-align: center;
+    padding-top: 3rem;
+    flex: 1;
+}
+
+.user-card-body h4 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #333;
+}
+
+.user-email {
+    color: #718096;
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+}
+
+.user-card .user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.user-card .detail-item {
+    font-size: 0.9rem;
+    color: #4a5568;
+    background: #f7fafc;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    width: fit-content;
+}
+
+.user-card-footer {
+    padding: 1.25rem;
+    background: #fcfcfc;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+.user-card-footer .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}

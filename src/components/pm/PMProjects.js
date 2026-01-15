@@ -92,22 +92,19 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <div className="position-relative">
-            <select
-              className="form-select py-2 pe-5"
-              value={filterByStatus}
-              onChange={(e) => setFilterByStatus(e.target.value)}
-              style={{ borderRadius: '10px', minWidth: '200px', appearance: 'none', cursor: 'pointer' }}
-            >
-              <option value="all">All Project Status</option>
-              <option value="Assigned">Assigned</option>
-              <option value="On Track">On Track</option>
-              <option value="At Risk">At Risk</option>
-              <option value="Delayed">Delayed</option>
-              <option value="Completed">Completed</option>
-            </select>
-            <i className="fas fa-chevron-down position-absolute top-50 end-0 translate-middle-y me-3 text-secondary" style={{ pointerEvents: 'none', fontSize: '0.8rem' }}></i>
-          </div>
+          <select
+            className="form-select py-2"
+            value={filterByStatus}
+            onChange={(e) => setFilterByStatus(e.target.value)}
+            style={{ borderRadius: '10px', minWidth: '150px' }}
+          >
+            <option value="all">All Project Status</option>
+            <option value="Assigned">Assigned</option>
+            <option value="On Track">On Track</option>
+            <option value="At Risk">At Risk</option>
+            <option value="Delayed">Delayed</option>
+            <option value="Completed">Completed</option>
+          </select>
 
           <div className="view-toggle btn-group">
             <button
@@ -151,12 +148,8 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                     <span><strong>Start:</strong> {project.date}</span>
                   </div>
                   <div className="info-item">
-                    <i className="fas fa-calendar-plus"></i>
-                    <span><strong>Created:</strong> {project.createdAt || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <i className="fas fa-history"></i>
-                    <span><strong>Updated:</strong> {project.updatedAt || 'N/A'}</span>
+                    <i className="fas fa-rupee-sign"></i>
+                    <span><strong>Cost:</strong> ₹{project.projectCost || 0}</span>
                   </div>
                 </div>
                 <div className="progress-section">
@@ -220,9 +213,8 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
-                <tr className="border-bottom">
-                  <th className="ps-4" style={{ width: '80px' }}>SR. NO.</th>
-                  <th>Project Details</th>
+                <tr>
+                  <th className="ps-4">Project Details</th>
                   <th>Client</th>
                   <th>Team</th>
                   <th>Status</th>
@@ -233,10 +225,9 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                 </tr>
               </thead>
               <tbody>
-                {filteredProjects.map((project, index) => (
+                {filteredProjects.map((project) => (
                   <tr key={project.id || project._id}>
-                    <td className="ps-4 fw-bold text-secondary">{index + 1}</td>
-                    <td>
+                    <td className="ps-4">
                       <div className="fw-bold text-dark">{project.name}</div>
                       <small className="text-muted">ID: {(project.id || project._id)?.substring(0, 8)}</small>
                     </td>
@@ -383,3 +374,4 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
 };
 
 export default PMProjects;
+

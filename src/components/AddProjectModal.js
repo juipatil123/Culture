@@ -12,7 +12,7 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
     startDate: '',
     endDate: '',
     description: '',
-    projectStatus: 'available',
+    projectStatus: 'pending',
     assignmentStatus: 'available',
     progress: 0,
     assignedMembers: []
@@ -39,18 +39,20 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
 
   // Helper function to convert project status
   const convertProjectStatus = (status) => {
-    if (!status) return 'on-track';
+    if (!status) return 'pending';
     // Convert display status back to internal status
     const lowerStatus = status.toLowerCase();
     console.log('🔄 Converting project status:', status, '→', lowerStatus);
 
     switch (lowerStatus) {
-      case 'assigned': return 'assigned';
-      case 'on track': return 'on-track';
-      case 'at risk': return 'at-risk';
-      case 'delayed': return 'delayed';
+      case 'pending': return 'pending';
+      case 'in-progress': return 'in-progress';
+      case 'in progress': return 'in-progress';
       case 'completed': return 'completed';
-      case 'on-track': return 'on-track';
+      case 'overdue': return 'overdue';
+      case 'assigned': return 'pending'; // Map old 'assigned' to 'pending'
+      case 'on-track': return 'in-progress'; // Map old 'on-track' to 'in-progress'
+      case 'delayed': return 'overdue'; // Map old 'delayed' to 'overdue'
       case 'at-risk': return 'at-risk';
       default:
         console.log('⚠️ Unknown status, using as-is:', status);
@@ -513,11 +515,10 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                     value={formData.projectStatus}
                     onChange={handleInputChange}
                   >
-                    <option value="assigned">Assigned</option>
-                    <option value="on-track">On Track</option>
-                    <option value="at-risk">At Risk</option>
-                    <option value="delayed">Delayed</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
                     <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
                   </select>
                 </div>
               </div>
