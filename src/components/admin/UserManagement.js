@@ -319,8 +319,18 @@ const UserManagement = ({ onUserAdded }) => {
       </div>
 
       {/* Filters and Search */}
-      <div className="filters-section">
-        <div className="search-box">
+      <div className="filters-section" style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '12px', 
+        alignItems: 'center', 
+        marginBottom: '20px' 
+      }}>
+        <div className="search-box" style={{ 
+          flex: '1 1 300px',
+          minWidth: '250px',
+          maxWidth: '100%'
+        }}>
           <i className="fas fa-search"></i>
           <input
             type="text"
@@ -330,54 +340,92 @@ const UserManagement = ({ onUserAdded }) => {
           />
         </div>
 
-        <div className="filter-controls">
-          <select value={filterByRole} onChange={(e) => setFilterByRole(e.target.value)}>
-            <option value="all">All Roles</option>
-            <option value="employee">Employee</option>
-            <option value="team-leader">Team Leader</option>
-            <option value="project-manager">Project Manager</option>
-            <option value="intern">Intern</option>
-            <option value="admin">Admin</option>
-          </select>
+        <select 
+          value={filterByRole} 
+          onChange={(e) => setFilterByRole(e.target.value)}
+          style={{ 
+            flex: '0 1 auto',
+            minWidth: '140px',
+            maxWidth: '180px'
+          }}
+        >
+          <option value="all">All Roles</option>
+          <option value="employee">Employee</option>
+          <option value="team-leader">Team Leader</option>
+          <option value="project-manager">Project Manager</option>
+          <option value="intern">Intern</option>
+          <option value="admin">Admin</option>
+        </select>
 
+        <select 
+          value={filterByDepartment} 
+          onChange={(e) => setFilterByDepartment(e.target.value)}
+          style={{ 
+            flex: '0 1 auto',
+            minWidth: '160px',
+            maxWidth: '200px'
+          }}
+        >
+          <option value="all">All Departments</option>
+          <option value="Web Development">Web Development</option>
+          <option value="Android Development">Android Development</option>
+          <option value="iOS Development">iOS Development</option>
+          <option value="Quality Assurance">Quality Assurance</option>
+          <option value="Design">Design</option>
+          <option value="DevOps">DevOps</option>
+          <option value="Marketing">Marketing</option>
+          <option value="Sales">Sales</option>
+          <option value="Human Resources">Human Resources</option>
+          <option value="Finance">Finance</option>
+        </select>
 
-          <select value={filterByDepartment} onChange={(e) => setFilterByDepartment(e.target.value)}>
-            <option value="all">All Departments</option>
-            <option value="Web Development">Web Development</option>
-            <option value="Android Development">Android Development</option>
-            <option value="iOS Development">iOS Development</option>
-            <option value="Quality Assurance">Quality Assurance</option>
-            <option value="Design">Design</option>
-            <option value="DevOps">DevOps</option>
-            <option value="Marketing">Marketing</option>
-            <option value="Sales">Sales</option>
-            <option value="Human Resources">Human Resources</option>
-            <option value="Finance">Finance</option>
-          </select>
+        <select 
+          value={filterByStatus} 
+          onChange={(e) => setFilterByStatus(e.target.value)}
+          style={{ 
+            flex: '0 1 auto',
+            minWidth: '140px',
+            maxWidth: '180px'
+          }}
+        >
+          <option value="all">All Status ({allUsers.length})</option>
+          <option value="Active">Active ({allUsers.filter(u => u.status === 'Active').length})</option>
+          <option value="Inactive">Inactive ({allUsers.filter(u => u.status === 'Inactive').length})</option>
+          <option value="On Leave">On Leave ({allUsers.filter(u => u.status === 'On Leave').length})</option>
+        </select>
 
-          <select value={filterByStatus} onChange={(e) => setFilterByStatus(e.target.value)}>
-            <option value="all">All Status ({allUsers.length})</option>
-            <option value="Active">Active ({allUsers.filter(u => u.status === 'Active').length})</option>
-            <option value="Inactive">Inactive ({allUsers.filter(u => u.status === 'Inactive').length})</option>
-            <option value="On Leave">On Leave ({allUsers.filter(u => u.status === 'On Leave').length})</option>
-          </select>
+        <select 
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+          style={{ 
+            flex: '0 1 auto',
+            minWidth: '150px',
+            maxWidth: '180px'
+          }}
+        >
+          <option value="name">Sort by Name</option>
+          <option value="email">Sort by Email</option>
+          <option value="department">Sort by Department</option>
+          <option value="joinDate">Sort by Join Date</option>
+        </select>
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="name">Sort by Name</option>
-            <option value="email">Sort by Email</option>
-            <option value="department">Sort by Department</option>
-            <option value="joinDate">Sort by Join Date</option>
-          </select>
+        <button
+          className="btn btn-sm btn-outline-secondary"
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          style={{ 
+            flex: '0 0 auto',
+            minWidth: '42px'
+          }}
+        >
+          <i className={`fas fa-sort-${sortOrder === 'asc' ? 'up' : 'down'}`}></i>
+        </button>
 
-          <button
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          >
-            <i className={`fas fa-sort-${sortOrder === 'asc' ? 'up' : 'down'}`}></i>
-          </button>
-        </div>
-
-        <div className="view-toggle">
+        <div className="view-toggle" style={{ 
+          display: 'flex', 
+          gap: '5px', 
+          flex: '0 0 auto',
+          marginLeft: 'auto'
+        }}>
           <button
             className={`btn btn-sm ${userViewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
             onClick={() => setUserViewMode('list')}
@@ -407,90 +455,91 @@ const UserManagement = ({ onUserAdded }) => {
       ) : (
         <div>
           {userViewMode === 'list' ? (
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>Sr. No.</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Join Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentUsers.map((user, index) => (
-                  <tr key={user.id || user._id}>
-                    <td><span className="fw-bold text-muted">{indexOfFirstUser + index + 1}</span></td>
-                    <td>
-                      <div className="user-info">
-                        <div className="user-avatar">
-                          {user.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="fw-bold">{user.name}</span>
-                      </div>
-                    </td>
-                    <td>{user.email}</td>
-                    <td>
-                      <span className={`badge badge-${user.role}`}>
-                        {user.userType}
-                      </span>
-                    </td>
-                    <td>{user.department}</td>
-                    <td>
-                      <select
-                        className={`form-select form-select-sm border-0 fw-bold status-${user.status?.toLowerCase().replace(' ', '-')}`}
-                        style={{ width: 'auto', padding: '0.25rem 1.5rem 0.25rem 0.5rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '20px' }}
-                        value={user.status}
-                        onChange={async (e) => {
-                          const newStatus = e.target.value;
-                          try {
-                            await updateUser(user.id || user._id, { status: newStatus });
-                            setAllUsers(prev => prev.map(u => (u.id === user.id || u._id === user._id) ? { ...u, status: newStatus } : u));
-                            if (onUserAdded) onUserAdded(`Status updated to ${newStatus} for ${user.name}`);
-                          } catch (err) {
-                            console.error("Failed to update status", err);
-                            alert("Failed to update status");
-                          }
-                        }}
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                        <option value="On Leave">On Leave</option>
-                      </select>
-                    </td>
-                    <td>{formatDate(user.joinDate)}</td>
-                    <td>
-                      <div className="action-btn-group">
-                        <button
-                          className="btn-action edit"
-                          onClick={() => handleEditUser(user)}
-                          title="Edit"
-                        >
-                          <i className="far fa-edit"></i>
-                        </button>
-                        <button
-                          className="btn-action password"
-                          onClick={() => handleOpenPasswordManagement(user)}
-                          title="Password Management"
-                        >
-                          <i className="fas fa-key"></i>
-                        </button>
-                        <button
-                          className="btn-action delete"
-                          onClick={() => handleDeleteUser(user.id || user._id, user.name)}
-                          title="Delete"
-                        >
-                          <i className="far fa-trash-alt"></i>
-                        </button>
-                      </div>
-                    </td>
+            <div className="table-responsive" style={{ overflowX: 'auto', width: '100%' }}>
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Join Date</th>
+                    <th style={{ minWidth: '140px', width: '140px' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {currentUsers.map((user, index) => (
+                    <tr key={user.id || user._id}>
+                      <td><span className="fw-bold text-muted">{indexOfFirstUser + index + 1}</span></td>
+                      <td>
+                        <div className="user-info">
+                          <div className="user-avatar">
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="fw-bold">{user.name}</span>
+                        </div>
+                      </td>
+                      <td>{user.email}</td>
+                      <td>
+                        <span className={`badge badge-${user.role}`}>
+                          {user.userType}
+                        </span>
+                      </td>
+                      <td>{user.department}</td>
+                      <td>
+                        <span 
+                          className="badge rounded-pill" 
+                          style={{
+                            fontSize: '0.75rem',
+                            minWidth: '90px',
+                            padding: '6px 12px',
+                            fontWeight: '700',
+                            backgroundColor: 
+                              user.status === 'Active' ? '#28a745' :
+                              user.status === 'Inactive' ? '#dc3545' :
+                              user.status === 'On Leave' ? '#ffc107' : '#6c757d',
+                            color: user.status === 'On Leave' ? '#000' : 'white'
+                          }}
+                        >
+                          {user.status || 'Active'}
+                        </span>
+                      </td>
+                      <td>{formatDate(user.joinDate)}</td>
+                      <td style={{ minWidth: '140px', width: '140px' }}>
+                        <div className="action-btn-group" style={{ display: 'flex', gap: '5px', flexWrap: 'nowrap' }}>
+                          <button
+                            className="btn-action edit"
+                            onClick={() => handleEditUser(user)}
+                            title="Edit"
+                            style={{ flex: '0 0 auto' }}
+                          >
+                            <i className="far fa-edit"></i>
+                          </button>
+                          <button
+                            className="btn-action password"
+                            onClick={() => handleOpenPasswordManagement(user)}
+                            title="Password Management"
+                            style={{ flex: '0 0 auto' }}
+                          >
+                            <i className="fas fa-key"></i>
+                          </button>
+                          <button
+                            className="btn-action delete"
+                            onClick={() => handleDeleteUser(user.id || user._id, user.name)}
+                            title="Delete"
+                            style={{ flex: '0 0 auto' }}
+                          >
+                            <i className="far fa-trash-alt"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="users-grid">
               {currentUsers.map((user) => (
@@ -514,7 +563,7 @@ const UserManagement = ({ onUserAdded }) => {
                       </span>
                       <span className="detail-item">
                         <i className="fas fa-calendar-check me-2"></i>
-                        Joined: {new Date(user.joinDate).toLocaleDateString()}
+                        Joined: {formatDate(user.joinDate)}
                       </span>
                     </div>
                   </div>

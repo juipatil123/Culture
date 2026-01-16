@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 
 const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [], projects = [] }) => {
   const handleClose = onClose || onHide;
@@ -12,11 +13,17 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
     startDate: '',
     assignedBy: '',
     project: '',
-    assignedTo: ''
+    assignedTo: '',
+    assignedMembers: [],
+    points: '',
+    progress: 0,
+    requirement: '',
+    workingNotes: ''
   });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [focusedDateFields, setFocusedDateFields] = useState({});
 
   // Get current user info
   const currentUserName = localStorage.getItem('userName') || '';
@@ -75,7 +82,12 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           startDate: editingTask.startDate || '',
           assignedBy: editingTask.assignedBy || currentUserName,
           project: editingTask.project || '',
-          assignedTo: editingTask.assignedTo || ''
+          assignedTo: editingTask.assignedTo || '',
+          assignedMembers: members,
+          points: editingTask.points || '',
+          progress: editingTask.progress || 0,
+          requirement: editingTask.requirement || '',
+          workingNotes: editingTask.workingNotes || ''
         });
       } else {
         setFormData({
@@ -87,7 +99,12 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
           startDate: '',
           assignedBy: currentUserName,
           project: '',
-          assignedTo: ''
+          assignedTo: '',
+          assignedMembers: [],
+          points: '',
+          progress: 0,
+          requirement: '',
+          workingNotes: ''
         });
       }
     }
@@ -158,6 +175,13 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate points - reject negative values
+    if (formData.points && parseInt(formData.points) < 0) {
+      alert('Error: Points cannot be negative. Please enter a positive value or zero.');
+      return;
+    }
+    
     // Ensure assignedTo is set for legacy components (using first member)
     const dataToSave = {
       ...formData,
@@ -232,7 +256,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                   </select>
                 </div>
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-bold small">Status</label>
+                  <label className="form-label fw-bold small">Status *</label>
                   <select
                     className="form-select"
                     name="status"
@@ -240,13 +264,14 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     onChange={handleInputChange}
                     required
                   >
-                    <option value="">Select Status</option>
+                    <option value="" disabled>Select Status</option>
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="overdue">Overdue</option>
                     <option value="assigned">Assigned</option>
                   </select>
+                  <small className="text-muted">Status is required to create a task</small>
                 </div>
               </div>
 
@@ -260,6 +285,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     value={formData.startDate}
                     onChange={handleInputChange}
                   />
+                  <small className="text-muted">Format: DD-MM-YYYY</small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-bold small">Due Date</label>
@@ -270,6 +296,7 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
                     value={formData.dueDate}
                     onChange={handleInputChange}
                   />
+                  <small className="text-muted">Format: DD-MM-YYYY</small>
                 </div>
               </div>
 

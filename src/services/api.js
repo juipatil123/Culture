@@ -240,15 +240,36 @@ export const getTasksByUser = async (userId) => {
 
 // Subscribe to tasks for real-time updates
 export const subscribeToTasks = (callback) => {
-  const { onSnapshot, collection } = require('firebase/firestore');
-  const { db } = require('../firebase/firebaseConfig');
-  
-  const colRef = collection(db, 'CULTUREDB', 'TASK', 'items');
-  
-  return onSnapshot(colRef, (snapshot) => {
-    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    callback(tasks);
-  });
+  if (typeof callback !== 'function') {
+    console.error('subscribeToTasks: callback must be a function');
+    return () => { }; // Return empty unsubscribe function
+  }
+
+  try {
+    const { onSnapshot, collection } = require('firebase/firestore');
+    const { db } = require('../firebase/firebaseConfig');
+
+    const colRef = collection(db, 'CULTUREDB', 'TASK', 'items');
+
+    return onSnapshot(colRef,
+      (snapshot) => {
+        try {
+          const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          callback(tasks);
+        } catch (error) {
+          console.error('Error processing tasks snapshot:', error);
+          callback([]); // Return empty array on error
+        }
+      },
+      (error) => {
+        console.error('Error in tasks subscription:', error);
+        callback([]); // Return empty array on error
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up tasks subscription:', error);
+    return () => { }; // Return empty unsubscribe function
+  }
 };
 
 // Task Notes Management
@@ -329,17 +350,26 @@ export const deleteCustomRole = async (id) => {
 // Dashboard Analytics
 export const getDashboardStats = async () => {
   try {
-    const res = await api.get(`/dashboard/stats`);
-    return res.data;
-  } catch (error) {
-    // Calculate stats from available data
+    // Calculate stats directly from Firebase data instead of calling backend API
     const projects = await getAllProjects();
     const users = await getAllUsers();
+    
+    // Calculate unique clients
+    const uniqueClients = [...new Set(projects.map(p => p.clientName).filter(Boolean))];
+    
     return {
       totalUsers: users.length,
-      activeProjects: projects.length,
-      totalClients: projects.length, // Approximate
-      totalRevenue: projects.reduce((sum, p) => sum + (p.projectCost || 0), 0)
+      activeProjects: projects.filter(p => p.status === 'In Progress' || p.status === 'On Track').length,
+      totalClients: uniqueClients.length,
+      totalRevenue: projects.reduce((sum, p) => sum + (parseFloat(p.projectCost) || 0), 0)
+    };
+  } catch (error) {
+    console.error('Error calculating dashboard stats:', error);
+    return {
+      totalUsers: 0,
+      activeProjects: 0,
+      totalClients: 0,
+      totalRevenue: 0
     };
   }
 };

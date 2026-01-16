@@ -80,6 +80,7 @@ const SupportHelp = ({ adminData }) => {
                 recipientId: recipientId,
                 recipientName: recipientName,
                 recipientRole: recipientRole,
+                targetUsers: [recipientId], // Add targetUsers array for subscription query
                 subject: formData.subject,
                 message: formData.message,
                 read: false,

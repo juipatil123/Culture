@@ -33,8 +33,7 @@ import {
   updateProjectManager,
   deleteProjectManager,
   getAllTeamLeaders,
-  getAllProjectManagers,
-  getDashboardStats
+  getAllProjectManagers
 } from '../services/api';
 
 const ProjectManagerDashboard = ({ userData, onLogout }) => {
@@ -72,7 +71,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   useEffect(() => {
     if (!safeUserData.id && !safeUserData._id) return;
     let isFirstLoad = true;
-    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, safeUserData.role, (notices) => {
+    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, (notices) => {
       const count = notices.filter(n => !n.read).length;
 
       if (!isFirstLoad && count > unreadCount) {

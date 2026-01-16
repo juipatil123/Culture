@@ -60,6 +60,7 @@ const TeamLeaderSupport = ({ allUsers: propUsers = [], userData }) => {
             recipientId: formData.recipientId,
             recipientName: recipientName,
             recipientRole: formData.recipientType,
+            targetUsers: [formData.recipientId], // Add targetUsers array
             subject: formData.subject,
             message: formData.message,
             read: false,

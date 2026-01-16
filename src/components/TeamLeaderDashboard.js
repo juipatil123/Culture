@@ -19,7 +19,7 @@ import TeamLeaderProfile from './TeamLeaderProfile';
 import TeamLeaderSupport from './TeamLeaderSupport';
 import TeamLeaderNotice from './TeamLeaderNotice';
 import { subscribeToNotices } from '../firebase/firestoreService';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateRange } from '../utils/dateUtils';
 
 const TeamLeaderDashboard = ({
   userData,
@@ -57,7 +57,7 @@ const TeamLeaderDashboard = ({
   useEffect(() => {
     if (!userData) return;
     let isFirstLoad = true;
-    const unsubscribe = subscribeToNotices(userData.id || userData._id, userData.role, (notices) => {
+    const unsubscribe = subscribeToNotices(userData.id || userData._id, (notices) => {
       const count = notices.filter(n => !n.read).length;
 
       // Only show popup for critical notices, not for requirements/routine updates
@@ -910,14 +910,10 @@ const TeamLeaderDashboard = ({
                           role="progressbar"
                         ></div>
                       </div>
-                      <div className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex justify-content-center align-items-center">
                         <small className="text-muted" style={{ fontSize: '0.8rem' }}>
                           <i className="far fa-calendar-alt me-1"></i>
-                          {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Start N/A'}
-                        </small>
-                        <small className="text-muted" style={{ fontSize: '0.8rem' }}>
-                          <i className="fas fa-flag-checkered me-1"></i>
-                          {project.dueDate || project.endDate ? new Date(project.dueDate || project.endDate).toLocaleDateString() : 'Due N/A'}
+                          {formatDateRange(project.startDate, project.dueDate || project.endDate)}
                         </small>
                       </div>
                     </div>

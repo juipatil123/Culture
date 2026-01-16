@@ -7,7 +7,7 @@ const TeamLeaderSidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobil
 
     useEffect(() => {
         if (!userData) return;
-        const unsubscribe = subscribeToNotices(userData.id || userData._id, userData.role, (notices) => {
+        const unsubscribe = subscribeToNotices(userData.id || userData._id, (notices) => {
             const count = notices.filter(n => !n.read).length;
             setUnreadCount(count);
         });
