@@ -84,12 +84,20 @@ const UserManagement = ({ onUserAdded }) => {
       let result;
       if (editingUser) {
         console.log('🔄 Updating existing user ID:', editingUser.id || editingUser._id);
+        console.log('🔄 User role:', editingUser.role);
         result = await updateUser(editingUser.id || editingUser._id, userDataToSave);
         console.log('✅ Update successful, result:', result);
+        
+        // Show success popup centered
+        alert('✅ User updated successfully!');
       } else {
         console.log('➕ Creating new user...');
         result = await createUser(userDataToSave);
         console.log('✅ Creation successful, result:', result);
+        
+        // Show success popup centered
+        alert('✅ User created successfully!');
+        
         if (onUserAdded) onUserAdded(userDataToSave.name);
       }
       setShowAddUserModal(false);
@@ -99,10 +107,21 @@ const UserManagement = ({ onUserAdded }) => {
       console.log('✨ User management state updated');
     } catch (error) {
       console.error('❌ Error saving user:', error);
-      if (error.response) {
-        console.error('📡 Server responded with:', error.response.status, error.response.data);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      let errorMessage = 'Failed to save user. Please try again.';
+      
+      if (error.message && error.message.includes('No document to update')) {
+        errorMessage = 'User not found in database. Please refresh and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
-      alert(error.message || 'Failed to save user. Please try again.');
+      
+      alert('❌ Error: ' + errorMessage);
     }
   };
 
@@ -489,22 +508,37 @@ const UserManagement = ({ onUserAdded }) => {
                       </td>
                       <td>{user.department}</td>
                       <td>
-                        <span 
-                          className="badge rounded-pill" 
-                          style={{
-                            fontSize: '0.75rem',
-                            minWidth: '90px',
-                            padding: '6px 12px',
-                            fontWeight: '700',
+                        <select
+                          className={`form-select form-select-sm border-0 fw-bold status-${user.status?.toLowerCase().replace(' ', '-')}`}
+                          style={{ 
+                            width: 'auto', 
+                            padding: '0.25rem 1.5rem 0.25rem 0.5rem', 
+                            fontSize: '0.85rem', 
+                            cursor: 'pointer', 
+                            borderRadius: '20px',
                             backgroundColor: 
                               user.status === 'Active' ? '#28a745' :
                               user.status === 'Inactive' ? '#dc3545' :
                               user.status === 'On Leave' ? '#ffc107' : '#6c757d',
                             color: user.status === 'On Leave' ? '#000' : 'white'
                           }}
+                          value={user.status}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            try {
+                              await updateUser(user.id || user._id, { status: newStatus });
+                              setAllUsers(prev => prev.map(u => (u.id === user.id || u._id === user._id) ? { ...u, status: newStatus } : u));
+                              if (onUserAdded) onUserAdded(`Status updated to ${newStatus} for ${user.name}`);
+                            } catch (err) {
+                              console.error("Failed to update status", err);
+                              alert("Failed to update status");
+                            }
+                          }}
                         >
-                          {user.status || 'Active'}
-                        </span>
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                          <option value="On Leave">On Leave</option>
+                        </select>
                       </td>
                       <td>{formatDate(user.joinDate)}</td>
                       <td style={{ minWidth: '140px', width: '140px' }}>
