@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProjectManagers, createProjectManager, updateProjectManager, deleteProjectManager } from '../../services/api';
 import AddProjectManagerModal from '../AddProjectManagerModal';
+import { formatDate } from '../../utils/dateUtils';
 import './AdminComponents.css';
 
 const ProjectManagerManagement = () => {
@@ -20,14 +21,18 @@ const ProjectManagerManagement = () => {
   const loadProjectManagers = async () => {
     setLoadingProjectManagers(true);
     try {
-      // Fetch both dedicated PMs and Users to find everyone with PM role
-      const [managersData, usersData] = await Promise.all([
+      // Fetch both dedicated PMs, Users, and Projects
+      const [managersData, usersData, projectsData] = await Promise.all([
         getAllProjectManagers().catch(err => {
           console.warn('Failed to fetch /project-managers', err);
           return [];
         }),
         import('../../services/api').then(module => module.getAllUsers()).catch(err => {
           console.warn('Failed to fetch /users', err);
+          return [];
+        }),
+        import('../../services/api').then(module => module.getAllProjects()).catch(err => {
+          console.warn('Failed to fetch /projects', err);
           return [];
         })
       ]);
@@ -51,11 +56,60 @@ const ProjectManagerManagement = () => {
         }
       });
 
-      console.log('Final merged PM list:', mergedPMs.length);
+      // Create a lookup map for PM emails by name (case-insensitive)
+      const pmEmailMap = {};
+      mergedPMs.forEach(pm => {
+        if (pm.name && pm.email) {
+          pmEmailMap[pm.name.toLowerCase()] = pm.email.toLowerCase();
+        }
+      });
 
-      if (mergedPMs.length > 0) {
-        setProjectManagers(mergedPMs);
-        localStorage.setItem('projectManagers', JSON.stringify(mergedPMs));
+      // Enrich PMs with actual project names
+      const enrichedPMs = mergedPMs.map(pm => {
+        const pmEmail = pm.email?.toLowerCase().trim();
+        const pmName = pm.name?.toLowerCase().trim();
+        const pmId = pm.id || pm._id;
+
+        // Find projects assigned to this PM - check multiple fields
+        const assignedProjectsList = projectsData.filter(proj => {
+          const projManager = proj.projectManager?.toLowerCase().trim();
+          const projManagerEmail = proj.projectManagerEmail?.toLowerCase().trim();
+
+          // Match by email (primary)
+          if (pmEmail && (projManagerEmail === pmEmail || projManager === pmEmail)) return true;
+
+          // Match by name (fallback for old data or if manager name is matched)
+          if (pmName && projManager === pmName) return true;
+
+          // Match by ID
+          if (pmId && proj.projectManager === pmId) return true;
+
+          // Match using email lookup from name
+          if (projManager && pmEmailMap[projManager] === pmEmail) return true;
+
+          return false;
+        }).map(proj => proj.name || 'Untitled Project');
+
+        console.log(`📊 PM ${pm.name} (${pmEmail}): Found ${assignedProjectsList.length} projects`, assignedProjectsList);
+
+        return {
+          ...pm,
+          assignedProjects: assignedProjectsList.length > 0 ? assignedProjectsList : pm.assignedProjects || []
+        };
+      });
+
+      // Sort by creation date (oldest first - new members at bottom)
+      enrichedPMs.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.joiningDate || 0);
+        const dateB = new Date(b.createdAt || b.joiningDate || 0);
+        return dateA - dateB;
+      });
+
+      console.log('Final merged PM list:', enrichedPMs.length);
+
+      if (enrichedPMs.length > 0) {
+        setProjectManagers(enrichedPMs);
+        localStorage.setItem('projectManagers', JSON.stringify(enrichedPMs));
       } else {
         // If totally empty, try local storage as last resort
         const localPMs = JSON.parse(localStorage.getItem('projectManagers') || '[]');
@@ -266,36 +320,11 @@ const ProjectManagerManagement = () => {
                 <div className="card-detail-list">
                   <div className="card-detail-item">
                     <i className="fas fa-building"></i>
-                    <span>{pm.department || 'Not Assigned'}</span>
+                    <span>{pm.department || 'Web Development'}</span>
                   </div>
-                  <div className="card-detail-item mt-2">
-                    <i className="fas fa-project-diagram text-primary"></i>
-                    <div className="project-count-control flex-grow-1">
-                      <label className="small text-muted mb-1 d-block">Manage Project Count</label>
-                      <div className="input-group input-group-sm">
-                        <input
-                          type="number"
-                          className="form-control border-primary"
-                          title="Click to update project count"
-                          defaultValue={pm.projectCount || pm.assignedProjects?.length || 0}
-                          onBlur={async (e) => {
-                            const val = parseInt(e.target.value);
-                            if (!isNaN(val)) {
-                              try {
-                                await updateProjectManager(pm.id || pm._id, { projectCount: val });
-                                pm.projectCount = val;
-                                // Optional logic to show success
-                              } catch (err) {
-                                console.error('Failed to update project count', err);
-                              }
-                            }
-                          }}
-                        />
-                        <span className="input-group-text bg-primary text-white border-primary">
-                          <i className="fas fa-check-circle"></i>
-                        </span>
-                      </div>
-                    </div>
+                  <div className="card-detail-item">
+                    <i className="fas fa-project-diagram"></i>
+                    <span>{pm.assignedProjects?.length || 0} Projects</span>
                   </div>
                   <div className="card-detail-item">
                     <i className="fas fa-phone"></i>
@@ -357,27 +386,21 @@ const ProjectManagerManagement = () => {
                 <td>{pm.email}</td>
                 <td>{pm.department || 'Not Assigned'}</td>
                 <td>
-                  <div className="d-flex align-items-center gap-2">
-                    <input
-                      type="number"
-                      className="form-control form-control-sm border-primary"
-                      style={{ width: '80px' }}
-                      title="Edit project count"
-                      defaultValue={pm.projectCount || pm.assignedProjects?.length || 0}
-                      onBlur={async (e) => {
-                        const val = parseInt(e.target.value);
-                        if (!isNaN(val)) {
-                          try {
-                            await updateProjectManager(pm.id || pm._id, { projectCount: val });
-                            pm.projectCount = val;
-                          } catch (err) {
-                            console.error('Failed to update project count', err);
-                          }
-                        }
-                      }}
-                    />
-                    <small className="text-muted">Proj.</small>
-                  </div>
+                  {pm.assignedProjects && pm.assignedProjects.length > 0 ? (
+                    <div className="d-flex flex-column gap-1">
+                      {pm.assignedProjects.map((project, idx) => (
+                        <div key={idx} className="d-flex align-items-center gap-2">
+                          <i className="fas fa-project-diagram text-primary" style={{ fontSize: '0.75rem' }}></i>
+                          <span className="small">{project}</span>
+                        </div>
+                      ))}
+                      <div className="mt-1">
+                        <span className="badge bg-primary">{pm.assignedProjects.length} Project{pm.assignedProjects.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted small fst-italic">No projects assigned</span>
+                  )}
                 </td>
                 <td>{pm.phone || 'N/A'}</td>
                 <td>
@@ -446,7 +469,7 @@ const ProjectManagerManagement = () => {
               <div className="modal-body p-4">
                 <div className="row mb-4">
                   <div className="col-md-4 text-center border-end">
-                    <div className="user-avatar-premium mb-3 mx-auto" style={{ width: '120px', height: '120px', fontSize: '3rem', background: '#6366f1', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                    <div className="user-avatar-premium mb-3 mx-auto" style={{ width: '120px', height: '120px', fontSize: '3rem', background: '#6366f1', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
                       {selectedProjectManager.name?.charAt(0).toUpperCase()}
                     </div>
                     <h3 className="fw-bold">{selectedProjectManager.name}</h3>
@@ -497,7 +520,7 @@ const ProjectManagerManagement = () => {
                           </div>
                           <div className="col-md-6 border-bottom pb-2">
                             <span className="text-muted small d-block">Joining Date</span>
-                            <strong>{selectedProjectManager.joiningDate || selectedProjectManager.createdAt?.split('T')[0] || 'N/A'}</strong>
+                            <strong>{selectedProjectManager.joiningDate ? formatDate(selectedProjectManager.joiningDate) : (selectedProjectManager.createdAt ? formatDate(selectedProjectManager.createdAt) : 'N/A')}</strong>
                           </div>
                           <div className="col-md-6 border-bottom pb-2">
                             <span className="text-muted small d-block">Specialization</span>
@@ -514,10 +537,15 @@ const ProjectManagerManagement = () => {
                     <div className="mt-4">
                       <h6 className="text-uppercase text-muted small fw-bold mb-2">Assigned Project List</h6>
                       {selectedProjectManager.assignedProjects?.length > 0 ? (
-                        <div className="d-flex flex-wrap gap-2">
-                          {selectedProjectManager.assignedProjects.map((project, index) => (
-                            <span key={index} className="badge bg-secondary">{project}</span>
-                          ))}
+                        <div className="card border-0 bg-light">
+                          <ul className="list-group list-group-flush bg-transparent">
+                            {selectedProjectManager.assignedProjects.map((project, index) => (
+                              <li key={index} className="list-group-item bg-transparent border-bottom ps-0">
+                                <i className="fas fa-tasks me-2 text-primary"></i>
+                                {project}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ) : (
                         <p className="text-muted small">No active projects assigned yet.</p>

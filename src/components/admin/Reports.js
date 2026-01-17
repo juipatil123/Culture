@@ -168,20 +168,42 @@ const Reports = () => {
     // Handle Download Report
     const handleDownloadReport = () => {
         // Define CSV headers
-        const headers = ['Project Name', 'Client', 'Manager', 'Status', 'Cost', 'Advance', 'Tasks Total', 'Tasks Done', 'Execution %', 'Start Date', 'End Date'];
+        const headers = [
+            'Sr. No.',
+            'Project Name',
+            'Client',
+            'Manager',
+            'Status',
+            'Cost (₹)',
+            'Advance (₹)',
+            'Pending (₹)',
+            'Tasks Total',
+            'Tasks Done',
+            'Execution %',
+            'Start Date',
+            'End Date'
+        ];
 
         // Map project data to CSV rows
-
-
-        const rows = filteredProjects.map(p => {
+        const rows = filteredProjects.map((p, index) => {
             const taskStats = getProjectTaskStats(p.name);
+            const projectCost = parseFloat(p.projectCost) || 0;
+            const advancePayment = parseFloat(p.advancePayment) || 0;
+            const pending = projectCost - advancePayment;
+            
             return [
+                index + 1,
                 p.name || '',
                 p.clientName || '',
                 p.projectManager || '',
-                p.projectStatus || '',
-                p.projectCost || '0',
-                p.advancePayment || '0',
+                (p.projectStatus === 'assigned' ? 'Pending' :
+                    p.projectStatus === 'on-track' ? 'In Progress' :
+                        p.projectStatus === 'at-risk' || p.projectStatus === 'delayed' ? 'Overdue' :
+                            p.projectStatus === 'completed' ? 'Completed' :
+                                p.projectStatus) || '',
+                projectCost,
+                advancePayment,
+                pending,
                 taskStats.count,
                 taskStats.completed,
                 `${taskStats.progress}%`,
@@ -190,23 +212,10 @@ const Reports = () => {
             ];
         });
 
-
         // Combine headers and rows
         const csvContent = [
             headers.join(','),
-            ...(filteredProjects.map(p => [
-                p.name || '',
-                p.clientName || '',
-                p.projectManager || '',
-                (p.projectStatus === 'assigned' ? 'Pending' :
-                    p.projectStatus === 'on-track' ? 'In Progress' :
-                        p.projectStatus === 'at-risk' || p.projectStatus === 'delayed' ? 'Overdue' :
-                            p.projectStatus) || '',
-                p.projectCost || '0',
-                p.advancePayment || '0',
-                formatDate(p.startDate),
-                formatDate(p.endDate)
-            ])).map(row => row.map(cell => `"${cell}"`).join(','))
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
         ].join('\n');
 
         // Create download link
@@ -221,6 +230,8 @@ const Reports = () => {
             link.click();
             document.body.removeChild(link);
         }
+        
+        alert('Report downloaded successfully!');
     };
 
     return (
@@ -233,9 +244,9 @@ const Reports = () => {
                     </h3>
                     <div className="text-muted small">
                         <i className="fas fa-calendar-alt me-2"></i>
-                        {formatDate(new Date())}
+                        Report Date: {formatDate(new Date())}
                     </div>
-                    <button className="btn btn-outline-success ms-3" onClick={handleDownloadReport}>
+                    <button className="btn btn-success ms-3 px-4" onClick={handleDownloadReport}>
                         <i className="fas fa-download me-2"></i>
                         Download Report
                     </button>
@@ -373,10 +384,11 @@ const Reports = () => {
                                             </div>
 
                                         </div>
-                                        <div className="border-bottom pb-2 mb-2 d-flex justify-content-end">
+                                        <div className="border-bottom pb-3 mb-3 d-flex justify-content-end">
                                             <button
-                                                className="btn btn-sm btn-link text-primary text-decoration-none"
+                                                className="btn btn-sm btn-outline-primary px-3"
                                                 onClick={() => handleEditProject(project)}
+                                                style={{ minWidth: '100px' }}
                                             >
                                                 <i className="fas fa-edit me-1"></i> Edit Details
                                             </button>
@@ -402,10 +414,9 @@ const Reports = () => {
                                                     <i className="fas fa-calendar me-2"></i>Duration:
                                                 </span>
                                                 <span className="detail-value">
-                                                    {formatDate(project.startDate)} -
-                                                    {formatDate(project.endDate)}
-                                                </span >
-                                            </div >
+                                                    {formatDate(project.startDate)} to {formatDate(project.endDate)}
+                                                </span>
+                                            </div>
 
 
                                             {/* Task Management Sync */}

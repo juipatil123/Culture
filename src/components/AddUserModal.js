@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 
 const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [], teamLeaders = [] }) => {
   const handleClose = onClose || onHide;
@@ -14,6 +15,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
     gender: '',
     status: 'Active'
   });
+  const [focusedDateFields, setFocusedDateFields] = useState({});
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,15 +58,28 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const normalizedValue = name === 'email' ? value.toLowerCase() : value;
+    let processedValue = value;
+
+    // Apply field-specific validations
+    if (name === 'name') {
+      // Only allow letters and spaces
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'email') {
+      // Auto-convert email to lowercase
+      processedValue = value.toLowerCase();
+    } else if (name === 'phone') {
+      // Only allow digits, max 10 characters
+      processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+    }
+
     setFormData(prev => {
       const newData = {
         ...prev,
-        [name]: normalizedValue
+        [name]: processedValue
       };
 
       // Clear project assignment if role is changed to project-manager or employee
-      if (name === 'role' && (normalizedValue === 'project-manager' || normalizedValue === 'employee')) {
+      if (name === 'role' && (processedValue === 'project-manager' || processedValue === 'employee')) {
         newData.assignedProject = '';
       }
 
@@ -135,11 +150,34 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header bg-primary text-white">
-            <h5 className="modal-title">
+    <div className="modal fade show d-block" style={{ 
+      backgroundColor: 'rgba(0,0,0,0.5)', 
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1050,
+      overflow: 'auto'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        paddingLeft: '260px', // Sidebar width
+        paddingRight: '20px',
+        paddingTop: '20px',
+        paddingBottom: '20px'
+      }}>
+        <div className="modal-dialog modal-lg" style={{ 
+          margin: '0',
+          maxWidth: '800px',
+          width: '100%'
+        }}>
+          <div className="modal-content">
+            <div className="modal-header bg-primary text-white">
+              <h5 className="modal-title">
               <i className={`fas ${editingUser ? 'fa-user-edit' : 'fa-user-plus'} me-2`}></i>
               {editingUser ? 'Edit User' : 'Add New User'}
             </h5>
@@ -161,6 +199,9 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     title="Name should only contain letters and spaces"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Only letters and spaces allowed. Numbers and special characters are blocked.
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Email Address *</label>
@@ -173,6 +214,9 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     placeholder="Enter email address"
                     required
                   />
+                  <small className="form-text text-muted">
+                    Email will be automatically converted to lowercase.
+                  </small>
                 </div>
               </div>
               <div className="row">
@@ -183,17 +227,14 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                     className="form-control"
                     name="phone"
                     value={formData.phone}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      if (value.length <= 10) {
-                        setFormData(prev => ({ ...prev, phone: value }));
-                      }
-                    }}
+                    onChange={handleInputChange}
                     placeholder="Enter 10-digit number"
-                    pattern="[0-9]{10}"
+                    maxLength="10"
                     required
                   />
-                  <small className="text-muted">Must be exactly 10 digits (e.g. 9876543210)</small>
+                  <small className="text-muted">
+                    Only digits allowed. Must be exactly 10 digits. ({formData.phone.length}/10)
+                  </small>
                 </div>
                 <div className="col-md-6 mb-3">
                   {/* Empty column for spacing */}
@@ -261,10 +302,13 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Join Date</label>
                   <input
-                    type="date"
+                    type={focusedDateFields.joinDate ? 'date' : 'text'}
                     className="form-control"
                     name="joinDate"
-                    value={formData.joinDate}
+                    value={focusedDateFields.joinDate ? formData.joinDate : (formData.joinDate ? formatDate(formData.joinDate) : '')}
+                    placeholder="DD/MM/YYYY"
+                    onFocus={() => setFocusedDateFields(prev => ({ ...prev, joinDate: true }))}
+                    onBlur={() => setFocusedDateFields(prev => ({ ...prev, joinDate: false }))}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -396,6 +440,7 @@ const AddUserModal = ({ show, onClose, onHide, onSave, editingUser, projects = [
             </div>
           </form>
         </div>
+      </div>
       </div>
     </div>
   );

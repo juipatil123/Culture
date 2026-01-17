@@ -122,7 +122,9 @@ const TaskManagement = () => {
       filtered = filtered.filter(task =>
         task.title?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
         task.description?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
-        task.assignedTo?.toLowerCase().includes(taskSearchTerm.toLowerCase())
+        task.assignedTo?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+        task.project?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+        task.projectName?.toLowerCase().includes(taskSearchTerm.toLowerCase())
       );
     }
 
@@ -208,7 +210,7 @@ const TaskManagement = () => {
           <input
             type="text"
             className="form-control ps-5 py-2"
-            placeholder="Search tasks..."
+            placeholder="Search by task, project, or assignee..."
             value={taskSearchTerm}
             onChange={(e) => setTaskSearchTerm(e.target.value)}
             style={{ borderRadius: '10px' }}
@@ -269,7 +271,7 @@ const TaskManagement = () => {
       {/* Task Stats - Redesigned to match UserManagement */}
       <div className="role-stats-summary mb-4">
         <div className="row g-3">
-          <div className="col-xl-3 col-md-6">
+          <div className="col-xl-2 col-md-4">
             <div className="stat-card total">
               <div className="stat-icon"><i className="fas fa-tasks"></i></div>
               <div className="stat-content">
@@ -278,7 +280,7 @@ const TaskManagement = () => {
               </div>
             </div>
           </div>
-          <div className="col-xl-3 col-md-6">
+          <div className="col-xl-2 col-md-4">
             <div className="stat-card pending">
               <div className="stat-icon"><i className="fas fa-clock"></i></div>
               <div className="stat-content">
@@ -287,7 +289,7 @@ const TaskManagement = () => {
               </div>
             </div>
           </div>
-          <div className="col-xl-3 col-md-6">
+          <div className="col-xl-2 col-md-4">
             <div className="stat-card in-progress">
               <div className="stat-icon"><i className="fas fa-spinner"></i></div>
               <div className="stat-content">
@@ -296,12 +298,23 @@ const TaskManagement = () => {
               </div>
             </div>
           </div>
-          <div className="col-xl-3 col-md-6">
+          <div className="col-xl-2 col-md-4">
             <div className="stat-card completed">
               <div className="stat-icon"><i className="fas fa-check-circle"></i></div>
               <div className="stat-content">
                 <div className="stat-label">Completed</div>
                 <div className="stat-value">{assignedTasks.filter(t => t.status === 'completed').length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-4">
+            <div className="stat-card overdue" style={{ borderLeft: '4px solid #dc3545' }}>
+              <div className="stat-icon" style={{ backgroundColor: 'rgba(220, 53, 69, 0.1)', color: '#dc3545' }}>
+                <i className="fas fa-exclamation-triangle"></i>
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Overdue</div>
+                <div className="stat-value">{assignedTasks.filter(t => isOverdue(t)).length}</div>
               </div>
             </div>
           </div>
@@ -428,9 +441,15 @@ const TaskManagement = () => {
                   </span>
                 </td>
                 <td>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    <div className="text-nowrap"><i className="fas fa-calendar-plus me-1 text-muted"></i>S: {formatDate(task.startDate)}</div>
-                    <div className="text-nowrap"><i className="fas fa-calendar-check me-1 text-muted"></i>D: {formatDate(task.dueDate)}</div>
+                  <div style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+                    <div className="text-nowrap mb-1">
+                      <i className="fas fa-calendar-plus me-1 text-primary" style={{ fontSize: '0.75rem' }}></i>
+                      <span className="text-muted small">Start:</span> <strong>{formatDate(task.startDate)}</strong>
+                    </div>
+                    <div className="text-nowrap">
+                      <i className="fas fa-calendar-check me-1 text-success" style={{ fontSize: '0.75rem' }}></i>
+                      <span className="text-muted small">Due:</span> <strong>{formatDate(task.dueDate)}</strong>
+                    </div>
                   </div>
                 </td>
                 <td>

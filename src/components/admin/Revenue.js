@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProjects } from '../../services/api';
+import { formatDateShort } from '../../utils/dateUtils';
 import './AdminComponents.css';
 
 const Revenue = () => {
@@ -127,8 +128,49 @@ const Revenue = () => {
     return (
         <div className="revenue-management">
             {/* Page Header */}
-            <div className="page-header">
+            <div className="page-header d-flex justify-content-between align-items-center">
                 <h2>Revenue Management ({projects.length})</h2>
+                <div className="d-flex gap-2 align-items-center">
+                    <span className="text-muted small">
+                        <i className="fas fa-calendar-alt me-2"></i>
+                        {formatDateShort(new Date())}
+                    </span>
+                    <button 
+                        className="btn btn-success"
+                        onClick={() => {
+                            const headers = ['Sr. No.', 'Project Name', 'Client', 'PM', 'Total Cost', 'Advance', 'Remaining', 'Status', 'Progress', 'Date'];
+                            const rows = filteredProjects.map((project, index) => [
+                                index + 1,
+                                project.name,
+                                project.clientName,
+                                project.projectManager,
+                                project.projectCost,
+                                project.advancePayment,
+                                project.remainingPayment,
+                                project.status,
+                                `${project.progress}%`,
+                                formatDateShort(new Date())
+                            ]);
+                            const csvContent = [
+                                headers.join(','),
+                                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+                            ].join('\n');
+                            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                            const link = document.createElement('a');
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `revenue_report_${formatDateShort(new Date()).replace(/-/g, '_')}.csv`);
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            alert('Revenue report downloaded successfully!');
+                        }}
+                        style={{ minWidth: '140px' }}
+                    >
+                        <i className="fas fa-download me-2"></i>Download Report
+                    </button>
+                </div>
             </div>
 
             {/* Revenue Statistics Cards */}

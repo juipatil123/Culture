@@ -25,17 +25,32 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     useEffect(() => {
         if (!userData) return;
         const userId = userData.id || userData._id;
+        const userEmail = userData.email;
+        console.log('🔍 TeamLeaderNotice - Current user:', userData.name, 'ID:', userId, 'Email:', userEmail, 'Role:', userData.role);
 
         // Use a flag to auto-select only on first data fetch
         let initialLoadDone = false;
+        let allNotices = [];
 
-        const unsubscribe = subscribeToNotices(userId, userData.role, (data) => {
-            setNotices(data);
+        // Subscribe by ID
+        const unsubscribeById = subscribeToNotices(userId, (dataById) => {
+            console.log('📬 Notices by ID for user:', userId, 'Count:', dataById.length);
+            
+            // Merge with email-based notices
+            const mergedNotices = [...dataById];
+            
+            // Remove duplicates based on notice ID
+            const uniqueNotices = Array.from(
+                new Map(mergedNotices.map(notice => [notice.id, notice])).values()
+            );
+            
+            allNotices = uniqueNotices;
+            setNotices(uniqueNotices);
             setLoading(false);
 
             // Auto-select latest notice on first load if nothing is selected and we aren't composing
-            if (!initialLoadDone && data.length > 0 && !selectedNotice && !isComposing) {
-                setSelectedNotice(data[0]);
+            if (!initialLoadDone && uniqueNotices.length > 0 && !selectedNotice && !isComposing) {
+                setSelectedNotice(uniqueNotices[0]);
                 initialLoadDone = true;
             }
         });
@@ -43,7 +58,9 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
         // Fetch users for compose dropdown
         getAllUsers().then(setAllUsers).catch(err => console.error("Error loading users:", err));
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeById();
+        };
     }, [userData]);
 
     const handleReply = async () => {
@@ -59,6 +76,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 recipientId: selectedNotice.senderId || 'admin-id',
                 recipientRole: selectedNotice.senderRole || 'admin',
                 recipientName: selectedNotice.senderName || selectedNotice.sender || 'Admin',
+                targetUsers: [selectedNotice.senderId], // Add targetUsers array
                 subject: `Re: ${selectedNotice.subject}`,
                 message: replyMessage,
                 priority: 'normal',
@@ -92,6 +110,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 recipientId: composeData.recipientId,
                 recipientName: recipient?.name || 'Unknown',
                 recipientRole: composeData.recipientType,
+                targetUsers: [composeData.recipientId], // Add targetUsers array
                 subject: composeData.subject,
                 message: composeData.message,
                 read: false,

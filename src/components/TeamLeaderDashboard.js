@@ -24,7 +24,7 @@ import {
   subscribeToTasks,
   subscribeToAllUsers
 } from '../firebase/firestoreService';
-import { formatDate, formatDateTime } from '../utils/dateUtils';
+import { formatDate, formatDateTime, formatDateRange } from '../utils/dateUtils';
 
 const TeamLeaderDashboard = ({
   userData,
@@ -63,7 +63,7 @@ const TeamLeaderDashboard = ({
   useEffect(() => {
     if (!userData) return;
     let isFirstLoad = true;
-    const unsubscribe = subscribeToNotices(userData.id || userData._id, userData.role, (notices) => {
+    const unsubscribe = subscribeToNotices(userData.id || userData._id, (notices) => {
       const count = notices.filter(n => !n.read).length;
 
       // Only show popup for critical notices, not for requirements/routine updates
@@ -1049,13 +1049,25 @@ const TeamLeaderDashboard = ({
                       </div>
                     </div>
 
-                    {/* Top Progress Bar */}
-                    <div className="progress rounded-0" style={{ height: '5px', backgroundColor: 'rgba(0,0,0,0.05)' }}>
-                      <div
-                        className="progress-bar bg-primary"
-                        style={{ width: `${project.progress || 0}%`, transition: 'width 0.6s ease' }}
-                        role="progressbar"
-                      ></div>
+                    {/* Project Timeline & Status */}
+                    <div className="mb-3">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <small className="text-muted fw-bold" style={{ fontSize: '0.75rem' }}>Timeline</small>
+                        <small className="text-primary fw-bold" style={{ fontSize: '0.75rem' }}>{project.progress || 0}%</small>
+                      </div>
+                      <div className="progress mb-2" style={{ height: '6px' }}>
+                        <div
+                          className="progress-bar bg-gradient-primary"
+                          style={{ width: `${project.progress || 0}%`, transition: 'width 0.6s ease' }}
+                          role="progressbar"
+                        ></div>
+                      </div>
+                      <div className="d-flex justify-content-center align-items-center">
+                        <small className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          <i className="far fa-calendar-alt me-1"></i>
+                          {formatDateRange(project.startDate, project.dueDate || project.endDate)}
+                        </small>
+                      </div>
                     </div>
 
                     {/* Card Body - Project Details */}

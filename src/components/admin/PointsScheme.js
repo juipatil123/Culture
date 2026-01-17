@@ -40,11 +40,25 @@ const PointsScheme = () => {
       return;
     }
 
+    // Validate scheme name - only letters and spaces
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(schemeName)) {
+      alert('Error: Scheme name can only contain alphabetic characters and spaces. Numbers and special characters are not allowed.');
+      return;
+    }
+
+    // Validate points - only positive numbers or zero
+    const pointsValue = parseInt(schemePoints);
+    if (isNaN(pointsValue) || pointsValue < 0) {
+      alert('Error: Points must be a positive number or zero.');
+      return;
+    }
+
     if (editingScheme) {
       // Update existing scheme
       setPointsSchemes(prev => prev.map(scheme =>
         scheme.id === editingScheme.id
-          ? { ...scheme, name: schemeName, points: parseInt(schemePoints), description: schemeDescription }
+          ? { ...scheme, name: schemeName, points: pointsValue, description: schemeDescription }
           : scheme
       ));
       alert('Points scheme updated successfully!');
@@ -53,7 +67,7 @@ const PointsScheme = () => {
       const newScheme = {
         id: Date.now(),
         name: schemeName,
-        points: parseInt(schemePoints),
+        points: pointsValue,
         description: schemeDescription
       };
       setPointsSchemes(prev => [...prev, newScheme]);
@@ -99,20 +113,22 @@ const PointsScheme = () => {
               </div>
             </div>
             <div className="scheme-body p-3">
-              <h4>{scheme.name}</h4>
-              <p>{scheme.description}</p>
+              <h4 className="mb-2">{scheme.name}</h4>
+              <p className="text-muted mb-0">{scheme.description}</p>
             </div>
-            <div className="scheme-footer p-3 d-flex justify-content-end gap-2 border-top">
+            <div className="scheme-footer p-3 d-flex justify-content-end gap-2 border-top bg-light">
               <button
-                className="btn btn-sm btn-outline-primary"
+                className="btn btn-sm btn-outline-primary px-3"
                 onClick={() => handleEditScheme(scheme)}
+                style={{ minWidth: '70px' }}
               >
                 <i className="fas fa-edit me-1"></i>
                 Edit
               </button>
               <button
-                className="btn btn-sm btn-outline-danger"
+                className="btn btn-sm btn-outline-danger px-3"
                 onClick={() => handleDeleteScheme(scheme.id, scheme.name)}
+                style={{ minWidth: '80px' }}
               >
                 <i className="fas fa-trash me-1"></i>
                 Delete
@@ -145,7 +161,7 @@ const PointsScheme = () => {
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Scheme Name *</label>
+                  <label className="form-label fw-bold">Scheme Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -153,33 +169,39 @@ const PointsScheme = () => {
                     onChange={(e) => {
                       // Only allow letters and spaces
                       const value = e.target.value;
-                      if (/^[a-zA-Z\s]*$/.test(value)) {
-                        setSchemeName(value);
-                      }
+                      const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+                      setSchemeName(filteredValue);
                     }}
-                    placeholder="Enter scheme name"
+                    placeholder="Enter scheme name (letters and spaces only)"
                     autoComplete="off"
+                    required
                   />
                   <small className="form-text text-muted">
-                    Only alphabetic characters allowed.
+                    <i className="fas fa-info-circle me-1"></i>
+                    Only alphabetic characters and spaces allowed. Numbers and special characters are blocked.
                   </small>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Points *</label>
+                  <label className="form-label fw-bold">Points *</label>
                   <input
-                    type="text"
+                    type="number"
                     className="form-control"
                     value={schemePoints}
                     onChange={(e) => {
                       // Only allow positive numbers
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setSchemePoints(value);
+                      const value = e.target.value;
+                      if (value === '' || (parseInt(value) >= 0 && !value.includes('-'))) {
+                        setSchemePoints(value);
+                      }
                     }}
-                    placeholder="Enter points value"
+                    placeholder="Enter points value (0 or positive)"
                     autoComplete="off"
+                    min="0"
+                    required
                   />
                   <small className="form-text text-muted">
-                    Only positive values allowed.
+                    <i className="fas fa-info-circle me-1"></i>
+                    Only positive numbers or zero allowed. Negative values are not accepted.
                   </small>
                 </div>
                 <div className="mb-3">

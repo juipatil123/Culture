@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, NoticeService } from '../../firebase/firestoreService';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDateShort } from '../../utils/dateUtils';
 
 const AdminNotice = ({ userData }) => {
     const [employees, setEmployees] = useState([]);
@@ -20,7 +20,16 @@ const AdminNotice = ({ userData }) => {
     const fetchEmployees = async () => {
         try {
             const users = await getAllUsers();
+            console.log('📋 All users fetched:', users.length);
             const filtered = users.filter(u => ['employee', 'team-leader', 'project-manager', 'intern'].includes(u.role));
+            console.log('✅ Filtered employees for notice:', filtered.length);
+            console.log('👥 Employee details:', filtered.map(u => ({ 
+                id: u.id, 
+                _id: u._id,
+                name: u.name, 
+                role: u.role,
+                email: u.email 
+            })));
             setEmployees(filtered);
         } catch (error) {
             console.error('Error fetching employees:', error);
@@ -47,12 +56,17 @@ const AdminNotice = ({ userData }) => {
         setSending(true);
         try {
             const selectedEmpData = employees.find(e => (e.id || e._id) === selectedEmployee);
+            console.log('📤 Sending notice to:', selectedEmpData);
+            console.log('📤 Selected Employee ID:', selectedEmployee);
+            console.log('📤 Selected Employee Email:', selectedEmpData?.email);
 
             const noticeData = {
                 recipientId: selectedEmployee,
                 recipientName: selectedEmpData?.name || 'Unknown',
                 recipientEmail: selectedEmpData?.email || 'Unknown',
                 recipientRole: selectedEmpData?.role || 'employee',
+                targetUsers: [selectedEmployee], // Primary: Use ID
+                targetEmails: [selectedEmpData?.email], // Fallback: Use email
                 subject,
                 message,
                 severity,
@@ -65,7 +79,9 @@ const AdminNotice = ({ userData }) => {
                 read: false
             };
 
-            await NoticeService.create(noticeData);
+            console.log('📨 Notice data being sent:', noticeData);
+            const result = await NoticeService.create(noticeData);
+            console.log('✅ Notice created with ID:', result);
 
             setMessage('');
             setSubject('');
@@ -74,20 +90,21 @@ const AdminNotice = ({ userData }) => {
             fetchSentNotices();
             alert('Notice sent successfully!');
         } catch (error) {
-            console.error('Error sending notice:', error);
-            alert('Failed to send notice.');
+            console.error('❌ Error sending notice:', error);
+            alert('Failed to send notice: ' + error.message);
         } finally {
             setSending(false);
         }
     };
 
     const handleDownloadHistory = () => {
-        const headers = ['Recipient', 'Subject', 'Type', 'Date', 'Read Status'];
-        const rows = sentNotices.map(notice => [
+        const headers = ['Sr. No.', 'Recipient', 'Subject', 'Type', 'Date', 'Read Status'];
+        const rows = sentNotices.map((notice, index) => [
+            index + 1,
             notice.recipientName || 'Unknown',
             notice.subject || '',
             notice.severity || 'info',
-            notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : formatDate(new Date()),
+            notice.createdAt?.seconds ? formatDateShort(new Date(notice.createdAt.seconds * 1000)) : formatDateShort(new Date()),
             notice.read ? 'Read' : 'Unread'
         ]);
 
@@ -107,6 +124,7 @@ const AdminNotice = ({ userData }) => {
             link.click();
             document.body.removeChild(link);
         }
+        alert('Notice history downloaded successfully!');
     };
 
     return (
@@ -131,11 +149,12 @@ const AdminNotice = ({ userData }) => {
                                     >
                                         <option value="">Select Employee</option>
                                         {employees.map(emp => (
-                                            <option key={emp.id} value={emp.id}>
-                                                {emp.name} ({emp.role})
+                                            <option key={emp.id || emp._id} value={emp.id || emp._id}>
+                                                {emp.name} ({emp.role}) - ID: {(emp.id || emp._id).substring(0, 8)}...
                                             </option>
                                         ))}
                                     </select>
+                                    <small className="text-muted">Selected ID: {selectedEmployee || 'None'}</small>
                                 </div>
 
                                 <div className="mb-3">
@@ -184,6 +203,51 @@ const AdminNotice = ({ userData }) => {
                                     {sending ? <i className="fas fa-spinner fa-spin me-2"></i> : <i className="fas fa-paper-plane me-2"></i>}
                                     Send Notice
                                 </button>
+                                
+                                {/* Debug: Test Notice Button */}
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-warning w-100 rounded-pill py-2 fw-bold mt-2"
+                                    onClick={async () => {
+                                        if (!selectedEmployee) {
+                                            alert('Please select an employee first');
+                                            return;
+                                        }
+                                        const emp = employees.find(e => (e.id || e._id) === selectedEmployee);
+                                        console.log('🧪 TEST: Creating test notice for:', emp);
+                                        try {
+                                            const testNotice = {
+                                                recipientId: selectedEmployee,
+                                                recipientName: emp?.name || 'Test User',
+                                                recipientEmail: emp?.email || 'test@test.com',
+                                                recipientRole: emp?.role || 'employee',
+                                                targetUsers: [selectedEmployee],
+                                                targetEmails: [emp?.email],
+                                                subject: 'TEST NOTICE - ' + new Date().toLocaleTimeString(),
+                                                message: 'This is a test notice to verify the system is working.',
+                                                severity: 'info',
+                                                priority: 'normal',
+                                                sender: 'Admin',
+                                                senderId: userData?.id || 'admin-test',
+                                                senderName: userData?.name || 'Admin',
+                                                senderRole: 'admin',
+                                                date: new Date().toISOString(),
+                                                read: false
+                                            };
+                                            console.log('🧪 TEST: Notice data:', testNotice);
+                                            const result = await NoticeService.create(testNotice);
+                                            console.log('🧪 TEST: Notice created successfully!', result);
+                                            alert('Test notice sent! Check console and Firestore.');
+                                            fetchSentNotices();
+                                        } catch (error) {
+                                            console.error('🧪 TEST: Error:', error);
+                                            alert('Test failed: ' + error.message);
+                                        }
+                                    }}
+                                >
+                                    <i className="fas fa-flask me-2"></i>
+                                    Send Test Notice (Debug)
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -194,11 +258,12 @@ const AdminNotice = ({ userData }) => {
                         <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                             <h5 className="mb-0 fw-bold">Sent History</h5>
                             <button
-                                className="btn btn-sm btn-outline-success"
+                                className="btn btn-success"
                                 onClick={handleDownloadHistory}
                                 disabled={sentNotices.length === 0}
+                                style={{ minWidth: '140px' }}
                             >
-                                <i className="fas fa-download me-2"></i>Export CSV
+                                <i className="fas fa-download me-2"></i>Download Report
                             </button>
                         </div>
                         <div className="card-body p-0">
@@ -213,7 +278,8 @@ const AdminNotice = ({ userData }) => {
                                     <table className="table table-hover align-middle mb-0">
                                         <thead className="bg-light">
                                             <tr>
-                                                <th className="ps-4 py-3">Sent To</th>
+                                                <th className="ps-4 py-3">Sr. No.</th>
+                                                <th className="py-3">Sent To</th>
                                                 <th className="py-3">Subject</th>
                                                 <th className="py-3">Type</th>
                                                 <th className="py-3">Date</th>
@@ -221,9 +287,10 @@ const AdminNotice = ({ userData }) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {sentNotices.map((notice) => (
+                                            {sentNotices.map((notice, index) => (
                                                 <tr key={notice.id}>
-                                                    <td className="ps-4 fw-semibold">{notice.recipientName}</td>
+                                                    <td className="ps-4 text-muted">{index + 1}</td>
+                                                    <td className="fw-semibold">{notice.recipientName}</td>
                                                     <td>{notice.subject}</td>
                                                     <td>
                                                         <span className={`badge bg-${notice.severity === 'danger' ? 'danger' : notice.severity === 'warning' ? 'warning text-dark' : notice.severity === 'success' ? 'success' : 'info'}`}>
@@ -231,7 +298,7 @@ const AdminNotice = ({ userData }) => {
                                                         </span>
                                                     </td>
                                                     <td className="small text-muted">
-                                                        {notice.createdAt?.seconds ? formatDate(new Date(notice.createdAt.seconds * 1000)) : 'Just now'}
+                                                        {notice.createdAt?.seconds ? formatDateShort(new Date(notice.createdAt.seconds * 1000)) : formatDateShort(new Date())}
                                                     </td>
                                                     <td>
                                                         {notice.read ? (

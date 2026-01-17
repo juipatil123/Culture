@@ -149,6 +149,7 @@ export const getAllUsers = async () => {
 };
 
 // Subscribe to notices for a specific user
+// Subscribe to notices for a specific user
 export const subscribeToNotices = (userId, role, callback) => {
     // Handle optional role argument
     let actualCallback = callback;
@@ -161,12 +162,33 @@ export const subscribeToNotices = (userId, role, callback) => {
         return () => { };
     }
 
+    console.log('🔔 Setting up notice subscription for userId:', userId);
     const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
     const q = query(colRef, where("targetUsers", "array-contains", userId));
 
     return onSnapshot(q, (snapshot) => {
         const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('📨 Firestore query result for userId:', userId, '- Found:', notices.length, 'notices');
         actualCallback(notices);
+    }, (error) => {
+        console.error('❌ Error in notice subscription:', error);
+        actualCallback([]);
+    });
+};
+
+// Subscribe to notices by email (fallback method)
+export const subscribeToNoticesByEmail = (userEmail, callback) => {
+    console.log('🔔 Setting up notice subscription for email:', userEmail);
+    const colRef = collection(db, BASE_COLLECTION, 'NOTICES', 'items');
+    const q = query(colRef, where("targetEmails", "array-contains", userEmail));
+
+    return onSnapshot(q, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('📨 Firestore query result for email:', userEmail, '- Found:', notices.length, 'notices');
+        callback(notices);
+    }, (error) => {
+        console.error('❌ Error in notice subscription by email:', error);
+        callback([]);
     });
 };
 

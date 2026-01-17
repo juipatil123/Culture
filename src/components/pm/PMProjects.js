@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, formatDateRange } from '../../utils/dateUtils';
 import './PMComponents.css';
 
 const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDeleteProject, userName, userEmail }) => {
@@ -83,7 +83,7 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
           <i className="fas fa-search position-absolute" style={{ left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}></i>
           <input
             type="text"
-            className="form-control ps-5 py-2"
+            className="ps-5 py-2"
             placeholder="Search project name or client..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -145,7 +145,7 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                   </div>
                   <div className="info-item">
                     <i className="fas fa-calendar"></i>
-                    <span><strong>Start:</strong> {project.date}</span>
+                    <span><strong>Duration:</strong> {formatDateRange(project.startDate, project.endDate)}</span>
                   </div>
                   <div className="info-item">
                     <i className="fas fa-rupee-sign"></i>
@@ -284,8 +284,7 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                     </td>
                     <td>
                       <div className="smaller">
-                        <div><i className="far fa-calendar-plus me-1"></i> {project.date}</div>
-                        <div className="text-muted"><i className="far fa-calendar-check me-1"></i> {formatDate(project.endDate)}</div>
+                        <i className="far fa-calendar me-1"></i> {formatDateRange(project.startDate, project.endDate)}
                       </div>
                     </td>
                     <td>
@@ -336,10 +335,9 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                     <div className="col-md-6">
                       <p><strong>Client:</strong> {selectedProject.clientName}</p>
                       <p><strong>Status:</strong> {getStatusBadge(selectedProject.status)}</p>
-                      <p><strong>Start Date:</strong> {selectedProject.date}</p>
+                      <p><strong>Duration:</strong> {formatDateRange(selectedProject.startDate, selectedProject.endDate)}</p>
                     </div>
                     <div className="col-md-6">
-                      <p><strong>End Date:</strong> {formatDate(selectedProject.endDate)}</p>
                       <p><strong>Project Cost:</strong> ₹{selectedProject.projectCost || 0}</p>
                       <p><strong>Advance Payment:</strong> ₹{selectedProject.advancePayment || 0}</p>
                       <p><strong>Progress:</strong> {selectedProject.progress}%</p>

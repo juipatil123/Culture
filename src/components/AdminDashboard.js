@@ -5,6 +5,7 @@ import AddProjectManagerModal from './AddProjectManagerModal';
 import AddUserModal from './AddUserModal';
 import AddTaskModal from './AddTaskModal';
 import AddProjectModal from './AddProjectModal';
+import { calculateProjectStatus } from '../utils/projectUtils';
 
 // Import modular admin components
 import UserManagement from './admin/UserManagement';
@@ -21,7 +22,7 @@ import Reports from './admin/Reports';
 import SupportHelp from './admin/SupportHelp';
 import AdminNotice from './admin/AdminNotice';
 import { subscribeToNotices, subscribeToProjects, subscribeToAllUsers } from '../firebase/firestoreService';
-import { formatDate } from '../utils/dateUtils';
+import { formatDateShort } from '../utils/dateUtils';
 
 import {
   getAllUsers,
@@ -46,7 +47,6 @@ import {
   getAllCustomRoles,
   createCustomRole,
   deleteCustomRole,
-  getDashboardStats,
   getProgressData,
   assignProjectToManager,
   removeProjectFromManager
@@ -171,7 +171,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
   useEffect(() => {
     if (!safeUserData.id && !safeUserData._id) return;
     let isFirstLoad = true;
-    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, safeUserData.role, (notices) => {
+    const unsubscribe = subscribeToNotices(safeUserData.id || safeUserData._id, (notices) => {
       const count = notices.filter(n => !n.read).length;
       setUnreadCount(count);
 
@@ -349,19 +349,48 @@ const AdminDashboard = ({ userData, onLogout }) => {
   const loadDashboardStats = async () => {
     setLoadingStats(true);
     try {
-      const [statsData, progressDataResponse] = await Promise.all([
-        getDashboardStats(),
-        getProgressData()
+      // Calculate stats from existing data instead of calling backend API
+      const [usersData, projectsData] = await Promise.all([
+        getAllUsers(),
+        getAllProjects()
       ]);
-      setDashboardStats(statsData || {
+      
+      // Calculate total clients (unique client names from projects)
+      const uniqueClients = [...new Set(projectsData.map(p => p.clientName).filter(Boolean))];
+      
+      // Calculate total revenue from projects
+      const totalRevenue = projectsData.reduce((sum, p) => sum + (parseFloat(p.projectCost) || 0), 0);
+      
+      setDashboardStats({
+        totalUsers: usersData.length || 0,
+        activeProjects: projectsData.filter(p => p.status === 'In Progress' || p.status === 'On Track').length || 0,
+        totalClients: uniqueClients.length || 0,
+        totalRevenue: totalRevenue || 0
+      });
+      
+      // Get progress data separately
+      const progressDataResponse = await getProgressData().catch(() => ({
+        projectCompletion: [],
+        teamProductivity: [],
+        monthlyTarget: {
+          percentage: 0,
+          comparison: 0,
+          earnings: 0,
+          target: 0,
+          revenue: 0,
+          today: 0
+        }
+      }));
+      setProgressData(progressDataResponse);
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+      // Set default values on error
+      setDashboardStats({
         totalUsers: 0,
         activeProjects: 0,
         totalClients: 0,
         totalRevenue: 0
       });
-      setProgressData(progressDataResponse);
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error);
     } finally {
       setLoadingStats(false);
     }
@@ -373,30 +402,36 @@ const AdminDashboard = ({ userData, onLogout }) => {
     try {
       const projectsData = await getAllProjects();
 
-      const transformedProjects = (projectsData || []).map((project, index) => ({
-        id: project._id || project.id || `proj-${index}`,
-        name: project.name || 'Untitled Project',
-        date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
-        progress: project.progress || 0,
-        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
-          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
-            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
-              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
-        assigned: project.assignedMembers && project.assignedMembers.length > 0
-          ? project.assignedMembers.map((member, i) => ({
-            name: typeof member === 'object' ? member.name : member,
-            color: ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-secondary'][i % 5]
-          }))
-          : [],
-        extra: project.assignedMembers && project.assignedMembers.length > 3 ? project.assignedMembers.length - 3 : 0,
-        clientName: project.clientName || 'No Client',
-        startDate: project.startDate,
-        endDate: project.endDate,
-        description: project.description,
-        projectCost: project.projectCost,
-        advancePayment: project.advancePayment,
-        projectManager: project.projectManager
-      }));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
+
+      const transformedProjects = (projectsData || []).map((project, index) => {
+        // Use shared utility function for consistent status calculation
+        const calculatedStatus = calculateProjectStatus(project);
+        const progress = parseInt(project.progress) || 0;
+
+        return {
+          id: project._id || project.id || `proj-${index}`,
+          name: project.name || 'Untitled Project',
+          date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
+          progress: progress,
+          status: calculatedStatus,
+          assigned: project.assignedMembers && project.assignedMembers.length > 0
+            ? project.assignedMembers.map((member, i) => ({
+              name: typeof member === 'object' ? member.name : member,
+              color: ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-secondary'][i % 5]
+            }))
+            : [],
+          extra: project.assignedMembers && project.assignedMembers.length > 3 ? project.assignedMembers.length - 3 : 0,
+          clientName: project.clientName || 'No Client',
+          startDate: project.startDate,
+          endDate: project.endDate,
+          description: project.description,
+          projectCost: project.projectCost,
+          advancePayment: project.advancePayment,
+          projectManager: project.projectManager
+        };
+      });
 
       setProjects(transformedProjects);
       console.log(`✅ Loaded ${transformedProjects.length} projects from Firestore`);
@@ -465,30 +500,33 @@ const AdminDashboard = ({ userData, onLogout }) => {
     // 3. Setup real-time listeners for Projects
     setLoadingProjects(true);
     const unsubscribeProjects = subscribeToProjects((projectsData) => {
-      const transformedProjects = (projectsData || []).map((project, index) => ({
-        id: project._id || project.id || `proj-${index}`,
-        name: project.name || 'Untitled Project',
-        date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
-        progress: project.progress || 0,
-        status: (project.projectStatus === 'pending' || project.projectStatus === 'assigned') ? 'Pending' :
-          (project.projectStatus === 'in-progress' || project.projectStatus === 'on-track') ? 'In Progress' :
-            (project.projectStatus === 'overdue' || project.projectStatus === 'at-risk' || project.projectStatus === 'delayed') ? 'Overdue' :
-              project.projectStatus === 'completed' ? 'Completed' : 'Pending',
-        assigned: project.assignedMembers && project.assignedMembers.length > 0
-          ? project.assignedMembers.map((member, i) => ({
-            name: typeof member === 'object' ? member.name : member,
-            color: ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-secondary'][i % 5]
-          }))
-          : [],
-        extra: project.assignedMembers && project.assignedMembers.length > 3 ? project.assignedMembers.length - 3 : 0,
-        clientName: project.clientName || 'No Client',
-        startDate: project.startDate,
-        endDate: project.endDate,
-        description: project.description,
-        projectCost: project.projectCost,
-        advancePayment: project.advancePayment,
-        projectManager: project.projectManager
-      }));
+      const transformedProjects = (projectsData || []).map((project, index) => {
+        // Use shared utility function for consistent status calculation
+        const calculatedStatus = calculateProjectStatus(project);
+        const progress = parseInt(project.progress) || 0;
+
+        return {
+          id: project._id || project.id || `proj-${index}`,
+          name: project.name || 'Untitled Project',
+          date: project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date',
+          progress: progress,
+          status: calculatedStatus,
+          assigned: project.assignedMembers && project.assignedMembers.length > 0
+            ? project.assignedMembers.map((member, i) => ({
+              name: typeof member === 'object' ? member.name : member,
+              color: ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-secondary'][i % 5]
+            }))
+            : [],
+          extra: project.assignedMembers && project.assignedMembers.length > 3 ? project.assignedMembers.length - 3 : 0,
+          clientName: project.clientName || 'No Client',
+          startDate: project.startDate,
+          endDate: project.endDate,
+          description: project.description,
+          projectCost: project.projectCost,
+          advancePayment: project.advancePayment,
+          projectManager: project.projectManager
+        };
+      });
       setProjects(transformedProjects);
       setLoadingProjects(false);
     });
@@ -918,7 +956,7 @@ const AdminDashboard = ({ userData, onLogout }) => {
               <h3 className="fw-bold mb-0">Dashboard Overview</h3>
               <div className="text-muted small">
                 <i className="fas fa-calendar-alt me-2"></i>
-                {formatDate(new Date())}
+                {formatDateShort(new Date())}
               </div>
             </div>
 
@@ -1008,15 +1046,94 @@ const AdminDashboard = ({ userData, onLogout }) => {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h3 className="fw-bold mb-0">Client Overview</h3>
               <button className="btn btn-outline-secondary" onClick={() => setActiveView('dashboard')}>
-                <i className="fas fa-arrow-left me-2"></i> Back
+                <i className="fas fa-arrow-left me-2"></i> Back to Dashboard
               </button>
             </div>
 
+            {/* Client Statistics Cards */}
+            <div className="row g-4 mb-4">
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm rounded-3 bg-primary text-white">
+                  <div className="card-body p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div className="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
+                        <i className="fas fa-handshake fs-5"></i>
+                      </div>
+                    </div>
+                    <h3 className="fw-bold mb-1">{new Set(projects.map(p => p.clientName).filter(Boolean)).size}</h3>
+                    <p className="mb-0 opacity-75 small fw-semibold">Total Clients</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm rounded-3 bg-success text-white">
+                  <div className="card-body p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div className="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
+                        <i className="fas fa-rupee-sign fs-5"></i>
+                      </div>
+                    </div>
+                    <h3 className="fw-bold mb-1">₹{projects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0).toLocaleString()}</h3>
+                    <p className="mb-0 opacity-75 small fw-semibold">Total Revenue</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm rounded-3 bg-info text-white">
+                  <div className="card-body p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div className="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
+                        <i className="fas fa-check-circle fs-5"></i>
+                      </div>
+                    </div>
+                    <h3 className="fw-bold mb-1">₹{projects.reduce((sum, p) => sum + (Number(p.advancePayment) || 0), 0).toLocaleString()}</h3>
+                    <p className="mb-0 opacity-75 small fw-semibold">Advance Payment</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="card border-0 shadow-sm rounded-3">
-              <div className="card-header bg-white border-0 py-3">
+              <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <h5 className="mb-0 fw-bold text-primary">
-                  Total Clients: {new Set(projects.map(p => p.clientName).filter(Boolean)).size}
+                  Client Details
                 </h5>
+                <button 
+                  className="btn btn-success"
+                  onClick={() => {
+                    const headers = ['Sr. No.', 'Client Name', 'Projects Count', 'Total Revenue', 'Advance Payment', 'Date'];
+                    const clientData = [...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
+                      const clientProjects = projects.filter(p => p.clientName === client);
+                      const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
+                      const advance = clientProjects.reduce((sum, p) => sum + (Number(p.advancePayment) || 0), 0);
+                      return [
+                        index + 1,
+                        client,
+                        clientProjects.length,
+                        revenue,
+                        advance,
+                        formatDateShort(new Date())
+                      ];
+                    });
+                    const csvContent = [
+                      headers.join(','),
+                      ...clientData.map(row => row.map(cell => `"${cell}"`).join(','))
+                    ].join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `client_report_${formatDateShort(new Date()).replace(/-/g, '_')}.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    alert('Client report downloaded successfully!');
+                  }}
+                  style={{ minWidth: '140px' }}
+                >
+                  <i className="fas fa-download me-2"></i>Download Report
+                </button>
               </div>
               <div className="card-body">
                 {projects.length > 0 ? (
@@ -1024,22 +1141,27 @@ const AdminDashboard = ({ userData, onLogout }) => {
                     <table className="table table-hover align-middle">
                       <thead className="bg-light">
                         <tr>
-                          <th>Sr. No.</th>
-                          <th>Client Name</th>
-                          <th>Projects Count</th>
-                          <th>Total Revenue</th>
+                          <th className="py-3">Sr. No.</th>
+                          <th className="py-3">Client Name</th>
+                          <th className="py-3">Projects Count</th>
+                          <th className="py-3">Total Revenue</th>
+                          <th className="py-3">Advance Payment</th>
+                          <th className="py-3">Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         {[...new Set(projects.map(p => p.clientName).filter(Boolean))].map((client, index) => {
                           const clientProjects = projects.filter(p => p.clientName === client);
                           const revenue = clientProjects.reduce((sum, p) => sum + (Number(p.projectCost) || 0), 0);
+                          const advance = clientProjects.reduce((sum, p) => sum + (Number(p.advancePayment) || 0), 0);
                           return (
                             <tr key={index}>
-                              <td>{index + 1}</td>
+                              <td className="text-muted">{index + 1}</td>
                               <td className="fw-semibold">{client}</td>
                               <td>{clientProjects.length}</td>
-                              <td>₹{revenue.toLocaleString()}</td>
+                              <td className="text-success fw-semibold">₹{revenue.toLocaleString()}</td>
+                              <td className="text-info fw-semibold">₹{advance.toLocaleString()}</td>
+                              <td className="text-muted small">{formatDateShort(new Date())}</td>
                             </tr>
                           );
                         })}
@@ -1047,7 +1169,10 @@ const AdminDashboard = ({ userData, onLogout }) => {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-center text-muted my-4">No clients found.</p>
+                  <div className="text-center py-5 text-muted">
+                    <i className="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+                    <p>No clients found.</p>
+                  </div>
                 )}
               </div>
             </div>

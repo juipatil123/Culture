@@ -76,6 +76,10 @@ function EmployeeDashboardWrapper({ userData, onLogout }) {
 
     // Subscribe to tasks for real-time updates
     const unsubscribe = subscribeToTasks((allTasks) => {
+      if (!allTasks || !Array.isArray(allTasks)) {
+        console.warn('Invalid tasks data received:', allTasks);
+        return;
+      }
       // Filter tasks for the current user (using both email and name)
       const myTasks = allTasks.filter(task => isUserAssignedToTask(task, userEmail, userName));
       setAssignedTasks(myTasks);
@@ -83,7 +87,9 @@ function EmployeeDashboardWrapper({ userData, onLogout }) {
 
     return () => {
       // Cleanup subscription
-      if (unsubscribe) unsubscribe();
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
     };
   }, [userEmail, userName]);
 

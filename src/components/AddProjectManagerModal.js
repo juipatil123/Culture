@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 
 const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null }) => {
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-
+  const [focusedDateFields, setFocusedDateFields] = useState({}); // Track focus for date fields
 
   const [errors, setErrors] = useState({});
 
@@ -322,10 +323,13 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       <i className="fas fa-calendar me-1"></i>Joining Date
                     </label>
                     <input
-                      type="date"
+                      type={focusedDateFields.joiningDate ? 'date' : 'text'}
                       className="form-control"
                       name="joiningDate"
-                      value={formData.joiningDate}
+                      value={focusedDateFields.joiningDate ? formData.joiningDate : (formData.joiningDate ? formatDate(formData.joiningDate) : '')}
+                      placeholder="DD/MM/YYYY"
+                      onFocus={() => setFocusedDateFields(prev => ({ ...prev, joiningDate: true }))}
+                      onBlur={() => setFocusedDateFields(prev => ({ ...prev, joiningDate: false }))}
                       onChange={handleChange}
                     />
                   </div>

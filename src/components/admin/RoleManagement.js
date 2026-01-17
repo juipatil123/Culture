@@ -40,6 +40,13 @@ const RoleManagement = () => {
       return;
     }
 
+    // Validate role name - only letters and spaces
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(newRoleName)) {
+      alert('Error: Role name can only contain letters and spaces. Numbers and special characters are not allowed.');
+      return;
+    }
+
     try {
       const roleData = {
         name: newRoleName,
@@ -100,6 +107,54 @@ const RoleManagement = () => {
           <i className="fas fa-plus me-2"></i>
           Add Custom Role
         </button> */}
+      </div>
+
+      {/* Role Stats */}
+      <div className="role-stats-summary mb-4">
+        <div className="row g-3">
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card total">
+              <div className="stat-icon"><i className="fas fa-user-shield"></i></div>
+              <div className="stat-content">
+                <div className="stat-label">Total Roles</div>
+                <div className="stat-value">{5 + customRoles.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card" style={{ borderLeft: '4px solid #dc3545' }}>
+              <div className="stat-icon" style={{ backgroundColor: 'rgba(220, 53, 69, 0.1)', color: '#dc3545' }}>
+                <i className="fas fa-shield-alt"></i>
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">System Roles</div>
+                <div className="stat-value">5</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card" style={{ borderLeft: '4px solid #ffc107' }}>
+              <div className="stat-icon" style={{ backgroundColor: 'rgba(255, 193, 7, 0.1)', color: '#ffc107' }}>
+                <i className="fas fa-user-cog"></i>
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Custom Roles</div>
+                <div className="stat-value">{customRoles.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <div className="stat-card" style={{ borderLeft: '4px solid #28a745' }}>
+              <div className="stat-icon" style={{ backgroundColor: 'rgba(40, 167, 69, 0.1)', color: '#28a745' }}>
+                <i className="fas fa-check-circle"></i>
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Active Roles</div>
+                <div className="stat-value">{5 + customRoles.length}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Default Roles */}

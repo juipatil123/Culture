@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TeamLeaderNotice from './TeamLeaderNotice';
 import TeamLeaderSupport from './TeamLeaderSupport';
 import { subscribeToNotices, ProjectService } from '../firebase/firestoreService';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateRange } from '../utils/dateUtils';
 import './ProjectManagerDashboard.css'; // Reuse PM dashboard styles
 
 
@@ -34,7 +34,7 @@ const EmployeeDashboard = ({
     useEffect(() => {
         if (!userData?.id && !userData?._id) return;
         let isFirstLoad = true;
-        const unsubscribe = subscribeToNotices(userData.id || userData._id, userData.role, (notices) => {
+        const unsubscribe = subscribeToNotices(userData.id || userData._id, (notices) => {
             const count = notices.filter(n => !n.read).length;
 
             if (!isFirstLoad && count > unreadCount) {
@@ -537,7 +537,7 @@ const EmployeeDashboard = ({
                                                     <div className="d-flex align-items-center gap-2 mb-2">
                                                         <i className="far fa-calendar-alt text-muted" style={{ fontSize: '0.8rem' }}></i>
                                                         <small className="text-muted">
-                                                            <span className="fw-semibold">Deadline:</span> {deadline}
+                                                            <span className="fw-semibold">Duration:</span> {formatDateRange(p.startDate, p.endDate || p.dueDate)}
                                                         </small>
                                                     </div>
 
@@ -661,8 +661,7 @@ const EmployeeDashboard = ({
                                                         </div>
                                                         <div className="col-lg-2 mb-2 mb-lg-0">
                                                             <div className="small text-muted">
-                                                                <div><i className="fas fa-calendar-plus me-1"></i>S: {formatDate(task.startDate)}</div>
-                                                                <div><i className="fas fa-calendar-check me-1"></i>D: {formatDate(task.dueDate)}</div>
+                                                                <div><i className="fas fa-calendar-alt me-1"></i>{formatDateRange(task.startDate, task.dueDate)}</div>
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-2 text-end">
@@ -746,14 +745,10 @@ const EmployeeDashboard = ({
                                                     <hr className="bg-light my-3" />
 
                                                     {/* Middle Row: Points & Priority */}
-                                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                                    <div className="d-flex justify-content-center align-items-center mb-1">
                                                         <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-                                                            <i className="fas fa-calendar-plus"></i>
-                                                            <span>Start: {formatDate(task.startDate)}</span>
-                                                        </div>
-                                                        <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-                                                            <i className="fas fa-calendar-check"></i>
-                                                            <span>Due: {formatDate(task.dueDate)}</span>
+                                                            <i className="fas fa-calendar-alt"></i>
+                                                            <span>{formatDateRange(task.startDate, task.dueDate)}</span>
                                                         </div>
                                                     </div>
 

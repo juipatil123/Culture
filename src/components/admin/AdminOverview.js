@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, formatDateRange } from '../../utils/dateUtils';
+import { getStatusColor, getProgressGradient } from '../../utils/projectUtils';
 
 const AdminOverview = ({
     stats,
@@ -132,7 +133,7 @@ const AdminOverview = ({
                             className="btn btn-outline-secondary btn-sm"
                             onClick={() => onCardClick('All Projects')}
                         >
-                            <i className="fas fa-filter me-1"></i> Filter
+                            <i className="fas fa-list me-1"></i> List View
                         </button>
                         <button
                             className="btn btn-primary btn-sm"
@@ -147,71 +148,120 @@ const AdminOverview = ({
                         <table className="table table-hover align-middle mb-0">
                             <thead className="table-light">
                                 <tr>
-                                    <th className="ps-4">Project Name</th>
-                                    <th>Project Manager</th>
-                                    <th>Progress</th>
-                                    <th>Status</th>
-                                    <th>Deadline</th>
-                                    <th className="pe-4 text-end">Actions</th>
+                                    <th className="ps-4">SR. NO.</th>
+                                    <th>PROJECT NAME</th>
+                                    <th>CLIENT</th>
+                                    <th>EMAIL ID</th>
+                                    <th>STATUS</th>
+                                    <th>PROGRESS</th>
+                                    <th>DURATION</th>
+                                    <th>COST</th>
+                                    <th className="pe-4 text-center">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {projects && projects.length > 0 ? projects.slice(0, 5).map((project, index) => (
+                                {projects && projects.length > 0 ? projects.slice(0, 8).map((project, index) => (
                                     <tr key={index}>
                                         <td className="ps-4">
-                                            <div>
-                                                <div className="fw-bold text-dark">{project.name}</div>
-                                                <small className="text-muted">{project.clientName || 'No client specified'}</small>
-                                            </div>
+                                            <span className="fw-bold text-muted">{index + 1}</span>
+                                        </td>
+                                        <td>
+                                            <div className="fw-bold text-dark">{project.name}</div>
+                                            <small className="text-muted">{project.clientName || 'No client'}</small>
+                                        </td>
+                                        <td>
+                                            <span className="text-secondary">{project.clientName || 'N/A'}</span>
                                         </td>
                                         <td>
                                             <div className="d-flex align-items-center">
                                                 <div
-                                                    className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
-                                                    style={{ width: '28px', height: '28px', fontSize: '11px', fontWeight: 'bold' }}
+                                                    className="rounded-circle text-white d-flex align-items-center justify-content-center me-2"
+                                                    style={{ 
+                                                        width: '28px', 
+                                                        height: '28px', 
+                                                        fontSize: '11px', 
+                                                        fontWeight: 'bold',
+                                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                                    }}
                                                 >
                                                     {(project.projectManager || 'N').charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="small fw-semibold">{project.projectManager || 'Not Assigned'}</span>
+                                                <span className="small">{project.projectManager || 'Not Assigned'}</span>
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="d-flex align-items-center" style={{ width: '120px' }}>
-                                                <div className="progress flex-grow-1" style={{ height: '6px' }}>
-                                                    <div
-                                                        className={`progress-bar ${(project.status === 'Completed' || project.progress === 100) ? 'bg-success' : 'bg-primary'}`}
-                                                        role="progressbar"
-                                                        style={{ width: `${project.status === 'Completed' ? 100 : project.progress}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className="ms-2 small fw-bold">{project.status === 'Completed' ? 100 : project.progress}%</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge rounded-pill ${project.status === 'Completed' ? 'bg-success' :
-                                                project.status === 'In Progress' ? 'bg-primary' :
-                                                    project.status === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark'
-                                                }`} style={{ fontSize: '0.75rem', minWidth: '80px', padding: '8px 12px' }}>
+                                            <span 
+                                                className="badge rounded-pill" 
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    minWidth: '90px',
+                                                    padding: '6px 12px',
+                                                    fontWeight: '700',
+                                                    backgroundColor: getStatusColor(project.status),
+                                                    color: 'white'
+                                                }}
+                                            >
                                                 {project.status || 'Pending'}
                                             </span>
                                         </td>
                                         <td>
+                                            <div className="d-flex align-items-center gap-2" style={{ minWidth: '120px' }}>
+                                                <div className="progress flex-grow-1" style={{ height: '8px', background: '#f0f2f5', borderRadius: '10px' }}>
+                                                    <div
+                                                        className="progress-bar"
+                                                        style={{ 
+                                                            width: `${project.progress}%`, 
+                                                            background: getProgressGradient(project.status),
+                                                            borderRadius: '10px',
+                                                            transition: 'all 0.3s ease'
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                                <span className="small fw-bold" style={{
+                                                    color: getStatusColor(project.status)
+                                                }}>{project.progress}%</span>
+                                            </div>
+                                        </td>
+                                        <td>
                                             <small className="text-muted">
-                                                {formatDate(project.endDate)}
+                                                <i className="far fa-calendar-alt me-1"></i>
+                                                {formatDateRange(project.startDate, project.endDate)}
                                             </small>
                                         </td>
-                                        <td className="pe-4 text-end">
-                                            <button
-                                                className="btn btn-sm btn-outline-primary"
-                                                onClick={() => onViewProject(project)}
-                                            >
-                                                View
-                                            </button>
+                                        <td className="fw-bold text-dark">
+                                            ₹{project.projectCost ? Number(project.projectCost).toLocaleString() : '0'}
+                                        </td>
+                                        <td className="pe-4 text-center">
+                                            <div className="d-flex gap-1 justify-content-center">
+                                                <button
+                                                    className="btn btn-sm btn-outline-primary rounded-circle"
+                                                    onClick={() => onViewProject(project)}
+                                                    title="Edit"
+                                                    style={{ width: '32px', height: '32px', padding: '0' }}
+                                                >
+                                                    <i className="far fa-edit"></i>
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-info rounded-circle"
+                                                    onClick={() => onViewProject(project)}
+                                                    title="View"
+                                                    style={{ width: '32px', height: '32px', padding: '0' }}
+                                                >
+                                                    <i className="far fa-eye"></i>
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger rounded-circle"
+                                                    title="Delete"
+                                                    style={{ width: '32px', height: '32px', padding: '0' }}
+                                                >
+                                                    <i className="far fa-trash-alt"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="6" className="text-center py-5">
+                                        <td colSpan="9" className="text-center py-5">
                                             <i className="fas fa-project-diagram fa-3x text-muted mb-3 opacity-25"></i>
                                             <p className="text-muted">No active projects found</p>
                                         </td>
