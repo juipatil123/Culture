@@ -127,7 +127,7 @@ const PMTasks = ({ tasks, projects, users, onRefresh, onAddTask, onEditTask, use
     { id: 'completed', label: 'Completed', icon: 'check-circle' },
     { id: 'overdue', label: 'Overdue', icon: 'exclamation-circle' },
 
-    
+
 
   ];
 
@@ -145,22 +145,6 @@ const PMTasks = ({ tasks, projects, users, onRefresh, onAddTask, onEditTask, use
         setNotification('Failed to delete task. Please try again.');
         setTimeout(() => setNotification(null), 5000);
       }
-    }
-  };
-
-  // Handle reassign
-  const handleReassign = async (taskId, newAssignee) => {
-    try {
-      await updateTask(taskId, { assignedTo: newAssignee });
-      setNotificationTitle('Success');
-      setNotification(`Task reassigned to ${newAssignee} successfully!`);
-      setTimeout(() => setNotification(null), 5000);
-      onRefresh();
-    } catch (error) {
-      console.error('Error reassigning task:', error);
-      setNotificationTitle('Error');
-      setNotification('Failed to reassign task.');
-      setTimeout(() => setNotification(null), 5000);
     }
   };
 

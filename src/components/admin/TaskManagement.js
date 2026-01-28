@@ -98,22 +98,6 @@ const TaskManagement = () => {
     }
   };
 
-  // Handle reassign
-  const handleReassign = async (taskId, newAssignee) => {
-    try {
-      await updateTask(taskId, { assignedTo: newAssignee });
-      setAssignedTasks(prev => prev.map(t => (t.id === taskId || t._id === taskId) ? { ...t, assignedTo: newAssignee } : t));
-      setNotificationTitle('Success');
-      setNotification(`Task reassigned to ${newAssignee} successfully!`);
-      setTimeout(() => setNotification(null), 5000);
-    } catch (error) {
-      console.error('Error reassigning task:', error);
-      setNotificationTitle('Error');
-      setNotification('Failed to reassign task.');
-      setTimeout(() => setNotification(null), 5000);
-    }
-  };
-
   // Filter tasks
   const getFilteredTasks = () => {
     let filtered = [...assignedTasks];

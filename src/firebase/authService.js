@@ -17,7 +17,6 @@ import {
     setDoc
 } from 'firebase/firestore';
 
-const BASE_COLLECTION = 'CULTUREDB';
 
 /**
  * Enhanced Authentication Service for CULTUREDB
@@ -53,6 +52,7 @@ export const AuthService = {
             const q = query(colRef, where("email", "==", normalizedEmail));
             const querySnapshot = await getDocs(q);
 
+            let userData;
             if (querySnapshot.empty) {
                 // Check if doc exists by UID directly (optimization)
                 const userDocRef = doc(db, 'users', user.uid);
@@ -60,7 +60,7 @@ export const AuthService = {
 
                 if (userDocSnap.exists()) {
                     // Found by UID
-                    var userData = {
+                    userData = {
                         id: userDocSnap.id,
                         ...userDocSnap.data(),
                         uid: user.uid
@@ -70,7 +70,7 @@ export const AuthService = {
                     throw new Error('User profile not found in database.');
                 }
             } else {
-                var userData = {
+                userData = {
                     id: querySnapshot.docs[0].id,
                     ...querySnapshot.docs[0].data(),
                     uid: user.uid

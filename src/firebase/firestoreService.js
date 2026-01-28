@@ -10,7 +10,6 @@ import {
     query,
     where,
     serverTimestamp,
-    setDoc,
     onSnapshot
 } from 'firebase/firestore';
 
@@ -21,9 +20,6 @@ import {
 
 const BASE_COLLECTION = 'CULTUREDB';
 
-const getCollectionRef = (subCollection) => {
-    return collection(db, BASE_COLLECTION, subCollection, 'records');
-};
 
 // Generic CRUD factory
 const createCrud = (subCollection) => {

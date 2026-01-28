@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
         const parsed = JSON.parse(saved);
         setUser(parsed.user || null);
         setToken(parsed.token || null);
-      } catch {}
+      } catch { }
     }
     setLoading(false);
   }, []);
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
   };
 
-  const value = useMemo(() => ({ user, token, loading, login: handleLogin, signup: handleSignup, logout }), [user, token, loading]);
+  const value = useMemo(() => ({ user, token, loading, login: handleLogin, signup: handleSignup, logout }), [user, token, loading, handleLogin, handleSignup]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
