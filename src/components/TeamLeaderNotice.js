@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeToNotices, NoticeService, getAllUsers } from '../firebase/firestoreService';
 import { formatDate } from '../utils/dateUtils';
+import NewMessageModal from './NewMessageModal';
 
 const TeamLeaderNotice = ({ userData, compact = false }) => {
     const [notices, setNotices] = useState([]);
@@ -10,48 +11,28 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     const [sendingReply, setSendingReply] = useState(false);
     const [activeTab, setActiveTab] = useState('received'); // 'received' or 'sent'
 
-    // Compose related state
-    const [isComposing, setIsComposing] = useState(false);
+    // New Modal State
+    const [showComposeModal, setShowComposeModal] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
-    const [composeData, setComposeData] = useState({
-        recipientType: 'admin',
-        recipientId: '',
-        subject: '',
-        message: '',
-        priority: 'normal'
-    });
-    const [sendingCompose, setSendingCompose] = useState(false);
 
     useEffect(() => {
         if (!userData) return;
         const userId = userData.id || userData._id;
-        const userEmail = userData.email;
-        console.log('🔍 TeamLeaderNotice - Current user:', userData.name, 'ID:', userId, 'Email:', userEmail, 'Role:', userData.role);
-
-        // Use a flag to auto-select only on first data fetch
-        let initialLoadDone = false;
-        let allNotices = [];
 
         // Subscribe by ID
         const unsubscribeById = subscribeToNotices(userId, (dataById) => {
-            console.log('📬 Notices by ID for user:', userId, 'Count:', dataById.length);
-            
-            // Merge with email-based notices
-            const mergedNotices = [...dataById];
-            
-            // Remove duplicates based on notice ID
+            // Merge & Deduplicate
             const uniqueNotices = Array.from(
-                new Map(mergedNotices.map(notice => [notice.id, notice])).values()
+                new Map(dataById.map(notice => [notice.id, notice])).values()
             );
-            
-            allNotices = uniqueNotices;
+
             setNotices(uniqueNotices);
             setLoading(false);
 
-            // Auto-select latest notice on first load if nothing is selected and we aren't composing
-            if (!initialLoadDone && uniqueNotices.length > 0 && !selectedNotice && !isComposing) {
-                setSelectedNotice(uniqueNotices[0]);
-                initialLoadDone = true;
+            // Auto-select latest if needed
+            if (!selectedNotice && uniqueNotices.length > 0) {
+                // Optimization: Only auto-select if we haven't selected one yet. 
+                // Note: logic might conflict if real-time updates happen constantly, but for now it's okay.
             }
         });
 
@@ -76,7 +57,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                 recipientId: selectedNotice.senderId || 'admin-id',
                 recipientRole: selectedNotice.senderRole || 'admin',
                 recipientName: selectedNotice.senderName || selectedNotice.sender || 'Admin',
-                targetUsers: [selectedNotice.senderId], // Add targetUsers array
+                targetUsers: [selectedNotice.senderId],
                 subject: `Re: ${selectedNotice.subject}`,
                 message: replyMessage,
                 priority: 'normal',
@@ -95,55 +76,43 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
         }
     };
 
-    const handleComposeSubmit = async (e) => {
-        e.preventDefault();
-        if (!composeData.recipientId || !composeData.subject || !composeData.message) return;
-
-        setSendingCompose(true);
+    const handleModalSendMessage = async (msgData) => {
         try {
-            const recipient = allUsers.find(u => (u.id || u._id) === composeData.recipientId);
+            const recipient = allUsers.find(u => (u.id || u._id) === msgData.recipientId);
             const noticeData = {
                 senderId: userData.id || userData._id,
                 senderName: userData.name,
                 senderRole: userData.role,
-                recipientType: composeData.recipientType,
-                recipientId: composeData.recipientId,
+                recipientType: msgData.recipientGroup, // Using group as role type approximation or tracking
+                recipientId: msgData.recipientId,
                 recipientName: recipient?.name || 'Unknown',
-                recipientRole: composeData.recipientType,
-                targetUsers: [composeData.recipientId], // Add targetUsers array
-                subject: composeData.subject,
-                message: composeData.message,
+                recipientRole: msgData.recipientGroup === 'Managers' ? 'project-manager' :
+                    msgData.recipientGroup === 'Admins' ? 'admin' :
+                        msgData.recipientGroup === 'Team Leaders' ? 'team-leader' : 'employee',
+                targetUsers: [msgData.recipientId],
+                subject: msgData.subject,
+                message: msgData.message,
                 read: false,
-                priority: composeData.priority,
+                priority: 'normal',
                 date: new Date().toISOString()
             };
 
             await NoticeService.create(noticeData);
-            setIsComposing(false);
-            setComposeData({
-                recipientType: 'admin',
-                recipientId: '',
-                subject: '',
-                message: '',
-                priority: 'normal'
-            });
-            alert('Notice sent successfully!');
+            alert('Message sent successfully!');
         } catch (error) {
-            console.error("Error sending compose:", error);
-            alert('Failed to send message.');
-        } finally {
-            setSendingCompose(false);
+            console.error("Error sending message:", error);
+            alert('Failed to send message: ' + error.message);
         }
     };
 
     const handleNoticeClick = async (notice) => {
         if (compact) return;
-        setIsComposing(false);
         setSelectedNotice(notice);
         // Mark as read only if it's a received message
         if (!notice.read && notice.senderId !== (userData.id || userData._id)) {
             try {
                 await NoticeService.update(notice.id, { read: true });
+                // Optimistic update
                 setNotices(prev => prev.map(n => n.id === notice.id ? { ...n, read: true } : n));
             } catch (error) {
                 console.error("Error marking notice as read:", error);
@@ -194,16 +163,6 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
     const unreadCount = receivedNotices.filter(n => !n.read).length;
 
     const currentList = activeTab === 'received' ? receivedNotices : sentNotices;
-    const getComposeRecipients = () => {
-        const type = composeData.recipientType;
-        return allUsers.filter(u => {
-            if (type === 'admin') return u.role === 'admin';
-            if (type === 'project-manager') return u.role === 'project-manager';
-            if (type === 'team-leader') return u.role === 'team-leader';
-            if (type === 'employee') return u.role === 'employee' || u.role === 'intern';
-            return false;
-        });
-    };
 
     if (loading) {
         return (
@@ -280,17 +239,12 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                             <button
                                 className="btn btn-primary btn-sm rounded-circle shadow-sm"
                                 title="Compose New"
-                                onClick={() => {
-                                    setIsComposing(true);
-                                    setSelectedNotice(null);
-                                }}
+                                onClick={() => setShowComposeModal(true)}
+                                style={{ width: '32px', height: '32px' }}
                             >
                                 <i className="fas fa-plus"></i>
                             </button>
                         </div>
-
-                        {/* Search/Filter Bar (Optional placeholder) */}
-                        {/* <div className="p-2 bg-light border-bottom"><input ... /></div> */}
 
                         <div className="list-group list-group-flush overflow-auto" style={{ height: '600px' }}>
                             {currentList.length > 0 ? currentList.map(notice => (
@@ -340,7 +294,7 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                     </div>
                 </div>
 
-                {/* Notice Detail or Compose View */}
+                {/* Notice Detail View */}
                 <div className="col-md-7 col-lg-8">
                     <div className="card shadow-sm border-0 h-100" style={{ minHeight: '60vh' }}>
                         {selectedNotice ? (
@@ -349,7 +303,6 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                     <div>
                                         <h3 className="fw-bold mb-2 text-dark">{selectedNotice.subject}</h3>
                                         <div className="d-flex align-items-center text-muted gap-3 small">
-                                            {/* ... same details as before ... */}
                                             <span>
                                                 {selectedNotice.senderId === (userData?.id || userData?._id) ? (
                                                     <>To: <strong>{selectedNotice.recipientName || 'Member'}</strong></>
@@ -424,14 +377,23 @@ const TeamLeaderNotice = ({ userData, compact = false }) => {
                                     <i className="fas fa-envelope-open-text fa-4x text-muted opacity-50"></i>
                                 </div>
                                 <h4 className="text-muted fw-bold">Select a message</h4>
-                                <p className="text-muted">Choose a message from the list to view details.</p>
+                                <p className="text-muted">Choose a message from the list to view details or click + to compose.</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* New Message Modal */}
+            <NewMessageModal
+                show={showComposeModal}
+                onHide={() => setShowComposeModal(false)}
+                onSend={handleModalSendMessage}
+                users={allUsers}
+            />
         </div>
     );
 };
 
 export default TeamLeaderNotice;
+

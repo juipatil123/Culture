@@ -22,6 +22,7 @@ const TeamLeaderSupport = ({ allUsers: propUsers = [], userData }) => {
     // Group users by role for recipient dropdown
     const admins = allUsers.filter(u => u.role === 'admin') || [];
     const pms = allUsers.filter(u => u.role === 'project-manager') || [];
+    const teamLeaders = allUsers.filter(u => u.role === 'team-leader') || [];
     const employees = allUsers.filter(u => u.role === 'employee' || u.role === 'intern') || [];
 
     // Determine available recipients based on selected type
@@ -29,6 +30,7 @@ const TeamLeaderSupport = ({ allUsers: propUsers = [], userData }) => {
         switch (formData.recipientType) {
             case 'admin': return admins;
             case 'project-manager': return pms;
+            case 'team-leader': return teamLeaders;
             case 'employee': return employees;
             default: return [];
         }
@@ -123,6 +125,7 @@ const TeamLeaderSupport = ({ allUsers: propUsers = [], userData }) => {
                                             >
                                                 <option value="admin">Admin</option>
                                                 <option value="project-manager">Project Manager</option>
+                                                <option value="team-leader">Team Leader</option>
                                                 <option value="employee">Team Member (Employee)</option>
                                             </select>
                                         </div>

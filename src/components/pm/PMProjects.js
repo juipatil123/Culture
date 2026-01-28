@@ -78,44 +78,65 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
         </div>
       </div>
 
-      <div className="filters-section d-flex justify-content-between align-items-center mb-4 gap-3 bg-white p-3 rounded-4 shadow-sm border">
+      <div className="filters-section d-flex justify-content-between align-items-center mb-4 gap-3">
         <div className="search-box flex-grow-1" style={{ maxWidth: '400px', position: 'relative' }}>
           <i className="fas fa-search position-absolute" style={{ left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}></i>
           <input
             type="text"
-            className="ps-5 py-2"
+            className="form-control ps-5 py-2"
             placeholder="Search project name or client..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ borderRadius: '10px' }}
+            style={{
+              borderRadius: '10px',
+              border: '1px solid #e5e7eb',
+              fontSize: '0.9375rem'
+            }}
           />
         </div>
 
-        <div className="d-flex align-items-center gap-2">
-          <select
-            className="form-select py-2"
-            value={filterByStatus}
-            onChange={(e) => setFilterByStatus(e.target.value)}
-            style={{ borderRadius: '10px', minWidth: '150px' }}
-          >
-            <option value="all">All Project Status</option>
-            <option value="Assigned">Assigned</option>
-            <option value="On Track">On Track</option>
-            <option value="At Risk">At Risk</option>
-            <option value="Delayed">Delayed</option>
-            <option value="Completed">Completed</option>
-          </select>
+        <div className="d-flex align-items-center gap-3">
+          <div className="status-filter-dropdown" style={{ position: 'relative', minWidth: '200px' }}>
+            <select
+              className="form-select"
+              value={filterByStatus}
+              onChange={(e) => setFilterByStatus(e.target.value)}
+              style={{
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                padding: '0.625rem 2.5rem 0.625rem 1rem',
+                fontSize: '0.9375rem',
+                color: '#374151',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer',
+                appearance: 'none',
+                backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23374151\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 1rem center',
+                backgroundSize: '12px'
+              }}
+            >
+              <option value="all">All Project Status</option>
+              <option value="Assigned">Assigned</option>
+              <option value="On Track">On Track</option>
+              <option value="At Risk">At Risk</option>
+              <option value="Delayed">Delayed</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
 
           <div className="view-toggle btn-group">
             <button
               className={`btn btn-sm ${projectViewMode === 'card' ? 'btn-primary' : 'btn-outline-primary'}`}
               onClick={() => setProjectViewMode('card')}
+              style={{ borderRadius: '8px 0 0 8px' }}
             >
               <i className="fas fa-th-large"></i>
             </button>
             <button
               className={`btn btn-sm ${projectViewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
               onClick={() => setProjectViewMode('list')}
+              style={{ borderRadius: '0 8px 8px 0' }}
             >
               <i className="fas fa-list"></i>
             </button>
@@ -214,7 +235,8 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th className="ps-4">Project Details</th>
+                  <th className="ps-4" style={{ width: '60px' }}>Sr. No.</th>
+                  <th>Project Details</th>
                   <th>Client</th>
                   <th>Team</th>
                   <th>Status</th>
@@ -225,9 +247,12 @@ const PMProjects = ({ projects, onRefresh, onAddProject, onEditProject, onDelete
                 </tr>
               </thead>
               <tbody>
-                {filteredProjects.map((project) => (
+                {filteredProjects.map((project, index) => (
                   <tr key={project.id || project._id}>
-                    <td className="ps-4">
+                    <td className="ps-4 text-center">
+                      <span className="fw-bold text-muted">{index + 1}</span>
+                    </td>
+                    <td>
                       <div className="fw-bold text-dark">{project.name}</div>
                       <small className="text-muted">ID: {(project.id || project._id)?.substring(0, 8)}</small>
                     </td>

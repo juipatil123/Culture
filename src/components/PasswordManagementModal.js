@@ -189,7 +189,16 @@ const PasswordManagementModal = ({
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1510,
+      overflowY: 'auto'
+    }}>
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">

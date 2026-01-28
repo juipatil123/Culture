@@ -466,12 +466,13 @@
 @media (min-width: 993px) {
   .dashboard-header {
     margin-left: 260px;
-    width: calc(100% - 260px);
+    width: auto;
+    right: 0;
   }
-  
+
   .dashboard-content {
     margin-left: 260px;
-    width: calc(100% - 260px);
+    width: auto;
   }
 }
 

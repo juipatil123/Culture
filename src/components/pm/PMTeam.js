@@ -117,7 +117,7 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
     <div className="pm-team">
       <div className="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold mb-1">
+          <h2 className="fw-bold mb-1 d-flex align-items-center gap-3">
             {selectedTeamLeader ? (
               <>
                 <button className="btn btn-sm btn-link text-decoration-none ps-0" onClick={handleBack}>
@@ -126,6 +126,10 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
                 Team: {selectedTeamLeader.name}
               </>
             ) : "My Team"}
+
+            <span className="badge rounded-pill bg-primary fs-6">
+              {displayMembers.length} Members
+            </span>
           </h2>
           <p className="text-muted small mb-0">
             {selectedTeamLeader
@@ -301,7 +305,8 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
             <table className="table table-hover mb-0 align-middle">
               <thead className="table-light">
                 <tr>
-                  <th className="ps-4">
+                  <th className="ps-4" style={{ width: '60px' }}>Sr. No.</th>
+                  <th>
                     {selectedTeamLeader ? "Team Member" : "Team Leader"}
                   </th>
                   <th>Department</th>
@@ -313,14 +318,17 @@ const PMTeam = ({ teamMembers, allUsers = [], projects, onRefresh, onAddMember, 
                 </tr>
               </thead>
               <tbody>
-                {displayMembers.map((member) => (
+                {displayMembers.map((member, index) => (
                   <tr
                     key={member.id || member._id}
                     onDoubleClick={() => handleRowDoubleClick(member)}
                     style={{ cursor: !selectedTeamLeader && (member.role === 'team-leader' || member.userType === 'team-leader') ? 'pointer' : 'default' }}
                     title={!selectedTeamLeader ? "Double click to view team members" : ""}
                   >
-                    <td className="ps-4">
+                    <td className="ps-4 text-center">
+                      <span className="fw-bold text-muted">{index + 1}</span>
+                    </td>
+                    <td>
                       <div className="d-flex align-items-center">
                         <div className="avatar-sm me-3">
                           {member.name?.charAt(0).toUpperCase()}

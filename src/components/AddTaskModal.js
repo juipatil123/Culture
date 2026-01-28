@@ -175,13 +175,13 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validate points - reject negative values
     if (formData.points && parseInt(formData.points) < 0) {
       alert('Error: Points cannot be negative. Please enter a positive value or zero.');
       return;
     }
-    
+
     // Ensure assignedTo is set for legacy components (using first member)
     const dataToSave = {
       ...formData,
@@ -196,7 +196,16 @@ const AddTaskModal = ({ show, onClose, onHide, onSave, editingTask, allUsers = [
   const availableEmployees = getAvailableEmployees();
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+    <div className="modal fade show d-block" style={{
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      zIndex: 1500,
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflowY: 'auto'
+    }}>
       <div className="modal-dialog modal-lg">
         <div className="modal-content border-0 shadow-lg">
           <div className="modal-header bg-primary text-white py-3">

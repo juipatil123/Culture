@@ -112,7 +112,16 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1510,
+      overflow: 'auto'
+    }}>
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
@@ -198,6 +207,8 @@ const AddTeamLeaderModal = ({ show, onHide, onSave, editingLeader }) => {
                     onChange={handleChange}
                     placeholder="Enter 10-digit mobile number"
                     maxLength="10"
+                    pattern="[0-9]{10}"
+                    title="Phone number must be exactly 10 digits"
                   />
                   <small className="form-text text-muted">
                     Only digits allowed. Must be exactly 10 digits. ({formData.phone.length}/10)

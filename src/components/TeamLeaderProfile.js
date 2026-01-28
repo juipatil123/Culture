@@ -11,6 +11,21 @@ const TeamLeaderProfile = ({ userData, onUpdateProfile }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === 'name') {
+            // Only alphabets and spaces
+            const sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '');
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+
+        if (name === 'phone') {
+            // Only digits and limit to 10 characters
+            const sanitizedValue = value.replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -126,7 +141,8 @@ const TeamLeaderProfile = ({ userData, onUpdateProfile }) => {
                                             value={formData.phone || ''}
                                             onChange={handleChange}
                                             disabled={!isEditing}
-                                            placeholder="+1 234 567 890"
+                                            placeholder="10-digit number"
+                                            maxLength="10"
                                         />
                                     </div>
                                     <div className="col-md-6">

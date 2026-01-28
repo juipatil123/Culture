@@ -122,9 +122,6 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                     <i className="fas fa-project-diagram fa-lg"></i>
                   </div>
                 </div>
-                <div className="mt-3 small">
-                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">Avg: {stats.avgProjectProgress}% Progress</span>
-                </div>
               </div>
             </div>
             <div className="col-md-4">
@@ -138,9 +135,6 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                     <i className="fas fa-check-double fa-lg"></i>
                   </div>
                 </div>
-                <div className="mt-3 small">
-                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">{stats.totalTasks > 0 ? Math.round(stats.completedTasks / stats.totalTasks * 100) : 0}% Completion Rate</span>
-                </div>
               </div>
             </div>
             <div className="col-md-4">
@@ -153,9 +147,6 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                   <div className="bg-white bg-opacity-20 rounded-circle p-2">
                     <i className="fas fa-users fa-lg"></i>
                   </div>
-                </div>
-                <div className="mt-3 small">
-                  <span className="bg-white bg-opacity-20 px-2 py-1 rounded">{stats.teamSize > 0 ? (stats.totalTasks / stats.teamSize).toFixed(1) : 0} tasks/member</span>
                 </div>
               </div>
             </div>
@@ -237,16 +228,20 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                   <tr>
                     <th className="ps-4">Member</th>
                     <th>Projects Assigned</th>
+                    <th>Avg. Project Progress</th>
                     <th>Tasks (Total)</th>
-                    <th>Tasks (Done)</th>
-                    <th>Productivity</th>
+                    <th>Tasks Completed</th>
                   </tr>
                 </thead>
                 <tbody>
                   {teamMembers.slice(0, 5).map((member, idx) => {
                     const memberTasks = filteredTasks.filter(t => t.assignedTo?.includes(member.name) || t.assignedTo?.includes(member.email));
                     const doneTasks = memberTasks.filter(t => t.status === 'completed').length;
-                    const productivity = memberTasks.length > 0 ? Math.round((doneTasks / memberTasks.length) * 100) : 0;
+
+                    const memberAssignedProjects = projects.filter(p => (p.assignedMembers || p.assigned || []).some(m => (typeof m === 'object' ? m.name : m) === member.name));
+                    const avgProjectProgress = memberAssignedProjects.length > 0
+                      ? Math.round(memberAssignedProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / memberAssignedProjects.length)
+                      : 0;
 
                     return (
                       <tr key={idx}>
@@ -258,17 +253,17 @@ const PMReports = ({ projects, tasks, teamMembers }) => {
                             <span className="small fw-bold">{member.name}</span>
                           </div>
                         </td>
-                        <td>{projects.filter(p => (p.assignedMembers || p.assigned || []).some(m => (typeof m === 'object' ? m.name : m) === member.name)).length}</td>
-                        <td>{memberTasks.length}</td>
-                        <td>{doneTasks}</td>
+                        <td>{memberAssignedProjects.length}</td>
                         <td>
                           <div className="d-flex align-items-center gap-2">
-                            <div className="progress flex-grow-1" style={{ height: '5px', width: '60px' }}>
-                              <div className={`progress-bar ${productivity > 70 ? 'bg-success' : 'bg-warning'}`} style={{ width: `${productivity}%` }}></div>
+                            <div className="progress flex-grow-1" style={{ height: '6px', minWidth: '60px' }}>
+                              <div className="progress-bar bg-primary" style={{ width: `${avgProjectProgress}%` }}></div>
                             </div>
-                            <span className="small fw-bold">{productivity}%</span>
+                            <span className="small fw-bold">{avgProjectProgress}%</span>
                           </div>
                         </td>
+                        <td>{memberTasks.length}</td>
+                        <td className="fw-bold">{doneTasks}</td>
                       </tr>
                     );
                   })}

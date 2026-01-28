@@ -120,12 +120,7 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   const [taskDueDate, setTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [taskStartDate, setTaskStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [allUsersList, setAllUsersList] = useState([]);
-  const [recentActivities, setRecentActivities] = useState([
-    { id: 1, type: 'task', title: 'Task Completed', desc: 'Review development team implementation completed', user: 'Jane Smith', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'check', color: 'success' },
-    { id: 2, type: 'assignment', title: 'New Task Assigned', desc: 'Review development team implementations assigned to John Doe', user: 'John Doe', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'tasks', color: 'primary' },
-    { id: 3, type: 'update', title: 'Project Update', desc: 'E-learning Platform - In progress: Completed UI mockups', user: 'System', project: 'E-learning Platform', date: formatDate(new Date('2025-11-23')), icon: 'info', color: 'info', progress: 75 }
-
-  ]);
+  const [recentActivities, setRecentActivities] = useState([]);
 
   // Load PM's projects
   const loadProjects = async () => {
@@ -313,9 +308,18 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
           return false;
         }
 
+        // Check if user is assigned to one of PM's projects (via assignedProject field)
+        const userAssignedProject = (u.assignedProject || '').toLowerCase().trim();
+        const isAssignedToMyProject = myProjectNames.includes(userAssignedProject);
+
+        // Check if user was created by this PM
+        const isCreatedByMe = (u.createdBy === meName || u.createdBy === meEmail || u.createdBy === meId);
+
         return myMemberIdentifiers.has(name) ||
           myMemberIdentifiers.has(email) ||
-          (id && myMemberIdentifiers.has(id));
+          (id && myMemberIdentifiers.has(id)) ||
+          isAssignedToMyProject ||
+          isCreatedByMe;
       });
 
       setTeamMembers(filteredTeam);
@@ -364,21 +368,27 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
       const targetId = isEditing ? (editingUser.id || editingUser._id) : null;
       const role = userData.role?.toLowerCase();
 
+      // Add createdBy field for new users to track ownership
+      const userPayload = {
+        ...userData,
+        createdBy: isEditing ? (editingUser.createdBy || userName) : userName
+      };
+
       if (isEditing) {
         if (role === 'team-leader') {
-          await updateTeamLeader(targetId, userData);
+          await updateTeamLeader(targetId, userPayload);
         } else if (role === 'project-manager') {
-          await updateProjectManager(targetId, userData);
+          await updateProjectManager(targetId, userPayload);
         } else {
-          await updateUser(targetId, userData);
+          await updateUser(targetId, userPayload);
         }
       } else {
         if (role === 'team-leader') {
-          await createTeamLeader(userData);
+          await createTeamLeader(userPayload);
         } else if (role === 'project-manager') {
-          await createProjectManager(userData);
+          await createProjectManager(userPayload);
         } else {
-          await createUser(userData);
+          await createUser(userPayload);
         }
       }
 
@@ -488,8 +498,92 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
     reloadAll();
   }, [userName, userEmail]);
 
+  // Generate dynamic recent activities from projects and tasks
+  const generateRecentActivities = () => {
+    const activities = [];
+
+    // Add completed tasks
+    const completedTasks = assignedTasks
+      .filter(t => t.status?.toLowerCase() === 'completed')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 3);
+
+    completedTasks.forEach((task, index) => {
+      activities.push({
+        id: `task-completed-${index}`,
+        type: 'task',
+        title: 'Task Completed',
+        desc: `${task.title} has been completed`,
+        user: typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo || 'Team Member',
+        project: typeof task.project === 'object' ? task.project.name : task.project || 'General',
+        date: formatDate(task.updatedAt || task.createdAt || new Date()),
+        icon: 'check',
+        color: 'success'
+      });
+    });
+
+    // Add recently assigned tasks
+    const recentlyAssignedTasks = assignedTasks
+      .filter(t => t.status?.toLowerCase() !== 'completed')
+      .sort((a, b) => new Date(b.createdAt || b.assignedDate) - new Date(a.createdAt || a.assignedDate))
+      .slice(0, 3);
+
+    recentlyAssignedTasks.forEach((task, index) => {
+      const assignedToName = typeof task.assignedTo === 'object'
+        ? task.assignedTo.name
+        : Array.isArray(task.assignedTo)
+          ? task.assignedTo.join(', ')
+          : task.assignedTo || 'Team Member';
+
+      activities.push({
+        id: `task-assigned-${index}`,
+        type: 'assignment',
+        title: 'New Task Assigned',
+        desc: `${task.title} assigned to ${assignedToName}`,
+        user: assignedToName,
+        project: typeof task.project === 'object' ? task.project.name : task.project || 'General',
+        date: formatDate(task.createdAt || task.assignedDate || new Date()),
+        icon: 'tasks',
+        color: 'primary'
+      });
+    });
+
+    // Add project updates (in-progress projects)
+    const activeProjects = projects
+      .filter(p => p.status?.toLowerCase() !== 'completed' && p.progress > 0)
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 2);
+
+    activeProjects.forEach((project, index) => {
+      activities.push({
+        id: `project-update-${index}`,
+        type: 'update',
+        title: 'Project Update',
+        desc: `${project.name} - ${project.status}: Progress at ${project.progress}%`,
+        user: 'System',
+        project: project.name,
+        date: formatDate(project.updatedAt || project.createdAt || new Date()),
+        icon: 'info',
+        color: 'info',
+        progress: project.progress
+      });
+    });
+
+    // Sort all activities by date (most recent first) and limit to 8
+    const sortedActivities = activities
+      .sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB - dateA;
+      })
+      .slice(0, 8);
+
+    setRecentActivities(sortedActivities);
+  };
+
   useEffect(() => {
     calculateStats();
+    generateRecentActivities();
   }, [projects, assignedTasks, teamMembers]);
 
   // Handle Quick Task Assignment
@@ -579,31 +673,31 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
   const getDashboardCards = () => {
     return [
       {
-        title: 'Total Projects',
+        title: 'TOTAL PROJECTS',
         value: dashboardStats.totalProjects,
         icon: 'fas fa-project-diagram',
-        color: 'primary',
+        color: 'purple',
         clickable: true
       },
       {
-        title: 'Active Tasks',
+        title: 'ACTIVE TASKS',
         value: dashboardStats.activeTasks,
         icon: 'fas fa-tasks',
-        color: 'success',
+        color: 'green',
         clickable: true
       },
       {
-        title: 'Team Size',
+        title: 'TEAM SIZE',
         value: dashboardStats.teamSize,
         icon: 'fas fa-users',
-        color: 'info',
+        color: 'blue',
         clickable: true
       },
       {
-        title: 'Completion Rate',
+        title: 'COMPLETION RATE',
         value: `${dashboardStats.completionRate}%`,
         icon: 'fas fa-chart-line',
-        color: 'warning',
+        color: 'orange',
         clickable: false
       }
     ];
@@ -611,188 +705,188 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
 
   return (
     <div className="pm-dashboard">
-      {/* Header */}
-      <div className="dashboard-header">
+      {/* Full Header Section */}
+      <header className="dashboard-header">
         <div className="header-left">
+          <div className="header-brand-badge">
+            <i className="fas fa-project-diagram"></i>
+            <span>PM Dashboard</span>
+          </div>
+          <div className="header-divider"></div>
+          <h1 className="header-page-title">
+            {activeView === 'dashboard' ? 'Overview' :
+              activeView === 'projects' ? 'Project Portfolio' :
+                activeView === 'tasks' ? 'Task Tracking' :
+                  activeView === 'team' ? 'Team Overview' :
+                    activeView === 'reports' ? 'Performance Reports' :
+                      activeView === 'notice' ? 'Announcements' :
+                        activeView === 'support-help' ? 'Help & Support' : 'Dashboard'}
+          </h1>
+        </div>
+        <div className="header-toggle-container">
           <button
             className="mobile-menu-toggle"
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            aria-label="Toggle sidebar"
           >
             <i className="fas fa-bars"></i>
           </button>
         </div>
         <div className="header-right">
-          <div className="user-info">
-            <span className="user-name">Welcome, {userName}</span>
-            <div className="user-avatar" title={userName}>
-              {userName?.charAt(0)?.toUpperCase() || 'U'}
+          <div className="welcome-section">
+            <span className="welcome-text">Welcome, {userName === 'Project Manager' ? 'Harshda' : userName}</span>
+            <div className="user-avatar-circle">
+              {userName === 'Project Manager' ? 'H' : userName?.charAt(0)?.toUpperCase()}
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {notification && (
-        <div className="notification-pop animate__animated animate__fadeInDown" style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          backgroundColor: notificationTitle === 'Success' ? '#28a745' : notificationTitle === 'Overdue Reminder' ? '#dc3545' : '#007bff',
-          color: 'white',
-          padding: '15px 25px',
-          borderRadius: '10px',
-          boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          borderLeft: '5px solid #0056b3'
-        }}>
-          <i className="fas fa-bell fa-lg"></i>
-          <div>
-            <strong style={{ display: 'block', fontSize: '0.9rem' }}>{notificationTitle}</strong>
-            <span style={{ fontSize: '0.85rem' }}>{notification}</span>
+      <div className="dashboard-main-wrapper">
+        {/* Sidebar - Dark Theme */}
+        <div className={`dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
+          <div className="sidebar-header">
+            <div className="sidebar-brand">
+              <span>PROJECT MANAGER</span>
+              <span>DASHBOARD</span>
+            </div>
           </div>
-          <button
-            onClick={() => setNotification(null)}
-            style={{ background: 'none', border: 'none', color: 'white', padding: '0 0 0 10px', cursor: 'pointer' }}
-          >
-            <i className="fas fa-times"></i>
-          </button>
+          <div className="sidebar-mobile-only-header">
+            <button
+              className="mobile-close"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              aria-label="Close sidebar"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <nav className="sidebar-nav">
+            <ul>
+              <li className={activeView === 'dashboard' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('Dashboard')}>
+                  <i className="fas fa-tachometer-alt"></i>
+                  <span>Dashboard</span>
+                </a>
+              </li>
+              <li className={activeView === 'projects' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('My Projects')}>
+                  <i className="fas fa-project-diagram"></i>
+                  <span>My Projects</span>
+                </a>
+              </li>
+              <li className={activeView === 'tasks' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('Task Management')}>
+                  <i className="fas fa-tasks"></i>
+                  <span>Task Management</span>
+                </a>
+              </li>
+              <li className={activeView === 'team' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('My Team')}>
+                  <i className="fas fa-users"></i>
+                  <span>My Team</span>
+                </a>
+              </li>
+              <li className={activeView === 'reports' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('Reports')}>
+                  <i className="fas fa-file-alt"></i>
+                  <span>Reports</span>
+                </a>
+              </li>
+              <li className={activeView === 'notice' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('Notice')}>
+                  <i className="fas fa-bell"></i>
+                  <span>Notice</span>
+                  {unreadCount > 0 && (
+                    <span className="notice-badge">
+                      {unreadCount}
+                    </span>
+                  )}
+                </a>
+              </li>
+              <li className={activeView === 'support-help' ? 'active' : ''}>
+                <a onClick={() => handleMenuClick('Support & Help')}>
+                  <i className="fas fa-headset"></i>
+                  <span>Support & Help</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+          <div className="sidebar-footer">
+            <button className="logout-btn" onClick={handleLogout}>
+              <i className="fas fa-sign-out-alt"></i>
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
-      )}
-      {/* Mobile Menu Overlay */}
-      <div
-        className={`mobile-overlay ${isMobileSidebarOpen ? 'show' : ''}`}
-        onClick={() => setIsMobileSidebarOpen(false)}
-      ></div>
 
-      {/* Sidebar */}
-      <div className={`dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-header">
-          <h3>Project Manager Dashboard</h3>
-          <button
-            className="mobile-close"
-            onClick={() => setIsMobileSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
-        <nav className="sidebar-nav">
-          <ul>
-            <li className={activeView === 'dashboard' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('Dashboard')}>
-                <i className="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-              </a>
-            </li>
-            <li className={activeView === 'projects' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('My Projects')}>
-                <i className="fas fa-project-diagram"></i>
-                <span>My Projects</span>
-              </a>
-            </li>
-            <li className={activeView === 'tasks' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('Task Management')}>
-                <i className="fas fa-tasks"></i>
-                <span>Task Management</span>
-              </a>
-            </li>
-            <li className={activeView === 'team' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('My Team')}>
-                <i className="fas fa-users"></i>
-                <span>My Team</span>
-              </a>
-            </li>
-            <li className={activeView === 'reports' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('Reports')}>
-                <i className="fas fa-chart-bar"></i>
-                <span>Reports</span>
-              </a>
-            </li>
-            <li className={activeView === 'notice' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('Notice')}>
-                <i className="fas fa-bell"></i>
-                <span>Notice</span>
-                {unreadCount > 0 && (
-                  <span className="badge bg-danger rounded-pill ms-2 animate__animated animate__pulse animate__infinite" style={{ fontSize: '0.65rem' }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </a>
-            </li>
-            <li className={activeView === 'support-help' ? 'active' : ''}>
-              <a onClick={() => handleMenuClick('Support & Help')}>
-                <i className="fas fa-headset"></i>
-                <span>Support & Help</span>
-              </a>
-            </li>
-          </ul>
-        </nav>
-        <div className="sidebar-footer">
-          <button className="logout-btn" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+        {/* Main Content Area */}
+        <div className="main-content">
+          {/* Dashboard Views */}
 
-      {/* Main Content */}
-      <div className="dashboard-content">
-        {activeView === 'dashboard' && (
-          <div className="dashboard-view">
-            <h3 className="mb-4">Dashboard Overview</h3>            {/* Dashboard Cards */}
-            <div className="row g-4 mb-4">
-              {getDashboardCards().map((card, index) => (
-                <div key={index} className="col-md-6 col-lg-3">
-                  <div className={`dashboard-card bg-${card.color} text-white`}>
-                    <div className="card-icon">
-                      <i className={card.icon}></i>
-                    </div>
-                    <div className="card-content">
-                      <h4>{card.value}</h4>
-                      <p>{card.title}</p>
-                    </div>
-                  </div>
+          {/* Dashboard Views */}
+          <div className="dashboard-content-area">
+            {notification && (
+              <div className={`success-banner ${notificationTitle.toLowerCase().includes('error') ? 'error' : ''}`}>
+                <div className="success-icon">
+                  <i className={`fas ${notificationTitle.toLowerCase().includes('error') ? 'fa-exclamation-triangle' : 'fa-bell'}`}></i>
                 </div>
-              ))}
-            </div>
-
-            {/* Overdue Items Alert Card */}
-            {showOverdueCard && (
-              <div className="card mb-4 border-start border-danger border-4 shadow-sm animate__animated animate__fadeIn" style={{ backgroundColor: 'rgba(255, 245, 245, 0.5)', borderRadius: '15px', border: '1px solid #fee2e2' }}>
-                <div className="card-body p-4 position-relative">
-                  <button
-                    className="btn-close position-absolute top-0 end-0 m-3"
-                    style={{ fontSize: '0.8rem', opacity: 0.5 }}
-                    onClick={() => setShowOverdueCard(false)}
-                  ></button>
-
-                  <div className="d-flex align-items-start">
-                    <div className="text-danger me-4 mt-1">
-                      <i className="fas fa-exclamation-triangle fa-2x"></i>
-                    </div>
-                    <div className="flex-grow-1">
-                      <div className="d-flex align-items-center mb-1">
-                        <i className="fas fa-bell me-2 text-dark small"></i>
-                        <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: '1.1rem' }}>Overdue Items Detected!</h6>
+                <div className="success-content">
+                  <div className="success-header">
+                    <h4>{notificationTitle}</h4>
+                  </div>
+                  <p className="success-subtext">{notification}</p>
+                </div>
+                <button className="btn-close-banner" onClick={() => setNotification(null)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            )}
+            {activeView === 'dashboard' && (
+              <div className="dashboard-view">
+                <h3 className="mb-4">Dashboard Overview</h3>
+                {/* Dashboard Cards */}
+                <div className="stats-grid">
+                  {getDashboardCards().map((card, index) => (
+                    <div key={index} className={`stat-card ${card.color}`}>
+                      <div className="stat-icon-wrapper">
+                        <i className={card.icon}></i>
                       </div>
-                      <p className="text-muted small mb-3">You have {overdueProjectsList.length + overdueTasksList.length} overdue item(s) that require immediate attention.</p>
+                      <div className="stat-info">
+                        <h3 className="stat-value">{card.value}</h3>
+                        <p className="stat-label">{card.title}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Overdue Items Alert Card */}
+                {showOverdueCard && (
+                  <div className="overdue-banner">
+                    <button className="btn-close-banner" onClick={() => setShowOverdueCard(false)}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                    <div className="overdue-icon">
+                      <i className="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div className="overdue-content">
+                      <div className="overdue-header">
+                        <i className="fas fa-bell"></i>
+                        <h4>Overdue Items Detected!</h4>
+                      </div>
+                      <p className="overdue-subtext">You have {overdueProjectsList.length + overdueTasksList.length} overdue item(s) that require immediate attention.</p>
 
                       {/* Projects List */}
                       {overdueProjectsList.length > 0 && (
-                        <div className="mb-3">
-                          <h6 className="fw-bold small mb-2 text-dark">
-                            <i className="fas fa-project-diagram me-2"></i>
+                        <div className="overdue-list-section mb-3">
+                          <h5>
+                            <i className="fas fa-project-diagram"></i>
                             Overdue Projects ({overdueProjectsList.length}):
-                          </h6>
-                          <div className="ps-4">
+                          </h5>
+                          <div className="overdue-items">
                             {overdueProjectsList.map((p, i) => (
-                              <div key={i} className="mb-2 d-flex align-items-center gap-2">
-                                <span className="fw-bold text-dark small">{p.name}</span>
-                                <span className="text-muted smaller"> - Due: {formatDate(p.endDate)}</span>
-                                <span className="badge bg-danger rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>OVERDUE</span>
+                              <div key={i} className="overdue-item">
+                                <span className="overdue-item-name">{p.name}</span>
+                                <span className="overdue-item-due">- Due: {formatDate(p.endDate)}</span>
+                                <span className="overdue-badge">OVERDUE</span>
                               </div>
                             ))}
                           </div>
@@ -801,380 +895,403 @@ const ProjectManagerDashboard = ({ userData, onLogout }) => {
 
                       {/* Tasks List */}
                       {overdueTasksList.length > 0 && (
-                        <div className="mb-3">
-                          <h6 className="fw-bold small mb-2 text-dark">
-                            <i className="fas fa-list-ul me-2"></i>
+                        <div className="overdue-list-section">
+                          <h5>
+                            <i className="fas fa-tasks"></i>
                             Overdue Tasks ({overdueTasksList.length}):
-                          </h6>
-                          <div className="ps-4">
+                          </h5>
+                          <div className="overdue-items">
                             {overdueTasksList.map((t, i) => (
-                              <div key={i} className="mb-2 d-flex align-items-center gap-2">
-                                <span className="fw-bold text-dark small">{t.title}</span>
-                                <span className="text-muted smaller"> - Due: {formatDate(t.dueDate)}</span>
-                                <span className="badge bg-danger rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>OVERDUE</span>
+                              <div key={i} className="overdue-item">
+                                <span className="overdue-item-name">{t.title}</span>
+                                <span className="overdue-item-due">- Due: {formatDate(t.dueDate)}</span>
+                                <span className="overdue-badge">OVERDUE</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="mt-4 d-flex gap-2">
-                        <button
-                          className="btn btn-danger btn-sm px-3 fw-bold d-flex align-items-center gap-2"
-                          style={{ borderRadius: '6px' }}
-                          onClick={() => overdueProjectsList.length > 0 ? setActiveView('projects') : setActiveView('tasks')}
-                        >
-                          <i className="fas fa-eye small"></i> View Details
-                        </button>
-                        <button
-                          className="btn btn-outline-secondary btn-sm px-3 fw-bold"
-                          style={{ borderRadius: '6px', backgroundColor: '#f8fafc' }}
-                          onClick={() => setShowOverdueCard(false)}
-                        >
-                          Dismiss
-                        </button>
+                      <div className="overdue-actions">
+                        {overdueProjectsList.length > 0 && (
+                          <button className="btn-view-details" onClick={() => setActiveView('projects')}>
+                            <i className="fas fa-eye"></i> View Projects
+                          </button>
+                        )}
+                        {overdueTasksList.length > 0 && (
+                          <button className="btn-view-details" onClick={() => setActiveView('tasks')}>
+                            <i className="fas fa-eye"></i> View Tasks
+                          </button>
+                        )}
+                        <button className="btn-dismiss" onClick={() => setShowOverdueCard(false)}>Dismiss</button>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="row mb-4">
+                  {/* Recent Activity Section */}
+                  <div className="col-lg-8">
+                    <div className="card h-100 border-0 shadow-sm">
+                      <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0 fw-bold">
+                          <i className="fas fa-clock me-2 text-success"></i>Recent Activity
+                        </h5>
+                        <button className="btn btn-sm btn-outline-primary">View All</button>
+                      </div>
+                      <div className="card-body p-0">
+                        <div className="activity-list">
+                          {recentActivities.length > 0 ? (
+                            recentActivities.map((activity) => (
+                              <div key={activity.id} className="d-flex align-items-start p-3 border-bottom activity-item">
+                                <div className={`rounded-circle bg-${activity.color} text-white d-flex align-items-center justify-content-center me-3`}
+                                  style={{ width: '40px', height: '40px', flexShrink: 0 }}>
+                                  <i className={`fas fa-${activity.icon}`}></i>
+                                </div>
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between">
+                                    <h6 className="fw-bold mb-1">{activity.title}</h6>
+                                    <small className="text-muted">{activity.date}</small>
+                                  </div>
+                                  <p className="text-muted small mb-1">{activity.desc}</p>
+                                  <div className="d-flex align-items-center gap-3 text-muted" style={{ fontSize: '0.75rem' }}>
+                                    <span><i className="fas fa-user me-1"></i>{activity.user}</span>
+                                    <span><i className="fas fa-project-diagram me-1"></i>{activity.project}</span>
+                                  </div>
+                                  {activity.progress && (
+                                    <div className="progress mt-2" style={{ height: '4px' }}>
+                                      <div className="progress-bar bg-info" style={{ width: `${activity.progress}%` }}></div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-5">
+                              <i className="fas fa-clock fa-3x text-muted mb-3"></i>
+                              <p className="text-muted">No recent activities yet</p>
+                              <small className="text-muted">Activities will appear here as you work on projects and tasks</small>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Task Assignment Section */}
+                  <div className="col-lg-4">
+                    <div className="card h-100 border-0 shadow-sm quick-task-card">
+                      <div className="card-body p-4 text-center">
+                        {!selectedEmployeeForTask ? (
+                          <div className="initial-state">
+                            <div className="icon-container mb-3">
+                              <div className="rounded-circle bg-light-primary d-inline-flex align-items-center justify-content-center"
+                                style={{ width: '80px', height: '80px' }}>
+                                <i className="fas fa-plus text-primary" style={{ fontSize: '2rem' }}></i>
+                              </div>
+                            </div>
+                            <h4 className="fw-bold">Create New Task</h4>
+                            <p className="text-muted">Add a new task and assign it to team members</p>
+                            <button
+                              className="btn btn-primary w-100 py-3 mt-3 fw-bold"
+                              onClick={() => {
+                                setEditingTask(null);
+                                setShowAddTaskModal(true);
+                              }}
+                            >
+                              <i className="fas fa-plus me-2"></i>Create Task
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-start">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h5 className="mb-0 fw-bold">New Task</h5>
+                              <button className="btn btn-sm btn-link text-muted" onClick={() => setSelectedEmployeeForTask('')}>
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+
+                            <div className="mb-3">
+                              <label className="form-label small fw-bold">Select Employee(s)</label>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                placeholder="Type employee names..."
+                                value={selectedEmployeeForTask === 'select' ? '' : selectedEmployeeForTask}
+                                onChange={(e) => {
+                                  setSelectedEmployeeForTask(e.target.value);
+                                  const employee = allUsersList.find(u => u.name === e.target.value.trim());
+                                  if (employee && employee.assignedProject) {
+                                    setSelectedProjectForTask(employee.assignedProject);
+                                  }
+                                }}
+                                list="pmEmployeeList"
+                              />
+                              <datalist id="pmEmployeeList">
+                                {allUsersList.filter(u => u.role === 'employee' || u.role === 'intern').map((u, i) => (
+                                  <option key={i} value={u.name}>{u.department}</option>
+                                ))}
+                              </datalist>
+                            </div>
+
+                            <div className="mb-3">
+                              <label className="form-label small fw-bold">Project</label>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm bg-light"
+                                value={selectedProjectForTask}
+                                readOnly
+                                placeholder="Auto-populated"
+                              />
+                            </div>
+
+                            <div className="mb-3">
+                              <label className="form-label small fw-bold">Task Name</label>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                placeholder="What needs to be done?"
+                                value={newTaskName}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const restrictedValue = value.replace(/[^a-zA-Z\s]/g, '');
+                                  setNewTaskName(restrictedValue);
+                                }}
+                              />
+                            </div>
+
+                            <div className="row g-2 mb-3">
+                              <div className="col-12 mb-2">
+                                <label className="form-label small fw-bold text-start w-100">Priority</label>
+                                <select className="form-select form-select-sm" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
+                                  <option value="low">Low</option>
+                                  <option value="medium">Medium</option>
+                                  <option value="high">High</option>
+                                </select>
+                              </div>
+                              <div className="col-6">
+                                <label className="form-label small fw-bold text-start w-100">Start Date</label>
+                                <input
+                                  type="date"
+                                  className="form-control form-control-sm"
+                                  value={taskStartDate}
+                                  onChange={(e) => setTaskStartDate(e.target.value)}
+                                />
+                              </div>
+                              <div className="col-6">
+                                <label className="form-label small fw-bold text-start w-100">Due Date</label>
+                                <input
+                                  type="date"
+                                  className="form-control form-control-sm"
+                                  value={taskDueDate}
+                                  onChange={(e) => setTaskDueDate(e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              className="btn btn-primary w-100 fw-bold"
+                              onClick={handleQuickTaskAssignment}
+                              disabled={!newTaskName.trim()}
+                            >
+                              <i className="fas fa-paper-plane me-2"></i>Assign Now
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Projects Table View */}
+                <div className="card border-0 shadow-sm recent-projects-card">
+                  <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0 fw-bold">
+                      <i className="fas fa-project-diagram me-2 text-primary"></i>Recent Projects
+                    </h5>
+                    <button className="btn btn-sm btn-link" onClick={() => handleMenuClick('My Projects')}>View All</button>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="table-responsive">
+                      <table className="table table-hover mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th className="ps-4">Project Name</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th className="pe-4">Due Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {projects.length > 0 ? (
+                            projects.slice(0, 5).map((project) => (
+                              <tr key={project.id}>
+                                <td className="ps-4">
+                                  <div className="fw-bold">{project.name}</div>
+                                  <small className="text-muted">{project.clientName}</small>
+                                </td>
+                                <td>
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="progress flex-grow-1" style={{ height: '6px', maxWidth: '100px' }}>
+                                      <div className="progress-bar" style={{ width: `${project.progress}%` }}></div>
+                                    </div>
+                                    <small>{project.progress}%</small>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`badge bg-${project.status === 'Completed' ? 'success' :
+                                    project.status === 'Delayed' ? 'danger' :
+                                      project.status === 'At Risk' ? 'warning' : 'primary'
+                                    }`}>
+                                    {project.status}
+                                  </span>
+                                </td>
+                                <td className="pe-4">
+                                  <small className="text-muted">{project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}</small>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="4" className="text-center py-4 text-muted">No projects found</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="row mb-4">
-              {/* Recent Activity Section */}
-              <div className="col-lg-8">
-                <div className="card h-100 border-0 shadow-sm">
-                  <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0 fw-bold">
-                      <i className="fas fa-clock me-2 text-success"></i>Recent Activity
-                    </h5>
-                    <button className="btn btn-sm btn-outline-primary">View All</button>
-                  </div>
-                  <div className="card-body p-0">
-                    <div className="activity-list">
-                      {recentActivities.map((activity) => (
-                        <div key={activity.id} className="d-flex align-items-start p-3 border-bottom activity-item">
-                          <div className={`rounded-circle bg-${activity.color} text-white d-flex align-items-center justify-content-center me-3`}
-                            style={{ width: '40px', height: '40px', flexShrink: 0 }}>
-                            <i className={`fas fa-${activity.icon}`}></i>
-                          </div>
-                          <div className="flex-grow-1">
-                            <div className="d-flex justify-content-between">
-                              <h6 className="fw-bold mb-1">{activity.title}</h6>
-                              <small className="text-muted">{activity.date}</small>
-                            </div>
-                            <p className="text-muted small mb-1">{activity.desc}</p>
-                            <div className="d-flex align-items-center gap-3 text-muted" style={{ fontSize: '0.75rem' }}>
-                              <span><i className="fas fa-user me-1"></i>{activity.user}</span>
-                              <span><i className="fas fa-project-diagram me-1"></i>{activity.project}</span>
-                            </div>
-                            {activity.progress && (
-                              <div className="progress mt-2" style={{ height: '4px' }}>
-                                <div className="progress-bar bg-info" style={{ width: `${activity.progress}%` }}></div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Component Views */}
+            {
+              activeView === 'projects' && (
+                <PMProjects
+                  projects={projects}
+                  onRefresh={reloadAll}
+                  onAddProject={() => setShowAddProjectModal(true)}
+                  onEditProject={(project) => {
+                    setEditingProject(project);
+                    setShowAddProjectModal(true);
+                  }}
+                  onDeleteProject={handleDeleteProject}
+                  userName={userName}
+                  userEmail={userEmail}
+                />
+              )
+            }
 
-              {/* Quick Task Assignment Section */}
-              <div className="col-lg-4">
-                <div className="card h-100 border-0 shadow-sm quick-task-card">
-                  <div className="card-body p-4 text-center">
-                    {!selectedEmployeeForTask ? (
-                      <div className="initial-state">
-                        <div className="icon-container mb-3">
-                          <div className="rounded-circle bg-light-primary d-inline-flex align-items-center justify-content-center"
-                            style={{ width: '80px', height: '80px' }}>
-                            <i className="fas fa-plus text-primary" style={{ fontSize: '2rem' }}></i>
-                          </div>
-                        </div>
-                        <h4 className="fw-bold">Create New Task</h4>
-                        <p className="text-muted">Add a new task and assign it to team members</p>
-                        <button
-                          className="btn btn-primary w-100 py-3 mt-3 fw-bold"
-                          onClick={() => {
-                            setEditingTask(null);
-                            setShowAddTaskModal(true);
-                          }}
-                        >
-                          <i className="fas fa-plus me-2"></i>Create Task
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-start">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h5 className="mb-0 fw-bold">New Task</h5>
-                          <button className="btn btn-sm btn-link text-muted" onClick={() => setSelectedEmployeeForTask('')}>
-                            <i className="fas fa-times"></i>
-                          </button>
-                        </div>
+            {
+              activeView === 'tasks' && (
+                <PMTasks
+                  tasks={assignedTasks}
+                  projects={projects}
+                  users={teamMembers}
+                  onRefresh={reloadAll}
+                  onAddTask={() => {
+                    setEditingTask(null);
+                    setShowAddTaskModal(true);
+                  }}
+                  onEditTask={(task) => {
+                    setEditingTask(task);
+                    setShowAddTaskModal(true);
+                  }}
+                  userName={userName}
+                  userEmail={userEmail}
+                />
+              )
+            }
 
-                        <div className="mb-3">
-                          <label className="form-label small fw-bold">Select Employee(s)</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            placeholder="Type employee names..."
-                            value={selectedEmployeeForTask === 'select' ? '' : selectedEmployeeForTask}
-                            onChange={(e) => {
-                              setSelectedEmployeeForTask(e.target.value);
-                              const employee = allUsersList.find(u => u.name === e.target.value.trim());
-                              if (employee && employee.assignedProject) {
-                                setSelectedProjectForTask(employee.assignedProject);
-                              }
-                            }}
-                            list="pmEmployeeList"
-                          />
-                          <datalist id="pmEmployeeList">
-                            {allUsersList.filter(u => u.role === 'employee' || u.role === 'intern').map((u, i) => (
-                              <option key={i} value={u.name}>{u.department}</option>
-                            ))}
-                          </datalist>
-                        </div>
+            {
+              activeView === 'team' && (
+                <PMTeam
+                  teamMembers={teamMembers}
+                  allUsers={teamMembers}
+                  projects={projects}
+                  onRefresh={reloadAll}
+                  onAddMember={() => {
+                    setEditingUser(null);
+                    setShowAddUserModal(true);
+                  }}
+                  onEditMember={handleEditUser}
+                  onDeleteMember={handleDeleteUser}
+                />
+              )
+            }
 
-                        <div className="mb-3">
-                          <label className="form-label small fw-bold">Project</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm bg-light"
-                            value={selectedProjectForTask}
-                            readOnly
-                            placeholder="Auto-populated"
-                          />
-                        </div>
+            {
+              activeView === 'reports' && (
+                <PMReports
+                  projects={projects}
+                  tasks={assignedTasks}
+                  teamMembers={teamMembers}
+                />
+              )
+            }
 
-                        <div className="mb-3">
-                          <label className="form-label small fw-bold">Task Name</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            placeholder="What needs to be done?"
-                            value={newTaskName}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              const restrictedValue = value.replace(/[^a-zA-Z\s]/g, '');
-                              setNewTaskName(restrictedValue);
-                            }}
-                          />
-                        </div>
+            {
+              activeView === 'notice' && (
+                <TeamLeaderNotice userData={safeUserData} />
+              )
+            }
 
-                        <div className="row g-2 mb-3">
-                          <div className="col-12 mb-2">
-                            <label className="form-label small fw-bold text-start w-100">Priority</label>
-                            <select className="form-select form-select-sm" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                            </select>
-                          </div>
-                          <div className="col-6">
-                            <label className="form-label small fw-bold text-start w-100">Start Date</label>
-                            <input
-                              type="date"
-                              className="form-control form-control-sm"
-                              value={taskStartDate}
-                              onChange={(e) => setTaskStartDate(e.target.value)}
-                            />
-                          </div>
-                          <div className="col-6">
-                            <label className="form-label small fw-bold text-start w-100">Due Date</label>
-                            <input
-                              type="date"
-                              className="form-control form-control-sm"
-                              value={taskDueDate}
-                              onChange={(e) => setTaskDueDate(e.target.value)}
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          className="btn btn-primary w-100 fw-bold"
-                          onClick={handleQuickTaskAssignment}
-                          disabled={!newTaskName.trim()}
-                        >
-                          <i className="fas fa-paper-plane me-2"></i>Assign Now
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Projects Table View */}
-            <div className="card border-0 shadow-sm recent-projects-card">
-              <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 fw-bold">
-                  <i className="fas fa-project-diagram me-2 text-primary"></i>Recent Projects
-                </h5>
-                <button className="btn btn-sm btn-link" onClick={() => handleMenuClick('My Projects')}>View All</button>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0">
-                    <thead className="table-light">
-                      <tr>
-                        <th className="ps-4">Project Name</th>
-                        <th>Progress</th>
-                        <th>Status</th>
-                        <th className="pe-4">Due Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projects.length > 0 ? (
-                        projects.slice(0, 5).map((project) => (
-                          <tr key={project.id}>
-                            <td className="ps-4">
-                              <div className="fw-bold">{project.name}</div>
-                              <small className="text-muted">{project.clientName}</small>
-                            </td>
-                            <td>
-                              <div className="d-flex align-items-center gap-2">
-                                <div className="progress flex-grow-1" style={{ height: '6px', maxWidth: '100px' }}>
-                                  <div className="progress-bar" style={{ width: `${project.progress}%` }}></div>
-                                </div>
-                                <small>{project.progress}%</small>
-                              </div>
-                            </td>
-                            <td>
-                              <span className={`badge bg-${project.status === 'Completed' ? 'success' :
-                                project.status === 'Delayed' ? 'danger' :
-                                  project.status === 'At Risk' ? 'warning' : 'primary'
-                                }`}>
-                                {project.status}
-                              </span>
-                            </td>
-                            <td className="pe-4">
-                              <small className="text-muted">{project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}</small>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" className="text-center py-4 text-muted">No projects found</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            {
+              activeView === 'support-help' && (
+                <TeamLeaderSupport allUsers={allUsersList} userData={safeUserData} />
+              )
+            }
           </div>
-        )}
 
-        {/* Component Views */}
-        {activeView === 'projects' && (
-          <PMProjects
-            projects={projects}
-            onRefresh={reloadAll}
-            onAddProject={() => setShowAddProjectModal(true)}
-            onEditProject={(project) => {
-              setEditingProject(project);
-              setShowAddProjectModal(true);
-            }}
-            onDeleteProject={handleDeleteProject}
-            userName={userName}
-            userEmail={userEmail}
-          />
-        )}
+          {/* Modal s */}
+          {
+            showAddTaskModal && (
+              <AddTaskModal
+                show={showAddTaskModal}
+                onHide={() => {
+                  setShowAddTaskModal(false);
+                  setEditingTask(null);
+                }}
+                onSave={handleSaveTask}
+                editingTask={editingTask}
+                projects={projects}
+                allUsers={allUsersList}
+              />
+            )
+          }
 
-        {activeView === 'tasks' && (
-          <PMTasks
-            tasks={assignedTasks}
-            projects={projects}
-            users={teamMembers}
-            onRefresh={reloadAll}
-            onAddTask={() => {
-              setEditingTask(null);
-              setShowAddTaskModal(true);
-            }}
-            onEditTask={(task) => {
-              setEditingTask(task);
-              setShowAddTaskModal(true);
-            }}
-            userName={userName}
-            userEmail={userEmail}
-          />
-        )}
+          {
+            showAddProjectModal && (
+              <AddProjectModal
+                show={showAddProjectModal}
+                onHide={() => {
+                  setShowAddProjectModal(false);
+                  setEditingProject(null);
+                }}
+                onSave={handleSaveProject}
+                editingProject={editingProject}
+                availableEmployees={allUsersList}
+              />
+            )
+          }
 
-        {activeView === 'team' && (
-          <PMTeam
-            teamMembers={teamMembers}
-            allUsers={teamMembers}
-            projects={projects}
-            onRefresh={reloadAll}
-            onAddMember={() => {
-              setEditingUser(null);
-              setShowAddUserModal(true);
-            }}
-            onEditMember={handleEditUser}
-            onDeleteMember={handleDeleteUser}
-          />
-        )}
-
-        {activeView === 'reports' && (
-          <PMReports
-            projects={projects}
-            tasks={assignedTasks}
-            teamMembers={teamMembers}
-          />
-        )}
-
-        {activeView === 'notice' && (
-          <TeamLeaderNotice userData={safeUserData} />
-        )}
-
-        {activeView === 'support-help' && (
-          <TeamLeaderSupport allUsers={allUsersList} userData={safeUserData} />
-        )}
+          {
+            showAddUserModal && (
+              <AddUserModal
+                show={showAddUserModal}
+                onHide={() => {
+                  setShowAddUserModal(false);
+                  setEditingUser(null);
+                }}
+                onSave={handleSaveUser}
+                editingUser={editingUser}
+                projects={projects}
+                teamLeaders={allUsersList.filter(u => u.role === 'team-leader' || u.userType === 'team-leader')}
+              />
+            )
+          }
+        </div>
       </div>
-
-      {/* Modals */}
-      {showAddTaskModal && (
-        <AddTaskModal
-          show={showAddTaskModal}
-          onHide={() => {
-            setShowAddTaskModal(false);
-            setEditingTask(null);
-          }}
-          onSave={handleSaveTask}
-          editingTask={editingTask}
-          projects={projects}
-          allUsers={allUsersList}
-        />
-      )}
-
-      {showAddProjectModal && (
-        <AddProjectModal
-          show={showAddProjectModal}
-          onHide={() => {
-            setShowAddProjectModal(false);
-            setEditingProject(null);
-          }}
-          onSave={handleSaveProject}
-          editingProject={editingProject}
-          availableEmployees={allUsersList}
-        />
-      )}
-
-      {showAddUserModal && (
-        <AddUserModal
-          show={showAddUserModal}
-          onHide={() => {
-            setShowAddUserModal(false);
-            setEditingUser(null);
-          }}
-          onSave={handleSaveUser}
-          editingUser={editingUser}
-          projects={projects}
-          teamLeaders={allUsersList.filter(u => u.role === 'team-leader' || u.userType === 'team-leader')}
-        />
-      )}
     </div>
   );
 };

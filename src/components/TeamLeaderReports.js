@@ -76,7 +76,7 @@ const SimpleDoughnutChart = ({ data, colors }) => {
     );
 };
 
-const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
+const TeamLeaderReports = ({ stats, projects = [], tasks = [], teamMembers = [] }) => {
     const [timeRange, setTimeRange] = useState('Monthly');
 
     // Helper to filter by date
@@ -96,32 +96,42 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
     const filteredTasks = filterByTime(tasks);
     const filteredProjects = filterByTime(projects, 'startDate');
 
-    // Safe defaults if props are missing
-    const safeStats = {
-        totalTasks: filteredTasks.length,
-        completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
-        activeProjects: filteredProjects.filter(p => p.status !== 'Completed').length,
-        performance: filteredTasks.length > 0 ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100) : 0,
-    };
+    // Stats calculations
+    const completedTasksCount = filteredTasks.filter(t => (t.status || '').toLowerCase() === 'completed').length;
+    const inProgressTasksCount = filteredTasks.filter(t => {
+        const s = (t.status || '').toLowerCase();
+        return s === 'in progress' || s === 'in-progress' || s === 'active';
+    }).length;
+    const pendingTasksCount = Math.max(0, filteredTasks.length - completedTasksCount - inProgressTasksCount);
 
-    // Data generation based on filtered data
-    const performanceTrends = timeRange === 'Weekly'
-        ? [45, 52, 60, 58, 65, safeStats.performance || 0]
-        : [65, 78, 82, 75, 88, safeStats.performance || 0];
+    const taskCompletionRate = filteredTasks.length > 0 ? Math.round((completedTasksCount / filteredTasks.length) * 100) : 0;
 
-    const projectCounts = [
-        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length,
-        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'in progress' || (p.status || '').toLowerCase() === 'active').length,
-        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'overdue').length,
-        filteredProjects.filter(p => (p.status || '').toLowerCase() === 'not started' || !(p.status)).length
-    ];
+    // Use full projects for breakdown, but filtered for summary
+    const completedProjectsCount = projects.filter(p => {
+        const s = (p.status || p.projectStatus || '').toLowerCase();
+        return s.includes('completed');
+    }).length;
 
-    const projectColors = [
-        '#28a745', // Completed
-        '#4361ee', // In Progress
-        '#dc3545', // Overdue
-        '#6c757d'  // Not Started
-    ];
+    const onTrackProjectsCount = projects.filter(p => {
+        const s = (p.status || p.projectStatus || '').toLowerCase();
+        return s.includes('on track') || s.includes('on-track') || s === 'active' || s.includes('in progress') || s.includes('in-progress') || s === 'assigned';
+    }).length;
+
+    const atRiskProjectsCount = projects.filter(p => {
+        const s = (p.status || p.projectStatus || '').toLowerCase();
+        return s.includes('at risk') || s.includes('at-risk');
+    }).length;
+
+    const delayedProjectsCount = projects.filter(p => {
+        const s = (p.status || p.projectStatus || '').toLowerCase();
+        return s.includes('delayed') || s === 'overdue';
+    }).length;
+
+    // Time-filtered completed projects for the summary card
+    const timeFilteredCompletedCount = filteredProjects.filter(p => {
+        const s = (p.status || p.projectStatus || '').toLowerCase();
+        return s.includes('completed');
+    }).length;
 
     return (
         <div className="container-fluid p-0">
@@ -129,249 +139,159 @@ const TeamLeaderReports = ({ stats, projects = [], tasks = [] }) => {
                 <div>
                     <h4 className="fw-bold mb-1">Team Reports</h4>
                     <div className="d-flex align-items-center text-muted small">
-                        <i className="fas fa-chart-bar me-2"></i>
+                        <i className="fas fa-chart-bar me-2 text-primary"></i>
                         <span>Dynamic {timeRange} overview of team performance</span>
                     </div>
                 </div>
-                <div className="d-flex align-items-center bg-white p-2 rounded shadow-sm">
+                <div className="d-flex align-items-center bg-white p-2 rounded-3 shadow-sm border">
                     <div className="btn-group me-3" role="group">
                         {['Weekly', 'Monthly', 'All Time'].map((range) => (
                             <button
                                 key={range}
                                 type="button"
-                                className={`btn btn-sm px-3 ${timeRange === range ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
+                                className={`btn btn-sm px-3 fw-bold ${timeRange === range ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
                                 onClick={() => setTimeRange(range)}
-                                style={{ borderRadius: '0.25rem', transition: 'all 0.2s' }}
+                                style={{ borderRadius: '8px', transition: 'all 0.2s' }}
                             >
                                 {range}
                             </button>
                         ))}
                     </div>
-                    <button className="btn btn-outline-primary btn-sm d-flex align-items-center" onClick={() => window.print()}>
+                    <button className="btn btn-outline-primary btn-sm rounded-3 d-flex align-items-center fw-bold" onClick={() => window.print()}>
                         <i className="fas fa-download me-2"></i>Export
                     </button>
                 </div>
             </div>
 
-            {/* Summary Cards */}
+            {/* Summary Cards - Responsive Design */}
             <div className="row g-4 mb-4">
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="text-muted mb-2">Project Completion</h6>
-                            <h3 className="fw-bold mb-0">
-                                {filteredProjects.length > 0
-                                    ? Math.round((filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length / filteredProjects.length) * 100)
-                                    : 0}%
-                            </h3>
-                            <small className="text-success">
-                                <i className="fas fa-chart-pie me-1"></i>
-                                {filteredProjects.filter(p => (p.status || '').toLowerCase() === 'completed').length}/{filteredProjects.length} Projects
-                            </small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="text-muted mb-2">Task Completion</h6>
-                            <h3 className="fw-bold mb-0">
-                                {filteredTasks.length > 0
-                                    ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100)
-                                    : 0}%
-                            </h3>
-                            <small className={filteredTasks.filter(t => t.status === 'completed').length > 0 ? "text-success" : "text-muted"}>
-                                <i className="fas fa-tasks me-1"></i>
-                                {filteredTasks.filter(t => t.status === 'completed').length} Tasks Done
-                            </small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="text-muted mb-2">Team Velocity</h6>
-                            <h3 className="fw-bold mb-0">{safeStats.completedTasks}</h3>
-                            <small className="text-success"><i className="fas fa-check-double me-1"></i>Tasks/Week</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="text-muted mb-2">Est. Hours</h6>
-                            <h3 className="fw-bold mb-0">
-                                {filteredTasks.filter(t => t.status === 'completed').length * 4}h
-                            </h3>
-                            <small className="text-muted">Based on 4h/task</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Charts Row */}
-            <div className="row g-4 mb-4">
-                <div className="col-lg-8">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-header bg-white py-3 border-0">
-                            <h6 className="fw-bold mb-0">Performance Trends</h6>
-                        </div>
-                        <div className="card-body">
-                            <div style={{ height: '300px', width: '100%', padding: '20px' }}>
-                                <SimpleLineChart data={performanceTrends} />
-                                <div className="d-flex justify-content-between mt-2 text-muted small">
-                                    {timeRange === 'Weekly'
-                                        ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                                        : ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
-                                    }
+                <div className="col-12 col-md-4">
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px', backgroundColor: '#fff' }}>
+                        <div className="card-body p-4 position-relative">
+                            <div className="d-flex align-items-center mb-4">
+                                <div className="rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', backgroundColor: '#28a745' }}>
+                                    <i className="fas fa-folder-check text-white"></i>
                                 </div>
+                                <h6 className="text-dark mb-0 fw-bold opacity-75">Projects Completed</h6>
+                            </div>
+                            <h2 className="fw-bold mb-0 display-6">{timeFilteredCompletedCount}</h2>
+                            <div className="position-absolute bottom-0 end-0 p-3 mb-2">
+                                <small className="text-success fw-bold d-flex align-items-center">
+                                    <i className="fas fa-arrow-up me-1 small"></i> Total Active: {projects.length - completedProjectsCount}
+                                </small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="col-lg-4">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-header bg-white py-3 border-0">
-                            <h6 className="fw-bold mb-0">Project Distribution</h6>
-                        </div>
-                        <div className="card-body">
-                            <div style={{ height: '200px', width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                                <SimpleDoughnutChart data={projectCounts} colors={projectColors} />
+                <div className="col-12 col-md-4">
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px', backgroundColor: '#fff' }}>
+                        <div className="card-body p-4 position-relative">
+                            <div className="d-flex align-items-center mb-4">
+                                <div className="rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', backgroundColor: '#6f42c1' }}>
+                                    <i className="fas fa-tasks text-white"></i>
+                                </div>
+                                <h6 className="text-dark mb-0 fw-bold opacity-75">Tasks Completed</h6>
                             </div>
-                            <div className="mt-3">
-                                <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[0] }}> </span> Completed ({projectCounts[0]})
+                            <h2 className="fw-bold mb-0 display-6">{completedTasksCount}</h2>
+                            <div className="position-absolute bottom-0 end-0 p-3 mb-2">
+                                <small className="fw-bold d-flex align-items-center" style={{ color: '#6f42c1' }}>
+                                    Rate: {taskCompletionRate}%
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="col-12 col-md-4">
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px', backgroundColor: '#fff' }}>
+                        <div className="card-body p-4 position-relative">
+                            <div className="d-flex align-items-center mb-4">
+                                <div className="rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', backgroundColor: '#ffc107' }}>
+                                    <i className="fas fa-users text-white"></i>
                                 </div>
-                                <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[1] }}> </span> Active ({projectCounts[1]})
-                                </div>
-                                <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[2] }}> </span> Overdue ({projectCounts[2]})
-                                </div>
-                                <div className="d-flex align-items-center mb-1 small">
-                                    <span className="badge rounded-circle me-2 p-1" style={{ background: projectColors[3] }}> </span> Other ({projectCounts[3]})
-                                </div>
+                                <h6 className="text-dark mb-0 fw-bold opacity-75">Team Members</h6>
+                            </div>
+                            <h2 className="fw-bold mb-0 display-6">{teamMembers.length}</h2>
+                            <div className="position-absolute bottom-0 end-0 p-3 mb-2">
+                                <small className="text-muted fw-bold small">Total Workforce</small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Daily Work Reports Section */}
-            <div className="card border-0 shadow-sm mb-4">
-                <div className="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                    <h6 className="fw-bold mb-0">Work Log ({timeRange})</h6>
-                    <span className="badge bg-primary rounded-pill">{filteredTasks.length} Activities</span>
+            {/* Charts Row - Responsive Design */}
+            <div className="row g-4 mb-4">
+                <div className="col-12 col-lg-7">
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px' }}>
+                        <div className="card-header bg-white py-4 border-0 ps-4">
+                            <h5 className="fw-bold mb-0">Project Status Breakdown</h5>
+                        </div>
+                        <div className="card-body px-4 pb-4 pt-0">
+                            {[
+                                { label: 'Completed', count: completedProjectsCount, color: '#10b981' },
+                                { label: 'On Track', count: onTrackProjectsCount, color: '#3b82f6' },
+                                { label: 'At Risk', count: atRiskProjectsCount, color: '#f59e0b' },
+                                { label: 'Delayed', count: delayedProjectsCount, color: '#ef4444' }
+                            ].map((item, idx) => (
+                                <div key={idx} className="mb-4">
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <span className="text-muted fw-bold small">{item.label}</span>
+                                        <span className="fw-bold small">{item.count} projects</span>
+                                    </div>
+                                    <div className="progress" style={{ height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div
+                                            className="progress-bar transition-all"
+                                            style={{
+                                                width: `${projects.length > 0 ? (item.count / projects.length) * 100 : 0}%`,
+                                                backgroundColor: item.color,
+                                                borderRadius: '4px'
+                                            }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
-                <div className="card-body p-0">
-                    <div className="list-group list-group-flush">
-                        {filteredTasks.length > 0 ? (
-                            (() => {
-                                // Date Parsers
-                                const parseDate = (d) => {
-                                    if (!d) return new Date();
-                                    if (d.toDate && typeof d.toDate === 'function') return d.toDate();
-                                    if (d.seconds) return new Date(d.seconds * 1000);
-                                    return new Date(d);
-                                };
+                <div className="col-12 col-lg-5">
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px' }}>
+                        <div className="card-header bg-white py-4 border-0 ps-4">
+                            <h5 className="fw-bold mb-0">Task Overview</h5>
+                        </div>
+                        <div className="card-body d-flex flex-column align-items-center justify-content-center p-4">
+                            {/* Donut Chart with CSS */}
+                            <div className="position-relative mb-4" style={{ width: '200px', height: '200px' }}>
+                                <svg viewBox="0 0 36 36" className="w-100 h-100">
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#f3f4f6" strokeWidth="3"></circle>
+                                    <circle
+                                        cx="18" cy="18" r="16" fill="none" stroke="#3b82f6" strokeWidth="3"
+                                        strokeDasharray={`${taskCompletionRate}, 100`}
+                                        strokeDashoffset="25"
+                                        style={{ transition: 'stroke-dasharray 1s ease', strokeLinecap: 'round' }}
+                                    ></circle>
+                                </svg>
+                                <div className="position-absolute top-50 start-50 translate-middle text-center">
+                                    <h2 className="fw-bold mb-0" style={{ fontSize: '1.8rem' }}>{taskCompletionRate}%</h2>
+                                    <small className="text-muted d-block fw-bold" style={{ fontSize: '0.75rem', marginTop: '-5px' }}>Done</small>
+                                </div>
+                            </div>
 
-                                // Group tasks by date
-                                const grouped = filteredTasks.reduce((acc, task) => {
-                                    const rawDate = task.updatedAt || task.createdAt;
-                                    const dateObj = parseDate(rawDate);
-
-                                    // Valid Date Check
-                                    const dateStr = isNaN(dateObj.getTime())
-                                        ? 'Recent'
-                                        : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-
-                                    if (!acc[dateStr]) acc[dateStr] = [];
-                                    acc[dateStr].push(task);
-                                    return acc;
-                                }, {});
-
-                                return Object.keys(grouped)
-                                    .slice(0, 10) // Show more if filtered
-                                    .map(date => (
-                                        <div key={date} className="list-group-item border-0 px-4 py-3">
-                                            <h6 className="text-muted small fw-bold text-uppercase mb-3 bg-light d-inline-block px-2 py-1 rounded">
-                                                <i className="far fa-calendar-alt me-1"></i> {date}
-                                            </h6>
-                                            <div className="ps-2 border-start border-2 border-light">
-                                                {grouped[date].map((task, idx) => (
-                                                    <div key={idx} className="mb-3 ps-3 position-relative">
-                                                        <div className="position-absolute start-0 top-0 translate-middle rounded-circle bg-white border border-2 border-primary" style={{ width: '10px', height: '10px', marginLeft: '-1px', marginTop: '6px' }}></div>
-                                                        <div className="d-flex justify-content-between align-items-start">
-                                                            <div>
-                                                                <span className="fw-semibold text-dark">{task.title}</span>
-                                                                <span className={`badge ms-2 rounded-pill ${task.status === 'completed' ? 'bg-success' :
-                                                                    task.status === 'in-progress' ? 'bg-info' : 'bg-secondary'
-                                                                    }`}>
-                                                                    {task.status || 'Assigned'}
-                                                                </span>
-                                                                {task.workingNotes && (
-                                                                    <p className="small text-muted mt-1 mb-0 fst-italic">
-                                                                        <i className="fas fa-quote-left me-1 opacity-25"></i>
-                                                                        {task.workingNotes}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            <small className="text-muted">
-                                                                <i className="far fa-user me-1"></i>
-                                                                {Array.isArray(task.assignedTo)
-                                                                    ? task.assignedTo.map(u => (typeof u === 'object' ? u.name : u)).join(', ')
-                                                                    : (typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo)}
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                            <div className="w-100 px-lg-3">
+                                {[
+                                    { label: 'Completed', count: completedTasksCount, color: '#10b981' },
+                                    { label: 'In Progress', count: inProgressTasksCount, color: '#3b82f6' },
+                                    { label: 'Pending', count: pendingTasksCount, color: '#f59e0b' }
+                                ].map((item, idx) => (
+                                    <div key={idx} className="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
+                                        <div className="d-flex align-items-center">
+                                            <div className="rounded-circle me-2" style={{ width: '10px', height: '10px', backgroundColor: item.color }}></div>
+                                            <span className="text-muted small fw-bold">{item.label}</span>
                                         </div>
-                                    ));
-                            })()
-                        ) : (
-                            <div className="text-center py-5">
-                                <p className="text-muted mb-0">No work activity recorded in this timeframe.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Recent Completions Table */}
-            <div className="card border-0 shadow-sm">
-                <div className="card-header bg-white py-3 border-0">
-                    <h6 className="fw-bold mb-0">Completed Tasks ({timeRange})</h6>
-                </div>
-                <div className="card-body p-0">
-                    <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
-                            <thead className="bg-light">
-                                <tr>
-                                    <th className="ps-4">Task</th>
-                                    <th>Assignee</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredTasks.filter(t => t.status === 'completed').slice(0, 10).map(task => (
-                                    <tr key={task.id || Math.random()}>
-                                        <td className="ps-4 fw-medium">{task.title}</td>
-                                        <td>{Array.isArray(task.assignedTo)
-                                            ? task.assignedTo.map(u => (typeof u === 'object' ? u.name : u)).join(', ')
-                                            : (typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo)}</td>
-                                        <td>{new Date(task.updatedAt ? (task.updatedAt.seconds ? task.updatedAt.seconds * 1000 : task.updatedAt) : Date.now()).toLocaleDateString()}</td>
-                                        <td><span className="badge rounded-pill bg-success">Completed</span></td>
-                                    </tr>
+                                        <span className="fw-bold small">{item.count}</span>
+                                    </div>
                                 ))}
-                                {filteredTasks.filter(t => t.status === 'completed').length === 0 && (
-                                    <tr>
-                                        <td colSpan="4" className="text-center py-4 text-muted">No completed tasks in this timeframe</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

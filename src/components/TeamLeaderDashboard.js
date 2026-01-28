@@ -8,7 +8,8 @@ import {
   updateProject,
   createProject,
   createUser,
-  updateUser
+  updateUser,
+  deleteTask
 } from '../services/api';
 import AddTaskModal from './AddTaskModal';
 import AddUserModal from './AddUserModal';
@@ -49,6 +50,8 @@ const TeamLeaderDashboard = ({
   const [teamViewMode, setTeamViewMode] = useState('card');
   const [teamFilter, setTeamFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
+  const [taskViewMode, setTaskViewMode] = useState('list');
+  const [projectViewMode, setProjectViewMode] = useState('list');
 
   // Modal states
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -352,6 +355,18 @@ const TeamLeaderDashboard = ({
       fetchDashboardData();
     } catch (error) {
       console.error('Error saving task:', error);
+    }
+  };
+
+  // Handle delete task
+  const handleDeleteTask = async (taskId) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(taskId);
+        fetchDashboardData();
+      } catch (error) {
+        console.error('Error deleting task:', error);
+      }
     }
   };
 
@@ -674,17 +689,43 @@ const TeamLeaderDashboard = ({
 
   // Render Requirements Section for Dashboard
   const renderRequirementsDashboardSection = () => {
-    const allReqs = [];
-    Object.keys(projectRequirements).forEach(pId => {
-      const project = projects.find(p => (p.id || p._id) === pId);
-      if (project) {
-        projectRequirements[pId].forEach(req => {
-          allReqs.push({ ...req, projectName: project.name, projectId: pId });
+    const allEntries = [];
+
+    // Combine all managed projects and their requirements
+    managedProjects.forEach(project => {
+      const pId = project.id || project._id;
+      const reqs = projectRequirements[pId] || [];
+
+      if (reqs.length > 0) {
+        reqs.forEach(req => {
+          allEntries.push({
+            id: req.id,
+            projectName: project.name,
+            projectId: pId,
+            requirementText: req.text,
+            date: req.date,
+            status: req.status || 'Pending',
+            isPlaceholder: false
+          });
+        });
+      } else {
+        // Show project even without specific requirements
+        allEntries.push({
+          id: `proj-${pId}`,
+          projectName: project.name,
+          projectId: pId,
+          requirementText: 'No requirements recorded yet',
+          date: project.startDate || project.createdAt || new Date().toISOString(),
+          status: project.status || project.projectStatus || 'Active',
+          isPlaceholder: true
         });
       }
     });
 
-    const sortedReqs = allReqs.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4);
+    // Sort by date (newest first) and limit to 3 projects
+    const sortedEntries = allEntries
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 3);
 
     return (
       <div className="card border-0 shadow-sm mb-4 overflow-hidden">
@@ -704,22 +745,32 @@ const TeamLeaderDashboard = ({
                 </tr>
               </thead>
               <tbody>
-                {sortedReqs.length > 0 ? (
-                  sortedReqs.map(req => (
-                    <tr key={req.id}>
-                      <td className="ps-4 fw-bold text-primary">{req.projectName}</td>
+                {sortedEntries.length > 0 ? (
+                  sortedEntries.map(entry => (
+                    <tr key={entry.id}>
+                      <td className="ps-4 fw-bold text-primary">{entry.projectName}</td>
                       <td className="text-muted small" style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {req.text}
+                        <span className={entry.isPlaceholder ? 'font-italic opacity-75' : ''}>
+                          {entry.requirementText}
+                        </span>
                       </td>
-                      <td>{formatDate(req.date)}</td>
+                      <td>{formatDate(entry.date)}</td>
                       <td className="pe-4">
-                        <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3">Pending</span>
+                        <span className={`badge rounded-pill px-3 py-1 ${(typeof entry.status === 'string' ? entry.status : (entry.status?.label || 'Pending')).toLowerCase() === 'completed'
+                          ? 'bg-success text-white'
+                          : (typeof entry.status === 'string' ? entry.status : (entry.status?.label || '')).toLowerCase() === 'in progress' ||
+                            (typeof entry.status === 'string' ? entry.status : (entry.status?.label || '')).toLowerCase() === 'active'
+                            ? 'bg-info text-white'
+                            : 'bg-warning text-dark'
+                          }`}>
+                          {typeof entry.status === 'string' ? entry.status : (entry.status?.label || 'Pending')}
+                        </span>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="text-center py-4 text-muted small">No requirements recorded yet</td>
+                    <td colSpan="4" className="text-center py-4 text-muted small">No projects or requirements assigned yet</td>
                   </tr>
                 )}
               </tbody>
@@ -937,7 +988,7 @@ const TeamLeaderDashboard = ({
     setWorkingNoteText(note.text);
   };
 
-  // Render Projects View - Card-based layout with detailed information
+  // Render Projects View - Card/List-based layout
   const renderProjectsView = () => {
     // Calculate counts for filters
     const projectCounts = {
@@ -959,341 +1010,507 @@ const TeamLeaderDashboard = ({
 
     return (
       <>
-        {/* Project Filters - Matching My Team Style */}
-        <div className="d-flex flex-wrap align-items-center gap-3 mb-4 mt-2">
-          {[
-            { id: 'all', label: 'All', color: '#007bff' },
-            { id: 'in-progress', label: 'In Progress', color: '#6f42c1' },
-            { id: 'delayed', label: 'Delayed', color: '#dc3545' },
-            { id: 'completed', label: 'Completed', color: '#10b981' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setProjectFilter(f.id)}
-              className="btn d-flex align-items-center shadow-sm"
-              style={{
-                borderRadius: '50px',
-                padding: '8px 24px',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
-                backgroundColor: projectFilter === f.id ? f.color : '#ffffff',
-                color: projectFilter === f.id ? '#ffffff' : '#444444',
-                border: projectFilter === f.id ? `1px solid ${f.color}` : '1px solid #e0e0e0',
-                boxShadow: projectFilter === f.id ? `0 4px 12px ${f.color}44` : '0 2px 4px rgba(0,0,0,0.05)'
-              }}
-            >
-              {f.label}
-              <span className="ms-2 badge rounded-pill"
+        {/* Project Filters & View Toggles */}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 mt-2">
+          <div className="d-flex flex-wrap align-items-center gap-3">
+            {[
+              { id: 'all', label: 'All', color: '#007bff' },
+              { id: 'in-progress', label: 'In Progress', color: '#6f42c1' },
+              { id: 'delayed', label: 'Delayed', color: '#dc3545' },
+              { id: 'completed', label: 'Completed', color: '#10b981' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setProjectFilter(f.id)}
+                className="btn d-flex align-items-center shadow-sm"
                 style={{
-                  fontSize: '0.75rem',
-                  minWidth: '22px',
-                  backgroundColor: projectFilter === f.id ? '#ffffff' : '#f3f4f6',
-                  color: projectFilter === f.id ? f.color : '#6b7280'
-                }}>
-                {projectCounts[f.id]}
-              </span>
+                  borderRadius: '50px',
+                  padding: '8px 24px',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  transition: 'all 0.3s ease',
+                  backgroundColor: projectFilter === f.id ? f.color : '#ffffff',
+                  color: projectFilter === f.id ? '#ffffff' : '#444444',
+                  border: projectFilter === f.id ? `1px solid ${f.color}` : '1px solid #e0e0e0',
+                  boxShadow: projectFilter === f.id ? `0 4px 12px ${f.color}44` : '0 2px 4px rgba(0,0,0,0.05)'
+                }}
+              >
+                {f.label}
+                <span className="ms-2 badge rounded-pill"
+                  style={{
+                    fontSize: '0.75rem',
+                    minWidth: '22px',
+                    backgroundColor: projectFilter === f.id ? '#ffffff' : '#f3f4f6',
+                    color: projectFilter === f.id ? f.color : '#6b7280'
+                  }}>
+                  {projectCounts[f.id]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="btn-group shadow-sm rounded-pill p-1 bg-light">
+            <button
+              className={`btn btn-sm rounded-pill px-3 fw-bold ${projectViewMode === 'card' ? 'bg-white shadow-sm text-primary' : 'text-muted border-0'}`}
+              onClick={() => setProjectViewMode('card')}
+            >
+              <i className="fas fa-th-large me-1"></i> Card
             </button>
-          ))}
+            <button
+              className={`btn btn-sm rounded-pill px-3 fw-bold ${projectViewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-muted border-0'}`}
+              onClick={() => setProjectViewMode('list')}
+            >
+              <i className="fas fa-list me-1"></i> List
+            </button>
+          </div>
         </div>
 
-        {/* Projects Grid - Card View */}
-        <div className="row g-4 mb-4">
-          {filteredProjects.length > 0 ? (
-            filteredProjects.map(project => {
-              // Calculate Duration
-              const startDate = project.startDate ? new Date(project.startDate) : new Date();
-              const dueDate = project.dueDate ? new Date(project.dueDate) : new Date();
-              const diffTime = Math.abs(dueDate - startDate);
-              const durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        {projectViewMode === 'card' ? (
+          /* Card View Mode */
+          <div className="row g-4 mb-4">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map(project => {
+                const membersList = [
+                  ...(Array.isArray(project.assignedMembers) ? project.assignedMembers : []),
+                  ...(Array.isArray(project.assigned) ? project.assigned : []),
+                  ...(typeof project.assignedTo === 'string' ? [project.assignedTo] : [])
+                ];
+                const memberCount = membersList.length;
+                const pId = project.id || project._id;
 
-              // Count Members (People working on project)
-              const membersList = [
-                ...(Array.isArray(project.assignedMembers) ? project.assignedMembers : []),
-                ...(Array.isArray(project.assigned) ? project.assigned : []),
-                ...(typeof project.assignedTo === 'string' ? [project.assignedTo] : [])
-              ];
-              const memberCount = membersList.length;
-
-              // Count Devices (if available in project data)
-              const deviceCount = project.devices ? project.devices.length : (project.deviceCount || 0);
-
-              // Project ID
-              const pId = project.id || project._id;
-
-              return (
-                <div key={pId} className="col-12 col-lg-6 col-xl-4">
-                  <div className="card border-0 shadow-sm h-100 hover-lift" style={{ transition: 'transform 0.2s', borderRadius: '15px', overflow: 'hidden' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-
-                    {/* Card Header */}
-                    <div className="card-header bg-gradient-primary text-white py-3" style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none'
-                    }}>
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="flex-grow-1">
-                          <h5 className="mb-1 fw-bold text-white">{project.name || 'Unnamed Project'}</h5>
-                          <small className="text-white-50">
-                            <i className="fas fa-building me-1"></i>
-                            {project.client || project.clientName || 'No Client'}
-                          </small>
+                return (
+                  <div key={pId} className="col-12 col-lg-6 col-xl-4">
+                    <div className="card border-0 shadow-sm h-100 hover-lift" style={{ transition: 'transform 0.2s', borderRadius: '15px', overflow: 'hidden' }}>
+                      <div className="card-header bg-gradient-primary text-white py-3" style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none'
+                      }}>
+                        <div className="d-flex justify-content-between align-items-start">
+                          <div className="flex-grow-1">
+                            <h5 className="mb-1 fw-bold text-white">{project.name || 'Unnamed Project'}</h5>
+                            <small className="text-white-50">
+                              <i className="fas fa-building me-1"></i>
+                              {project.client || project.clientName || 'No Client'}
+                            </small>
+                          </div>
+                          <span className={`badge ${((project.status || project.projectStatus || '').toLowerCase() === 'completed') ? 'bg-success' :
+                            ((project.status || project.projectStatus || '').toLowerCase() === 'in progress') ? 'bg-info' :
+                              'bg-warning text-dark'
+                            }`}>
+                            {project.status || project.projectStatus || 'Active'}
+                          </span>
                         </div>
-                        <span className={`badge ${((project.status || project.projectStatus || '').toLowerCase() === 'completed') ? 'bg-success' :
-                          ((project.status || project.projectStatus || '').toLowerCase() === 'in progress') ? 'bg-info' :
-                            'bg-warning text-dark'
-                          }`}>
-                          {project.status || project.projectStatus || 'Active'}
-                        </span>
                       </div>
-                    </div>
 
-                    {/* Project Timeline & Status */}
-                    <div className="mb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <small className="text-muted fw-bold" style={{ fontSize: '0.75rem' }}>Timeline</small>
-                        <small className="text-primary fw-bold" style={{ fontSize: '0.75rem' }}>{project.progress || 0}%</small>
-                      </div>
-                      <div className="progress mb-2" style={{ height: '6px' }}>
-                        <div
-                          className="progress-bar bg-gradient-primary"
-                          style={{ width: `${project.progress || 0}%`, transition: 'width 0.6s ease' }}
-                          role="progressbar"
-                        ></div>
-                      </div>
-                      <div className="d-flex justify-content-center align-items-center">
-                        <small className="text-muted" style={{ fontSize: '0.8rem' }}>
-                          <i className="far fa-calendar-alt me-1"></i>
-                          {formatDateRange(project.startDate, project.dueDate || project.endDate)}
-                        </small>
-                      </div>
-                    </div>
-
-                    {/* Card Body - Project Details */}
-                    <div className="card-body">
-                      {/* Project Timeline & Status */}
-                      <div className="mb-4">
-                        <div className="d-flex justify-content-between align-items-center mb-1">
-                          <small className="text-muted fw-bold" style={{ fontSize: '0.75rem' }}>Current Progress</small>
-                          <small className="text-primary fw-bold" style={{ fontSize: '0.75rem' }}>{project.progress || 0}%</small>
+                      <div className="card-body">
+                        {/* Description Section - Prioritized */}
+                        <div className="mb-3">
+                          <small className="text-muted fw-bold d-block mb-1" style={{ fontSize: '0.7rem' }}>DESCRIPTION</small>
+                          <p className="text-muted small mb-0" style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            height: '4.5em'
+                          }}>
+                            {project.description || 'No project description provided.'}
+                          </p>
                         </div>
+
+                        {/* Progress Section */}
+                        <div className="mb-4">
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <small className="text-muted fw-bold" style={{ fontSize: '0.75rem' }}>Current Progress</small>
+                            <small className="text-primary fw-bold" style={{ fontSize: '0.75rem' }}>{project.progress || 0}%</small>
+                          </div>
+                          <div className="progress mb-2" style={{ height: '6px' }}>
+                            <div
+                              className="progress-bar bg-gradient-primary"
+                              style={{ width: `${project.progress || 0}%`, transition: 'width 0.6s ease', background: 'linear-gradient(to right, #667eea, #764ba2)' }}
+                              role="progressbar"
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Dates Grid */}
+                        <div className="row g-2 mb-3">
+                          <div className="col-6">
+                            <div className="p-2 border rounded-3 bg-light bg-opacity-50 text-center">
+                              <span className="text-muted d-block" style={{ fontSize: '0.65rem' }}>START DATE</span>
+                              <span className="small fw-bold">{formatDate(project.startDate)}</span>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div className="p-2 border rounded-3 bg-light bg-opacity-50 text-center">
+                              <span className="text-muted d-block" style={{ fontSize: '0.65rem' }}>DUE DATE</span>
+                              <span className="small fw-bold text-danger">{formatDate(project.dueDate || project.endDate)}</span>
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="d-flex justify-content-between align-items-center">
-                          <small className="text-muted" style={{ fontSize: '0.8rem' }}>
-                            <i className="far fa-calendar-alt me-1 text-primary"></i>
-                            Starts: {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'}
+                          <small className="text-muted">
+                            <i className="fas fa-users me-1"></i> {memberCount} Team Members
                           </small>
-                          <small className="text-muted" style={{ fontSize: '0.8rem' }}>
-                            <i className="fas fa-flag-checkered me-1 text-danger"></i>
-                            Due: {project.dueDate || project.endDate ? new Date(project.dueDate || project.endDate).toLocaleDateString() : 'N/A'}
-                          </small>
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => {
+                            setEditingProject(project);
+                            setShowAddProjectModal(true);
+                          }}>
+                            <i className="fas fa-edit me-1"></i> Edit
+                          </button>
                         </div>
                       </div>
-
-                      {/* Project Description */}
-                      {project.description && (
-                        <p className="text-muted small mb-3" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {project.description}
-                        </p>
-                      )}
-
-                      {/* Key Metrics Grid */}
-                      <div className="row g-2">
-                        {/* People Working */}
-                        <div className="col-6">
-                          <div className="p-2 border border-light rounded-3 text-center h-100 d-flex flex-column justify-content-center bg-light bg-opacity-50">
-                            <i className="fas fa-users text-primary mb-1"></i>
-                            <span className="fw-bold small">{memberCount}</span>
-                            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Members</span>
-                          </div>
-                        </div>
-
-                        {/* Duration/Days */}
-                        <div className="col-6">
-                          <div className="p-2 border border-light rounded-3 text-center h-100 d-flex flex-column justify-content-center bg-light bg-opacity-50">
-                            <i className="far fa-clock text-warning mb-1"></i>
-                            <span className="fw-bold small">{durationDays}</span>
-                            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Days</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Devices Section */}
-                      {deviceCount > 0 && (
-                        <div className="mt-3">
-                          <small className="text-muted"><i className="fas fa-laptop me-1"></i> {deviceCount} Devices Associated</small>
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="col-12">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body text-center py-5">
-                  <i className="fas fa-folder-open fa-3x text-muted mb-3 opacity-50"></i>
-                  <h5 className="text-muted">No Projects Found</h5>
-                  <p className="text-muted mb-0">No projects currently match this status filter.</p>
+                );
+              })
+            ) : (
+              <div className="col-12">
+                <div className="card border-0 shadow-sm">
+                  <div className="card-body text-center py-5">
+                    <i className="fas fa-folder-open fa-3x text-muted mb-3 opacity-50"></i>
+                    <h5 className="text-muted">No Projects Found</h5>
+                    <p className="text-muted mb-0">No projects currently match this status filter.</p>
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+        ) : (
+          /* List View Mode - Consistent with Tasks List Design */
+          <div className="card border-0 shadow-sm overflow-hidden mb-4" style={{ borderRadius: '15px' }}>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light bg-opacity-50">
+                  <tr className="text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                    <th className="ps-4 py-3 fw-bold">Sr. No.</th>
+                    <th className="py-3 fw-bold">Project Name & Description</th>
+                    <th className="py-3 fw-bold">Client</th>
+                    <th className="py-3 fw-bold text-center">Progress</th>
+                    <th className="py-3 fw-bold">Status</th>
+                    <th className="py-3 fw-bold">Timeline (Start - Due)</th>
+                    <th className="py-3 fw-bold text-center pe-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project, index) => {
+                      const pId = project.id || project._id;
+                      return (
+                        <tr key={pId}>
+                          <td className="ps-4 fw-bold text-muted">{index + 1}</td>
+                          <td>
+                            <div className="d-flex flex-column" style={{ maxWidth: '300px' }}>
+                              <span className="fw-bold text-dark">{project.name}</span>
+                              <small className="text-muted text-truncate">{project.description || 'No description'}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="small fw-semibold">{project.client || project.clientName || 'N/A'}</span>
+                          </td>
+                          <td style={{ minWidth: '150px' }}>
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="progress flex-grow-1" style={{ height: '6px' }}>
+                                <div className="progress-bar bg-primary" style={{ width: `${project.progress || 0}%` }}></div>
+                              </div>
+                              <span className="small fw-bold">{project.progress || 0}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge rounded-pill px-3 py-2 fw-bold text-uppercase ${(project.status || project.projectStatus || '').toLowerCase() === 'completed' ? 'bg-success text-white' :
+                              (project.status || project.projectStatus || '').toLowerCase() === 'delayed' ? 'bg-danger text-white' :
+                                'bg-primary text-white'
+                              }`} style={{ fontSize: '0.7rem', minWidth: '100px', display: 'inline-block' }}>
+                              {project.status || project.projectStatus || 'Active'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="d-flex flex-column small">
+                              <span className="text-muted"><i className="far fa-calendar-alt me-1 text-primary"></i> {formatDate(project.startDate)}</span>
+                              <span className="text-muted"><i className="fas fa-flag-checkered me-1 text-danger"></i> {formatDate(project.dueDate || project.endDate)}</span>
+                            </div>
+                          </td>
+                          <td className="text-center pe-4">
+                            <div className="d-flex justify-content-center gap-2">
+                              <button
+                                className="btn btn-sm btn-outline-primary border-2 shadow-sm d-flex align-items-center justify-content-center"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px' }}
+                                onClick={() => {
+                                  setEditingProject(project);
+                                  setShowAddProjectModal(true);
+                                }}
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr><td colSpan="7" className="text-center py-5 text-muted">No projects available</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </>
     );
   };
 
   // Render Tasks View
-  const renderTasksView = () => (
-    <div className="tasks-view-container p-2">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold mb-0 text-dark">
-          <i className="fas fa-tasks me-3 text-primary"></i>
-          Team Task Management
-        </h4>
-        <button
-          className="btn btn-primary d-flex align-items-center gap-2 shadow-sm rounded-pill px-4 py-2"
-          onClick={() => {
-            setEditingTask(null);
-            setShowAddTaskModal(true);
-          }}
-        >
-          <i className="fas fa-plus"></i>
-          <span>Assign New Task</span>
-        </button>
-      </div>
+  const renderTasksView = () => {
+    return (
+      <div className="tasks-view-container p-2">
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <h4 className="fw-bold mb-0 text-dark">
+            <i className="fas fa-tasks me-3 text-primary"></i>
+            Team Task Management
+          </h4>
 
-      <div className="row g-4">
-        {relatedTasks.length > 0 ? (
-          relatedTasks.map(task => {
-            const urgencyColor = task.priority === 'High' || task.priority === 'urgent' ? 'danger' :
-              task.priority === 'Medium' ? 'warning' : 'info';
-            const statusColor = task.status === 'completed' ? 'success' :
-              task.status === 'in-progress' ? 'primary' : 'secondary';
+          <div className="d-flex align-items-center gap-3">
+            {/* View Toggles */}
+            <div className="btn-group shadow-sm rounded-pill p-1 bg-light">
+              <button
+                className={`btn btn-sm rounded-pill px-3 fw-bold ${taskViewMode === 'card' ? 'bg-white shadow-sm text-primary' : 'text-muted border-0'}`}
+                onClick={() => setTaskViewMode('card')}
+              >
+                <i className="fas fa-th-large me-1"></i> Card
+              </button>
+              <button
+                className={`btn btn-sm rounded-pill px-3 fw-bold ${taskViewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-muted border-0'}`}
+                onClick={() => setTaskViewMode('list')}
+              >
+                <i className="fas fa-list me-1"></i> List
+              </button>
+            </div>
 
-            return (
-              <div key={task.id || task._id} className="col-12 col-md-6 col-xl-4">
-                <div className="card border-0 shadow-sm h-100 task-card-design transition-all" style={{ borderRadius: '16px', overflow: 'hidden', backgroundColor: '#fff' }}>
-                  {/* Task Header with dynamic color stripe */}
-                  <div className={`py-3 px-4 border-start border-4 border-${statusColor}`} style={{ backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div className="flex-grow-1 overflow-hidden">
-                        <div className="d-flex align-items-center gap-2 mb-1">
-                          <h6 className="mb-0 fw-bold text-dark text-truncate" title={task.title}>{task.title}</h6>
-                          {task.points && (
-                            <span className="badge bg-warning text-dark rounded-pill small" style={{ fontSize: '0.6rem' }}>
-                              <i className="fas fa-star me-1"></i>{task.points}
-                            </span>
-                          )}
+            <button
+              className="btn btn-primary d-flex align-items-center gap-2 shadow-sm rounded-pill px-4 py-2"
+              onClick={() => {
+                setEditingTask(null);
+                setShowAddTaskModal(true);
+              }}
+            >
+              <i className="fas fa-plus"></i>
+              <span>Assign New Task</span>
+            </button>
+          </div>
+        </div>
+
+        {taskViewMode === 'card' ? (
+          <div className="row g-4">
+            {relatedTasks.length > 0 ? (
+              relatedTasks.map(task => {
+                const urgencyColor = task.priority === 'High' || task.priority === 'urgent' ? 'danger' :
+                  task.priority === 'Medium' ? 'warning' : 'info';
+                const statusColor = task.status === 'completed' ? 'success' :
+                  task.status === 'in-progress' ? 'primary' : 'secondary';
+
+                return (
+                  <div key={task.id || task._id} className="col-12 col-md-6 col-xl-4">
+                    <div className="card border-0 shadow-sm h-100 task-card-design transition-all" style={{ borderRadius: '16px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div className={`py-3 px-4 border-start border-4 border-${statusColor}`} style={{ backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>
+                        <div className="d-flex justify-content-between align-items-start">
+                          <div className="flex-grow-1 overflow-hidden">
+                            <div className="d-flex align-items-center gap-2 mb-1">
+                              <h6 className="mb-0 fw-bold text-dark text-truncate" title={task.title}>{task.title}</h6>
+                              {task.points && (
+                                <span className="badge bg-warning text-dark rounded-pill small" style={{ fontSize: '0.6rem' }}>
+                                  <i className="fas fa-star me-1"></i>{task.points}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-muted smaller mb-0 d-flex align-items-center">
+                              <i className="fas fa-layer-group me-1 text-primary"></i>
+                              {task.projectName || 'General Tasks'}
+                            </p>
+                          </div>
+                          <div className="ms-2">
+                            <button className="btn btn-light btn-sm shadow-sm rounded-circle" onClick={() => {
+                              setEditingTask(task);
+                              setShowAddTaskModal(true);
+                            }}>
+                              <i className="fas fa-edit text-primary"></i>
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-muted smaller mb-0 d-flex align-items-center">
-                          <i className="fas fa-layer-group me-1 text-primary"></i>
-                          {task.projectName || 'General Tasks'}
+                      </div>
+
+                      <div className="card-body p-4">
+                        <p className="task-desc text-muted mb-4 small" style={{ minHeight: '40px', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {task.description || 'No description provided.'}
                         </p>
-                      </div>
-                      <div className="ms-2">
-                        <button className="btn btn-light btn-sm shadow-sm rounded-circle" onClick={() => {
-                          setEditingTask(task);
-                          setShowAddTaskModal(true);
-                        }}>
-                          <i className="fas fa-edit text-primary"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="card-body p-4">
-                    <p className="task-desc text-muted mb-4 small" style={{ minHeight: '40px', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {task.description || 'No description provided.'}
-                    </p>
-
-                    {/* Progress Bar with modern styling */}
-                    <div className="mb-4">
-                      <div className="d-flex justify-content-between align-items-end mb-2">
-                        <span className="text-dark small fw-bold">Progress: {task.progress || 0}%</span>
-                      </div>
-                      <div className="progress rounded-pill" style={{ height: '6px', background: '#f1f4f9' }}>
-                        <div
-                          className={`progress-bar bg-${statusColor} progress-bar-striped progress-bar-animated`}
-                          role="progressbar"
-                          style={{ width: `${task.progress || 0}%`, borderRadius: '20px' }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Metadata Items */}
-                    <div className="row g-2 mb-3">
-                      <div className="col-12">
-                        <div className="p-2 border rounded-3 bg-light bg-opacity-50 d-flex align-items-center justify-content-between">
-                          <span className="text-muted smaller fw-semibold"><i className="fas fa-user-circle me-1 text-primary"></i> Assignee</span>
-                          <span className="small text-truncate fw-bold text-dark">
-                            {Array.isArray(task.assignedTo) ?
-                              task.assignedTo.map(v => (typeof v === 'object' ? (v.name || v.email) : v)).join(', ') :
-                              (task.assignedTo && typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo) || 'Unassigned'}
-                          </span>
+                        <div className="mb-4">
+                          <div className="d-flex justify-content-between align-items-end mb-2">
+                            <span className="text-dark small fw-bold">Progress: {task.progress || 0}%</span>
+                          </div>
+                          <div className="progress rounded-pill" style={{ height: '6px', background: '#f1f4f9' }}>
+                            <div
+                              className={`progress-bar bg-${statusColor} progress-bar-striped progress-bar-animated`}
+                              role="progressbar"
+                              style={{ width: `${task.progress || 0}%`, borderRadius: '20px' }}
+                            ></div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="col-12">
-                        <div className="p-2 border rounded-3 bg-light bg-opacity-50 d-flex align-items-center justify-content-between">
-                          <span className="text-muted smaller fw-semibold"><i className="fas fa-calendar-alt me-1 text-success"></i> Started At</span>
-                          <span className="small fw-bold text-dark">
-                            {formatDateTime(task.startDate || task.date || task.createdAt)}
+
+                        <div className="row g-2 mb-3">
+                          <div className="col-12">
+                            <div className="p-2 border rounded-3 bg-light bg-opacity-50 d-flex align-items-center justify-content-between">
+                              <span className="text-muted smaller fw-semibold"><i className="fas fa-user-circle me-1 text-primary"></i> Assignee</span>
+                              <span className="small text-truncate fw-bold text-dark">
+                                {Array.isArray(task.assignedTo) ?
+                                  task.assignedTo.map(v => (typeof v === 'object' ? (v.name || v.email) : v)).join(', ') :
+                                  (task.assignedTo && typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo) || 'Unassigned'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="col-12">
+                            <div className="p-2 border rounded-3 bg-light bg-opacity-50 d-flex align-items-center justify-content-between">
+                              <span className="text-muted smaller fw-semibold"><i className="fas fa-calendar-alt me-1 text-success"></i> Started At</span>
+                              <span className="small fw-bold text-dark">
+                                {formatDateTime(task.startDate || task.date || task.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                          <span className={`badge bg-${urgencyColor} text-white rounded-pill px-3 py-2 shadow-sm`} style={{ fontSize: '0.75rem', fontWeight: '600' }}>
+                            <i className="fas fa-bolt me-1"></i> {task.priority || 'Medium'}
+                          </span>
+                          <span className={`badge bg-${statusColor} text-white rounded-pill px-3 py-2 shadow-sm text-capitalize`} style={{ fontSize: '0.75rem', fontWeight: '600' }}>
+                            <i className={`fas ${task.status === 'completed' ? 'fa-check-circle' : 'fa-clock'} me-1`}></i>
+                            {task.status || 'Assigned'}
                           </span>
                         </div>
                       </div>
                     </div>
-
-                    <div className="d-flex justify-content-between align-items-center mt-3">
-                      <span className={`badge bg-${urgencyColor} text-white rounded-pill px-3 py-2 shadow-sm`} style={{ fontSize: '0.75rem', fontWeight: '600' }}>
-                        <i className="fas fa-bolt me-1"></i> {task.priority || 'Medium'}
-                      </span>
-                      <span className={`badge bg-${statusColor} text-white rounded-pill px-3 py-2 shadow-sm text-capitalize`} style={{ fontSize: '0.75rem', fontWeight: '600' }}>
-                        <i className={`fas ${task.status === 'completed' ? 'fa-check-circle' : 'fa-clock'} me-1`}></i>
-                        {task.status || 'Assigned'}
-                      </span>
-                    </div>
-
-                    {/* Requirement/Update Indicators */}
-                    {(task.requirement || task.workingNotes) && (
-                      <div className="mt-4 pt-3 border-top d-flex gap-2">
-                        {task.requirement && (
-                          <div className="badge bg-warning text-dark px-2 py-2 rounded flex-fill shadow-sm" style={{ fontSize: '0.65rem' }}>
-                            <i className="fas fa-clipboard-list me-1"></i> REQ UPDATED
-                          </div>
-                        )}
-                        {task.workingNotes && (
-                          <div className="badge bg-success text-white px-2 py-2 rounded flex-fill shadow-sm" style={{ fontSize: '0.65rem' }}>
-                            <i className="fas fa-stream me-1"></i> NOTES ADDED
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-
-
+                );
+              })
+            ) : (
+              <div className="col-12">
+                <div className="text-center py-5 bg-white rounded-4 shadow-sm">
+                  <i className="fas fa-tasks fa-3x text-muted mb-3 opacity-25"></i>
+                  <h5 className="text-muted">No Team Tasks Yet</h5>
+                  <p className="text-muted small mb-0">Start by creating tasks for your team members.</p>
                 </div>
               </div>
-            );
-          })
+            )}
+          </div>
         ) : (
-          <div className="col-12">
-            <div className="text-center py-5 bg-white rounded-4 shadow-sm">
-              <i className="fas fa-tasks fa-3x text-muted mb-3 opacity-25"></i>
-              <h5 className="text-muted">No Team Tasks Yet</h5>
-              <p className="text-muted small mb-0">Start by creating tasks for your team members.</p>
+          /* List Mode - Matching Image Design */
+          <div className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '15px' }}>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light bg-opacity-50">
+                  <tr className="text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                    <th className="ps-4 py-3 fw-bold">Sr. No.</th>
+                    <th className="py-3 fw-bold">Task Name</th>
+                    <th className="py-3 fw-bold">Project</th>
+                    <th className="py-3 fw-bold">Assigned To</th>
+                    <th className="py-3 fw-bold">Priority</th>
+                    <th className="py-3 fw-bold text-center">Status</th>
+                    <th className="py-3 fw-bold">Start/Due Date</th>
+                    <th className="py-3 fw-bold text-center pe-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatedTasks.length > 0 ? (
+                    relatedTasks.map((task, index) => {
+                      const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+                      const statusLabel = isOverdue ? 'OVERDUE' : (task.status || 'ASSIGNED').toUpperCase();
+
+                      return (
+                        <tr key={task.id || task._id}>
+                          <td className="ps-4 fw-bold text-muted">{index + 1}</td>
+                          <td>
+                            <div className="d-flex flex-column">
+                              <span className="fw-bold text-dark">{task.title}</span>
+                              <small className="text-muted">{task.description?.substring(0, 30)}{task.description?.length > 30 ? '...' : ''}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge bg-white border text-muted px-3 rounded-pill fw-bold" style={{ fontSize: '0.7rem' }}>
+                              {task.projectName || 'General'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <i className="fas fa-users me-2 text-primary" style={{ fontSize: '0.85rem' }}></i>
+                              <span className="small fw-semibold">
+                                {Array.isArray(task.assignedTo) ?
+                                  task.assignedTo.map(v => (typeof v === 'object' ? (v.name || v.email) : v)).join(', ') :
+                                  (task.assignedTo && typeof task.assignedTo === 'object' ? task.assignedTo.name : task.assignedTo) || 'Unassigned'}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge bg-warning bg-opacity-10 text-orange border border-warning border-opacity-25 px-3 rounded-pill fw-bold text-uppercase`} style={{ fontSize: '0.7rem', color: '#f59e0b' }}>
+                              {task.priority || 'Medium'}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <span className={`badge rounded-pill px-3 py-2 fw-bold ${isOverdue
+                              ? 'bg-danger text-white'
+                              : (task.status || '').toLowerCase() === 'completed'
+                                ? 'bg-success text-white'
+                                : 'bg-primary text-white'
+                              }`} style={{ fontSize: '0.7rem', minWidth: '100px', display: 'inline-block' }}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="d-flex flex-column small">
+                              <span className="text-muted"><i className="far fa-calendar-alt me-1"></i> Start: {formatDate(task.startDate || task.date)}</span>
+                              <span className="text-muted"><i className="fas fa-calendar-check me-1"></i> Due: {formatDate(task.dueDate)}</span>
+                            </div>
+                          </td>
+                          <td className="text-center pe-4">
+                            <div className="d-flex justify-content-center gap-2">
+                              <button
+                                className="btn btn-sm btn-outline-primary border-2 shadow-sm d-flex align-items-center justify-content-center"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px' }}
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setShowAddTaskModal(true);
+                                }}
+                                title="Edit Task"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger border-2 shadow-sm d-flex align-items-center justify-content-center"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px' }}
+                                onClick={() => handleDeleteTask(task.id || task._id)}
+                                title="Delete Task"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-5">
+                        <i className="fas fa-tasks fa-3x text-muted mb-3 opacity-25"></i>
+                        <p className="text-muted mb-0">No tasks created yet for your team.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // Dashboard content renderer based on view
   const renderContent = () => {
@@ -1307,7 +1524,7 @@ const TeamLeaderDashboard = ({
       case 'projects':
         return renderProjectsView();
       case 'reports':
-        return <TeamLeaderReports stats={stats} projects={managedProjects} tasks={relatedTasks} />;
+        return <TeamLeaderReports stats={stats} projects={managedProjects} tasks={relatedTasks} teamMembers={teamMembers} />;
       case 'profile':
         return <TeamLeaderProfile userData={userData} onUpdateProfile={handleSaveProfile} />;
       case 'help':

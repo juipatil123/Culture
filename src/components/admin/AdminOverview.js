@@ -14,6 +14,12 @@ const AdminOverview = ({
     useEffect(() => {
         const ctx = document.getElementById('progressChart');
         if (ctx) {
+            // Safety check for Chart.js
+            if (!window.Chart) {
+                console.error('Chart.js not loaded');
+                return;
+            }
+
             // Check if there's an existing chart instance and destroy it
             const existingChart = window.Chart.getChart(ctx);
             if (existingChart) {
@@ -176,10 +182,10 @@ const AdminOverview = ({
                                             <div className="d-flex align-items-center">
                                                 <div
                                                     className="rounded-circle text-white d-flex align-items-center justify-content-center me-2"
-                                                    style={{ 
-                                                        width: '28px', 
-                                                        height: '28px', 
-                                                        fontSize: '11px', 
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        fontSize: '11px',
                                                         fontWeight: 'bold',
                                                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                                                     }}
@@ -190,8 +196,8 @@ const AdminOverview = ({
                                             </div>
                                         </td>
                                         <td>
-                                            <span 
-                                                className="badge rounded-pill" 
+                                            <span
+                                                className="badge rounded-pill"
                                                 style={{
                                                     fontSize: '0.75rem',
                                                     minWidth: '90px',
@@ -209,8 +215,8 @@ const AdminOverview = ({
                                                 <div className="progress flex-grow-1" style={{ height: '8px', background: '#f0f2f5', borderRadius: '10px' }}>
                                                     <div
                                                         className="progress-bar"
-                                                        style={{ 
-                                                            width: `${project.progress}%`, 
+                                                        style={{
+                                                            width: `${project.progress}%`,
                                                             background: getProgressGradient(project.status),
                                                             borderRadius: '10px',
                                                             transition: 'all 0.3s ease'

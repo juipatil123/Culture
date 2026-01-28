@@ -83,6 +83,9 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
       } else {
         processedValue = '0';
       }
+    } else if (name === 'clientName') {
+      // Only allow letters and spaces
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '');
     }
 
     setFormData(prev => ({ ...prev, [name]: processedValue }));
@@ -181,71 +184,76 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
       left: 0,
       right: 0,
       bottom: 0,
-      zIndex: 1050,
-      overflow: 'auto'
+      zIndex: 1500,
+      overflow: 'auto',
+      fontFamily: 'Inter, sans-serif'
     }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        paddingLeft: '260px', // Sidebar width
-        paddingRight: '20px',
-        paddingTop: '20px',
-        paddingBottom: '20px'
+        padding: '20px'
       }}>
         <div className="modal-dialog modal-lg" style={{
           margin: '0',
-          maxWidth: '900px',
+          maxWidth: '800px',
           width: '100%'
         }}>
-          <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div className="modal-header bg-primary text-white p-3 border-0">
-              <h5 className="modal-title fw-bold">
-                <i className="fas fa-edit me-2"></i>
-                {editingProject ? 'Edit Project Details' : 'Create New Project'}
+          <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="modal-header text-white p-3 border-0 d-flex justify-content-between align-items-center" style={{ backgroundColor: '#7c3aed' }}>
+              <h5 className="modal-title fw-bold d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
+                <i className="fas fa-share-alt"></i> {/* Placeholder icon to match 'Add New Project' icon roughly */}
+                {editingProject ? 'Edit Project' : 'Add New Project'}
               </h5>
-              <button type="button" className="btn-close btn-close-white" onClick={handleClose}></button>
+              <button type="button" className="btn-close btn-close-white" onClick={handleClose} style={{ opacity: 1 }}></button>
             </div>
 
             <form onSubmit={handleSubmit} autoComplete="off">
-              <div className="modal-body p-4" style={{ backgroundColor: '#fff', maxHeight: '80vh', overflowY: 'auto' }}>
-                <div className="row g-4">
-                  {/* Basic Info */}
+              <div className="modal-body p-4" style={{ backgroundColor: '#fff', maxHeight: '75vh', overflowY: 'auto' }}>
+                <div className="row g-3">
+                  {/* Row 1: Project Name & Client Name */}
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Project Name *</label>
+                    <label className="form-label small fw-bold text-secondary">Project Name *</label>
                     <input
                       type="text"
-                      className="admin-input"
+                      className="form-control"
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      placeholder="Project Name"
+                      placeholder="Enter project name"
                       required
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                     />
                   </div>
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Client Name *</label>
+                    <label className="form-label small fw-bold text-secondary">Client Name *</label>
                     <input
                       type="text"
-                      className="admin-input"
+                      className="form-control"
                       name="clientName"
                       value={formData.clientName}
                       onChange={handleInputChange}
-                      placeholder="Client Name"
+                      placeholder="Enter client name"
+                      pattern="[A-Za-z\s]+"
+                      title="Client name should only contain letters and spaces"
                       required
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                     />
+                    <div className="form-text text-muted" style={{ fontSize: '0.75rem' }}>Only letters and spaces allowed.</div>
                   </div>
 
-                  {/* Manager & Cost */}
+                  {/* Row 2: Project Manager & Project Cost */}
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Project Manager *</label>
+                    <label className="form-label small fw-bold text-secondary">Project Manager *</label>
                     <div className="position-relative">
-                      <div className="d-flex align-items-center bg-white border rounded-3 px-2">
-                        <i className="fas fa-user-tie text-muted me-2"></i>
+                      <div className="input-group">
+                        <span className="input-group-text bg-white border-end-0" style={{ borderColor: '#e5e7eb' }}>
+                          <i className="fas fa-user text-dark"></i>
+                        </span>
                         <input
                           type="text"
-                          className="admin-input border-0 shadow-none ps-0"
+                          className="form-control border-start-0 border-end-0"
                           value={managerSearchTerm || formData.projectManager}
                           onChange={(e) => {
                             setManagerSearchTerm(e.target.value);
@@ -254,181 +262,229 @@ const AddProjectModal = ({ show, onClose, onHide, onSave, editingProject, availa
                           }}
                           onFocus={() => setShowManagerDropdown(true)}
                           onBlur={() => setTimeout(() => setShowManagerDropdown(false), 300)}
-                          placeholder="Assign a Manager"
+                          placeholder="Select Manager"
                           required
+                          style={{ borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                         />
-                        {formData.projectManager && (
-                          <i className="fas fa-times text-muted cursor-pointer" onClick={() => { setFormData(prev => ({ ...prev, projectManager: '' })); setManagerSearchTerm(''); }}></i>
-                        )}
+                        <span className="input-group-text bg-white border-start-0" style={{ borderColor: '#e5e7eb' }}>
+                          {formData.projectManager ? (
+                            <i className="fas fa-times text-muted cursor-pointer" onClick={() => { setFormData(prev => ({ ...prev, projectManager: '' })); setManagerSearchTerm(''); }}></i>
+                          ) : (
+                            <i className="fas fa-times text-white"></i> // Spacer
+                          )}
+                        </span>
                       </div>
                       {showManagerDropdown && (
-                        <div className="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1" style={{ zIndex: 1100, maxHeight: '200px', overflowY: 'auto' }}>
+                        <div className="position-absolute w-100 bg-white border rounded shadow-sm mt-1" style={{ zIndex: 1100, maxHeight: '200px', overflowY: 'auto' }}>
                           {getFilteredManagers().map((emp, i) => (
-                            <div key={i} className="p-3 border-bottom hover-bg-light" style={{ cursor: 'pointer' }} onMouseDown={() => handleSelectManager(emp)}>
-                              <div className="fw-bold small">{emp.name}</div>
-                              <div className="text-muted small">{emp.email}</div>
+                            <div key={i} className="p-2 border-bottom hover-bg-light" style={{ cursor: 'pointer', fontSize: '0.85rem' }} onMouseDown={() => handleSelectManager(emp)}>
+                              <div className="fw-bold">{emp.name}</div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
+                    <div className="form-text text-muted d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                      <i className="fas fa-info-circle"></i> Search from registered project managers only
+                    </div>
                   </div>
+
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Project Cost (₹) *</label>
+                    <label className="form-label small fw-bold text-secondary">Project Cost *</label>
                     <input
                       type="number"
-                      className="admin-input"
+                      className="form-control"
                       name="projectCost"
                       value={formData.projectCost}
                       onChange={handleInputChange}
-                      placeholder="Total Cost"
+                      placeholder="Enter project cost"
                       min="0"
                       step="0.01"
                       required
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                     />
-                    <small className="form-text text-muted">
-                      Only positive values or zero allowed.
-                    </small>
+                    <div className="form-text text-muted" style={{ fontSize: '0.75rem' }}>Only positive values or zero allowed.</div>
                   </div>
 
-                  {/* Status & Advance */}
+                  {/* Row 3: Advance Payment & Project Status */}
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Advance Payment (₹)</label>
+                    <label className="form-label small fw-bold text-secondary">Advance Payment</label>
                     <input
                       type="number"
-                      className="admin-input"
+                      className="form-control"
                       name="advancePayment"
                       value={formData.advancePayment}
                       onChange={handleInputChange}
-                      placeholder="Advance Amount"
+                      placeholder="Enter advance payment"
                       min="0"
                       step="0.01"
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                     />
-                    <small className="form-text text-muted">
-                      Only positive values or zero allowed.
-                    </small>
+                    <div className="form-text text-muted" style={{ fontSize: '0.75rem' }}>Only positive values or zero allowed.</div>
                   </div>
+
                   <div className="col-md-6 text-start">
-                    <label className="admin-label">Current Status</label>
+                    <label className="form-label small fw-bold text-secondary">Project Status</label>
                     <select
-                      className="admin-select"
+                      className="form-select"
                       name="projectStatus"
                       value={formData.projectStatus}
                       onChange={handleInputChange}
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                     >
-                      <option value="pending">Pending</option>
-                      <option value="in-progress">In Progress</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="on-track">On Track</option>
+                      <option value="at-risk">At Risk</option>
+                      <option value="delayed">Delayed</option>
                       <option value="completed">Completed</option>
-                      <option value="overdue">Overdue</option>
                     </select>
                   </div>
 
-                  {/* Progress */}
+                  {/* Row 4: Project Progress Slider */}
                   <div className="col-12 text-start">
-                    <div className="p-3 bg-light rounded-3 border">
-                      <div className="d-flex justify-content-between mb-2">
-                        <label className="admin-label mb-0">Project Progress</label>
-                        <span className="fw-bold text-primary">{formData.progress}%</span>
-                      </div>
+                    <label className="form-label small fw-bold text-dark mb-1">Project Progress: {formData.progress}%</label>
+                    <input
+                      type="range"
+                      className="form-range"
+                      name="progress"
+                      min="0"
+                      max="100"
+                      value={formData.progress}
+                      onChange={handleInputChange}
+                      style={{ accentColor: '#0d6efd' }} // Standard Bootstrap Blue
+                    />
+                    <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.7rem' }}>
+                      <span>0%</span>
+                      <span>25%</span>
+                      <span>50%</span>
+                      <span>75%</span>
+                      <span>100%</span>
+                    </div>
+                    <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>Drag the slider to set the current project completion percentage</div>
+                  </div>
+
+
+                  {/* Row 5: Dates */}
+                  <div className="col-md-6 text-start">
+                    <label className="form-label small fw-bold text-secondary">Start Date *</label>
+                    <div className="input-group">
                       <input
-                        type="range"
-                        className="form-range"
-                        name="progress"
-                        min="0"
-                        max="100"
-                        value={formData.progress}
+                        type="date"
+                        className="form-control"
+                        name="startDate"
+                        value={formData.startDate}
                         onChange={handleInputChange}
+                        required
+                        style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6 text-start">
+                    <label className="form-label small fw-bold text-secondary">End Date *</label>
+                    <div className="input-group">
+                      <input
+                        type="date"
+                        className="form-control"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleInputChange}
+                        required
+                        style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                       />
                     </div>
                   </div>
 
-                  {/* Dates */}
-                  <div className="col-md-6 text-start">
-                    <label className="admin-label">Start Date *</label>
-                    <input
-                      type={focusedField === 'startDate' ? 'date' : 'text'}
-                      className="admin-input"
-                      name="startDate"
-                      value={focusedField === 'startDate' ? formData.startDate : (formData.startDate ? formatDate(formData.startDate) : '')}
-                      onChange={handleInputChange}
-                      onFocus={() => setFocusedField('startDate')}
-                      onBlur={() => setFocusedField(null)}
-                      placeholder="DD/MM/YYYY"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6 text-start">
-                    <label className="admin-label">End Date *</label>
-                    <input
-                      type={focusedField === 'endDate' ? 'date' : 'text'}
-                      className="admin-input"
-                      name="endDate"
-                      value={focusedField === 'endDate' ? formData.endDate : (formData.endDate ? formatDate(formData.endDate) : '')}
-                      onChange={handleInputChange}
-                      onFocus={() => setFocusedField('endDate')}
-                      onBlur={() => setFocusedField(null)}
-                      placeholder="DD/MM/YYYY"
-                      required
-                    />
-                  </div>
-
-                  {/* Description */}
+                  {/* Row 6: Description */}
                   <div className="col-12 text-start">
-                    <label className="admin-label">Project Description</label>
+                    <label className="form-label small fw-bold text-secondary">Project Description</label>
                     <textarea
-                      className="admin-textarea"
+                      className="form-control"
                       name="description"
                       value={formData.description}
                       onChange={handleInputChange}
                       rows="3"
-                      placeholder="Enter short description..."
+                      placeholder="Enter project description"
+                      style={{ borderRadius: '4px', borderColor: '#e5e7eb', fontSize: '0.9rem', resize: 'none' }}
                     ></textarea>
                   </div>
 
-                  {/* Team Assignment */}
+                  {/* Row 7: Assigned Members */}
                   <div className="col-12 text-start">
-                    <label className="admin-label">Assign Team Members</label>
-                    <div className="position-relative">
+                    <label className="form-label small fw-bold text-dark">
+                      <i className="fas fa-users me-2"></i> Assigned Members ({formData.assignedMembers.length})
+                    </label>
+                    <div className="input-group mb-2">
+                      <span className="input-group-text bg-white" style={{ borderColor: '#e5e7eb' }}>
+                        <i className="fas fa-search text-muted"></i>
+                      </span>
                       <input
                         type="text"
-                        className="admin-input"
+                        className="form-control"
                         value={searchTerm}
                         onChange={(e) => { setSearchTerm(e.target.value); setShowEmployeeDropdown(true); }}
                         onFocus={() => setShowEmployeeDropdown(true)}
                         onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 300)}
-                        placeholder="Search to add team members..."
+                        placeholder="Click to see employees or type to search..."
+                        style={{ borderColor: '#e5e7eb', fontSize: '0.9rem', padding: '0.6rem' }}
                       />
-                      {showEmployeeDropdown && (
-                        <div className="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1" style={{ zIndex: 1100, maxHeight: '150px', overflowY: 'auto' }}>
-                          {getFilteredEmployees().map((emp, i) => (
-                            <div key={i} className="p-2 border-bottom hover-bg-light d-flex justify-content-between align-items-center" style={{ cursor: 'pointer' }} onMouseDown={() => handleSelectEmployee(emp)}>
-                              <div>
-                                <div className="fw-bold small">{emp.name}</div>
-                                <div className="text-muted small">{emp.department}</div>
-                              </div>
-                              <button type="button" className="btn btn-sm btn-outline-primary py-0">Add</button>
+                    </div>
+                    <div className="form-text text-muted d-flex align-items-center gap-1 mb-3" style={{ fontSize: '0.75rem' }}>
+                      <i className="fas fa-info-circle"></i> Search and select from registered employees above. You can add multiple members to the project.
+                    </div>
+
+                    {showEmployeeDropdown && (
+                      <div className="position-absolute bg-white border rounded shadow-sm" style={{ zIndex: 1100, maxHeight: '150px', overflowY: 'auto', width: '90%', marginTop: '-15px' }}>
+                        {getFilteredEmployees().map((emp, i) => (
+                          <div key={i} className="p-2 border-bottom hover-bg-light position-relative" style={{ cursor: 'pointer' }} onMouseDown={() => handleSelectEmployee(emp)}>
+                            <div className="fw-bold small">{emp.name}</div>
+                            <div className="text-muted" style={{ fontSize: '0.7rem' }}>{emp.department}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Member List Area */}
+                    <div className="border rounded bg-white p-4 d-flex flex-column align-items-center justify-content-center text-center" style={{ minHeight: '120px', borderColor: '#e5e7eb' }}>
+                      {formData.assignedMembers.length > 0 ? (
+                        <div className="d-flex flex-wrap gap-2 justify-content-start w-100">
+                          {formData.assignedMembers.map((member, index) => (
+                            <div key={index} className="badge bg-light text-dark border d-flex align-items-center gap-2 p-2 rounded fw-normal">
+                              <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style={{ width: '20px', height: '20px', fontSize: '0.7rem' }}>{member.charAt(0)}</div>
+                              <span>{member}</span>
+                              <i className="fas fa-times text-muted cursor-pointer hover-text-danger" onClick={() => handleRemoveMember(member)}></i>
                             </div>
                           ))}
                         </div>
+                      ) : (
+                        <>
+                          <div className="text-muted mb-2">
+                            <i className="fas fa-user-plus fa-2x" style={{ opacity: 0.3 }}></i>
+                          </div>
+                          <h6 className="text-secondary small mb-1">No members assigned yet</h6>
+                          <p className="text-muted small mb-0" style={{ fontSize: '0.75rem' }}>Add team members who will work on this project</p>
+                        </>
                       )}
                     </div>
-                    <div className="d-flex flex-wrap gap-2 mt-3">
-                      {formData.assignedMembers.map((member, index) => (
-                        <div key={index} className="badge bg-white text-dark border d-flex align-items-center gap-2 p-2 rounded-3 shadow-sm">
-                          <span>{member}</span>
-                          <i className="fas fa-times-circle text-danger cursor-pointer" onClick={() => handleRemoveMember(member)}></i>
-                        </div>
-                      ))}
-                    </div>
                   </div>
+
                 </div>
               </div>
 
-              <div className="modal-footer border-top p-3 bg-white">
-                <button type="button" className="btn btn-light px-4 rounded-pill me-2" onClick={handleClose}>Cancel</button>
-                <button type="submit" className="btn btn-primary px-5 rounded-pill fw-bold">
-                  <i className="fas fa-check-circle me-2"></i>
-                  {editingProject ? 'Update Changes' : 'Create Project'}
+              <div className="modal-footer p-3 bg-white border-top-0 d-flex justify-content-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary px-4 fw-bold"
+                  onClick={handleClose}
+                  style={{ backgroundColor: '#6c757d', border: 'none', borderRadius: '4px', fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary px-4 fw-bold"
+                  style={{ backgroundColor: '#0d6efd', border: 'none', borderRadius: '4px', fontSize: '0.9rem' }}
+                >
+                  <i className="fas fa-plus-circle me-1"></i> {editingProject ? 'Update Project' : 'Add Project'}
                 </button>
               </div>
             </form>

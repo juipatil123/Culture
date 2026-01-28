@@ -148,7 +148,17 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
   if (!show) return null;
 
   return (
-    <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{
+      display: 'block',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1500,
+      overflow: 'auto'
+    }}>
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">
@@ -212,6 +222,8 @@ const AddProjectManagerModal = ({ show, onHide, onSave, editingManager = null })
                       onChange={handleChange}
                       placeholder="Enter 10-digit phone number"
                       maxLength="10"
+                      pattern="[0-9]{10}"
+                      title="Phone number must be exactly 10 digits"
                     />
                     {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                   </div>

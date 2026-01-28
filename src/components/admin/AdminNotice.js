@@ -23,12 +23,12 @@ const AdminNotice = ({ userData }) => {
             console.log('📋 All users fetched:', users.length);
             const filtered = users.filter(u => ['employee', 'team-leader', 'project-manager', 'intern'].includes(u.role));
             console.log('✅ Filtered employees for notice:', filtered.length);
-            console.log('👥 Employee details:', filtered.map(u => ({ 
-                id: u.id, 
+            console.log('👥 Employee details:', filtered.map(u => ({
+                id: u.id,
                 _id: u._id,
-                name: u.name, 
+                name: u.name,
                 role: u.role,
-                email: u.email 
+                email: u.email
             })));
             setEmployees(filtered);
         } catch (error) {
@@ -203,7 +203,7 @@ const AdminNotice = ({ userData }) => {
                                     {sending ? <i className="fas fa-spinner fa-spin me-2"></i> : <i className="fas fa-paper-plane me-2"></i>}
                                     Send Notice
                                 </button>
-                                
+
                                 {/* Debug: Test Notice Button */}
                                 <button
                                     type="button"
@@ -256,7 +256,12 @@ const AdminNotice = ({ userData }) => {
                 <div className="col-lg-7">
                     <div className="card border-0 shadow-sm rounded-3">
                         <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                            <h5 className="mb-0 fw-bold">Sent History</h5>
+                            <div className="d-flex align-items-center">
+                                <h5 className="mb-0 fw-bold me-2">Sent History</h5>
+                                <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                                    {sentNotices.filter(n => n.read).length} Viewed
+                                </span>
+                            </div>
                             <button
                                 className="btn btn-success"
                                 onClick={handleDownloadHistory}

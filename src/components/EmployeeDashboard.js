@@ -30,6 +30,63 @@ const EmployeeDashboard = ({
     const [noteContent, setNoteContent] = useState('');
     const [notification, setNotification] = useState(null);
     const [profileIsDirty, setProfileIsDirty] = useState(false);
+    const [profileFormData, setProfileFormData] = useState({
+        name: userData?.name || '',
+        email: userData?.email || '',
+        phone: userData?.phone || '',
+        gender: userData?.gender || 'Male',
+        department: userData?.department || 'Marketing',
+        bio: userData?.bio || ''
+    });
+
+    useEffect(() => {
+        if (userData) {
+            setProfileFormData({
+                name: userData.name || '',
+                email: userData.email || '',
+                phone: userData.phone || '',
+                gender: userData.gender || 'Male',
+                department: userData.department || 'Marketing',
+                bio: userData.bio || ''
+            });
+        }
+    }, [userData]);
+
+    const handleProfileChange = (e) => {
+        const { name, value } = e.target;
+        let processedValue = value;
+
+        if (name === 'name') {
+            // Only allow letters and spaces
+            processedValue = value.replace(/[^a-zA-Z\s]/g, '');
+        } else if (name === 'phone') {
+            // Only allow digits, max 10
+            processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+        }
+
+        setProfileFormData(prev => ({ ...prev, [name]: processedValue }));
+        setProfileIsDirty(true);
+    };
+
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+
+        // Strict validation check
+        if (profileFormData.phone && profileFormData.phone.length !== 10) {
+            alert('Phone number must be exactly 10 digits.');
+            return;
+        }
+
+        try {
+            // Here we would typically call an update API
+            // For now, mirroring the UX pattern
+            alert('Profile updated successfully!');
+            setProfileIsDirty(false);
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Failed to update profile.');
+        }
+    };
 
     useEffect(() => {
         if (!userData?.id && !userData?._id) return;
@@ -1285,7 +1342,7 @@ const EmployeeDashboard = ({
                                         <div className="card-body p-4">
                                             <h5 className="fw-bold mb-4">Account Settings</h5>
 
-                                            <form>
+                                            <form onSubmit={handleProfileSubmit}>
                                                 <div className="row g-3">
                                                     {/* Full Name */}
                                                     <div className="col-md-6">
@@ -1293,10 +1350,18 @@ const EmployeeDashboard = ({
                                                         <input
                                                             type="text"
                                                             className="form-control bg-light border-0 py-2"
-                                                            defaultValue={userName}
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="name"
+                                                            value={profileFormData.name}
+                                                            onChange={handleProfileChange}
+                                                            placeholder="Enter full name"
+                                                            pattern="[A-Za-z\s]+"
+                                                            title="Name should only contain letters and spaces"
                                                             style={{ borderRadius: '8px' }}
+                                                            required
                                                         />
+                                                        <small className="form-text text-muted" style={{ fontSize: '0.7rem' }}>
+                                                            Only letters and spaces allowed.
+                                                        </small>
                                                     </div>
 
                                                     {/* Email */}
@@ -1305,8 +1370,9 @@ const EmployeeDashboard = ({
                                                         <input
                                                             type="email"
                                                             className="form-control bg-light border-0 py-2"
-                                                            defaultValue={userEmail}
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="email"
+                                                            value={profileFormData.email}
+                                                            disabled
                                                             style={{ borderRadius: '8px' }}
                                                         />
                                                     </div>
@@ -1317,11 +1383,18 @@ const EmployeeDashboard = ({
                                                         <input
                                                             type="tel"
                                                             className="form-control bg-light border-0 py-2"
-                                                            defaultValue={userData?.phone || ''}
-                                                            placeholder="Enter phone number"
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="phone"
+                                                            value={profileFormData.phone}
+                                                            placeholder="10-digit mobile number"
+                                                            onChange={handleProfileChange}
+                                                            maxLength="10"
+                                                            pattern="[0-9]{10}"
+                                                            title="Phone number must be exactly 10 digits"
                                                             style={{ borderRadius: '8px' }}
                                                         />
+                                                        <small className="form-text text-muted" style={{ fontSize: '0.7rem' }}>
+                                                            Only digits allowed (10 total).
+                                                        </small>
                                                     </div>
 
                                                     {/* Gender */}
@@ -1329,8 +1402,9 @@ const EmployeeDashboard = ({
                                                         <label className="form-label small fw-semibold text-muted">Gender</label>
                                                         <select
                                                             className="form-select bg-light border-0 py-2"
-                                                            defaultValue={userData?.gender || 'Male'}
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="gender"
+                                                            value={profileFormData.gender}
+                                                            onChange={handleProfileChange}
                                                             style={{ borderRadius: '8px' }}
                                                         >
                                                             <option value="Male">Male</option>
@@ -1344,8 +1418,9 @@ const EmployeeDashboard = ({
                                                         <label className="form-label small fw-semibold text-muted">Department</label>
                                                         <select
                                                             className="form-select bg-light border-0 py-2"
-                                                            defaultValue={userData?.department || 'Marketing'}
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="department"
+                                                            value={profileFormData.department}
+                                                            onChange={handleProfileChange}
                                                             style={{ borderRadius: '8px' }}
                                                         >
                                                             <option value="Marketing">Marketing</option>
@@ -1365,8 +1440,9 @@ const EmployeeDashboard = ({
                                                             className="form-control bg-light border-0"
                                                             rows="4"
                                                             placeholder="Tell us about yourself..."
-                                                            defaultValue={userData?.bio || ''}
-                                                            onChange={() => setProfileIsDirty(true)}
+                                                            name="bio"
+                                                            value={profileFormData.bio}
+                                                            onChange={handleProfileChange}
                                                             style={{ borderRadius: '8px' }}
                                                         ></textarea>
                                                     </div>
@@ -1379,7 +1455,17 @@ const EmployeeDashboard = ({
                                                                     <i className="fas fa-save me-2"></i>
                                                                     Update Profile
                                                                 </button>
-                                                                <button type="button" className="btn btn-light px-4 py-2 rounded-pill" onClick={() => setProfileIsDirty(false)}>
+                                                                <button type="button" className="btn btn-light px-4 py-2 rounded-pill" onClick={() => {
+                                                                    setProfileFormData({
+                                                                        name: userData.name || '',
+                                                                        email: userData.email || '',
+                                                                        phone: userData.phone || '',
+                                                                        gender: userData.gender || 'Male',
+                                                                        department: userData.department || 'Marketing',
+                                                                        bio: userData.bio || ''
+                                                                    });
+                                                                    setProfileIsDirty(false);
+                                                                }}>
                                                                     Cancel
                                                                 </button>
                                                             </div>
